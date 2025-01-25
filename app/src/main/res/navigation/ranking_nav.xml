@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/ranking_nav"
+    app:startDestination="@id/nowFragment">
+
+    <fragment
+        android:id="@+id/nowFragment"
+        android:name="com.example.myapplication12345.fragments.NowFragment"
+        android:label="fragment_now"
+        tools:layout="@layout/fragment_now" />
+    <fragment
+        android:id="@+id/dailyFragment"
+        android:name="com.example.myapplication12345.fragments.DailyFragment"
+        android:label="fragment_daily"
+        tools:layout="@layout/fragment_daily" />
+    <fragment
+        android:id="@+id/weeklyFragment"
+        android:name="com.example.myapplication12345.fragments.WeeklyFragment"
+        android:label="fragment_weekly"
+        tools:layout="@layout/fragment_weekly" />
+    <fragment
+        android:id="@+id/monthlyFragment"
+        android:name="com.example.myapplication12345.fragments.MonthlyFragment"
+        android:label="fragment_monthly"
+        tools:layout="@layout/fragment_monthly" />
+</navigation>
