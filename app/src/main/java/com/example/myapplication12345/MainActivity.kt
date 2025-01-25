@@ -16,7 +16,7 @@ class MainActivity : AppCompatActivity() {
 
         val rankButton = findViewById<Button>(R.id.rankbutton)
         rankButton.setOnClickListener {
-            val intent = Intent(this, RankingActivity::class.java)
+            val intent = Intent(this, CameraActivity::class.java)
             startActivity(intent)
         }
 
