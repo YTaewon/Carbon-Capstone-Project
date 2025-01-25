@@ -8,6 +8,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.databinding.DataBindingUtil
+import com.example.myapplication12345.MainActivity
 import com.example.myapplication12345.RankingActivity
 import com.example.myapplication12345.R
 import com.example.myapplication12345.databinding.ActivityIntroBinding
@@ -49,7 +50,7 @@ class IntroActivity : AppCompatActivity() {
 
                         Toast.makeText(this, "로그인 성공", Toast.LENGTH_SHORT).show()
 
-                        val intent = Intent(this, RankingActivity::class.java)
+                        val intent = Intent(this, MainActivity::class.java)
                         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                         startActivity(intent)
 

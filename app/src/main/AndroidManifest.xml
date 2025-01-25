@@ -13,10 +13,7 @@
         android:theme="@style/Theme.MyApplication12345"
         tools:targetApi="31">
         <activity
-            android:name=".ItemRankActivity"
-            android:exported="false" />
-        <activity
-            android:name=".ItemRankingActivity"
+            android:name=".MainActivity"
             android:exported="false" />
         <activity
             android:name=".RankingActivity"

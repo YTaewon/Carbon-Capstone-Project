@@ -1,13 +1,11 @@
 package com.example.myapplication12345.fragments
 
-import com.google.firebase.database.Query
 import android.os.Bundle
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
-import androidx.lifecycle.get
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.myapplication12345.Profiles
@@ -17,7 +15,6 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.ktx.Firebase
-import kotlin.collections.getValue
 
 class DailyFragment : Fragment() {
     private lateinit var auth: FirebaseAuth
