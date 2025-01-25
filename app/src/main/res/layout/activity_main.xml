@@ -44,7 +44,7 @@
             android:layout_width="10dp"
             android:layout_height="50dp"
             android:layout_weight="1"
-            android:text="랭킹 이동 임시 버튼" />
+            android:text="카메라 이동 임시 버튼" />
 
     </LinearLayout>
 
