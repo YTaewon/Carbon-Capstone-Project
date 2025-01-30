@@ -28,6 +28,13 @@
             android:src="@drawable/img"
             />
 
+        <Button
+            android:id="@+id/aiTest"
+            android:layout_width="10dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="AI" />
+
         <TextView
             android:id="@+id/slogan"
             android:layout_width="wrap_content"
