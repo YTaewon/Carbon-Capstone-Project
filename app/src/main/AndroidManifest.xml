@@ -2,12 +2,19 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+<<<<<<< HEAD
     <!-- WiFi 관련 권한 -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE"/>
 
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+=======
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-feature android:name="android.hardware.camera" />
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+>>>>>>> 614cd7f (실험목적)
 
     <application
         android:allowBackup="true"
@@ -21,6 +28,9 @@
         tools:targetApi="31">
         <activity
             android:name=".CameraActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.dashboard.ResultActivity"
             android:exported="false" />
 
         <service
@@ -50,6 +60,7 @@
         <activity
             android:name=".auth.IntroActivity"
             android:exported="false" />
+
         <activity
             android:name=".SplashActivity"
             android:exported="true">

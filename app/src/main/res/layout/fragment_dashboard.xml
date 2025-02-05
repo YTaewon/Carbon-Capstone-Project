@@ -6,26 +6,25 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <!-- 카메라 프리뷰 -->
-
+    <!-- 카메라 프리뷰 영역 -->
     <androidx.camera.view.PreviewView
         android:id="@+id/cameraPreview"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        app:layout_constraintBottom_toTopOf="@+id/scanText"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.0"
+        app:layout_constraintBottom_toTopOf="@+id/scanText"
         tools:layout_editor_absoluteX="0dp" />
 
+    <!-- 스캔 영역 가이드(필요 시) -->
     <View
         android:id="@+id/scan_area"
         android:layout_width="250dp"
         android:layout_height="250dp"
         android:background="#33FFFFFF"
+        app:layout_constraintTop_toTopOf="@id/cameraPreview"
         app:layout_constraintBottom_toBottomOf="@id/cameraPreview"
-        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="@id/cameraPreview" />
+        app:layout_constraintEnd_toEndOf="parent"/>
 
     <TextView
         android:id="@+id/scanText"
@@ -35,16 +34,7 @@
         android:textColor="#AAAAAA"
         android:padding="16dp"
         android:textSize="16sp"
-        app:layout_constraintBottom_toTopOf="@+id/productInfoText" />
-
-    <TextView
-        android:id="@+id/productInfoText"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:padding="16dp"
-        android:textSize="16sp"
-        android:textColor="#AAAAAA"
-        app:layout_constraintBottom_toBottomOf="parent" />
-
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/cameraPreview"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

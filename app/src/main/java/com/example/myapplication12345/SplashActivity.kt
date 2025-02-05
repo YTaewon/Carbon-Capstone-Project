@@ -34,7 +34,7 @@ class SplashActivity : AppCompatActivity() {
         } else {
             Log.d("SplashActivity", "not null")
             Handler().postDelayed({
-                startActivity(Intent(this, RankingActivity::class.java))
+                startActivity(Intent(this, CameraActivity::class.java))
                 finish()
             }, 2000)
         }

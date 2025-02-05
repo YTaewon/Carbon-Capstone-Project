@@ -11,21 +11,21 @@ class DepthPageTransformer : ViewPager2.PageTransformer {
             val pageWidth = width
             when {
                 position < -1 || position > 1 -> {
-                    // 화면 밖의 페이지
+
                     alpha = 0f
                 }
 
                 else -> {
-                    // 화면 안의 페이지
-                    // 위치에 따른 투명도 계산
+
+                    //투명도
                     alpha = 1 - abs(position)
 
-                    // 스케일 효과
+                    //스케일
                     val scaleFactor = MIN_SCALE + (1 - MIN_SCALE) * (1 - abs(position))
                     scaleX = scaleFactor
                     scaleY = scaleFactor
 
-                    // 이동 효과
+                    //이동
                     translationX = -position * pageWidth
                 }
             }

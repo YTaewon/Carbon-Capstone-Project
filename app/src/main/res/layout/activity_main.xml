@@ -9,6 +9,7 @@
     android:background="@color/backgroundColor"
     tools:context=".MainActivity">
 
+
     <!-- Header 섹션 -->
     <LinearLayout
         android:id="@+id/header"
@@ -482,7 +483,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent">
-
-
     </androidx.coordinatorlayout.widget.CoordinatorLayout>
+
+
 </androidx.constraintlayout.widget.ConstraintLayout>

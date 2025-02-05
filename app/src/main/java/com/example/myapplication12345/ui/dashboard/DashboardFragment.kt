@@ -1,9 +1,9 @@
 package com.example.myapplication12345.ui.dashboard
 
+import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -15,18 +15,12 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import com.example.myapplication12345.ui.dashboard.ResultActivity
 import com.example.myapplication12345.databinding.FragmentDashboardBinding
 import com.example.myapplication12345.network.BarcodeAnalyzer
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import org.xmlpull.v1.XmlPullParser
-import org.xmlpull.v1.XmlPullParserFactory
-import java.net.URL
-import android.Manifest
 
 class DashboardFragment : Fragment() {
+
     private var _binding: FragmentDashboardBinding? = null
     private val binding get() = _binding!!
 
@@ -35,6 +29,7 @@ class DashboardFragment : Fragment() {
     private lateinit var previewUseCase: Preview
     private lateinit var analysisUseCase: ImageAnalysis
 
+    // 스캔 활성/비활성 여부
     private var isScanning = true
 
     override fun onCreateView(
@@ -46,10 +41,16 @@ class DashboardFragment : Fragment() {
         return binding.root
     }
 
+
+    override fun onResume() {
+        super.onResume()
+        isScanning = true
+    }
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // 카메라 권한 체크 및 요청
+        // 카메라 권한 확인
         if (allPermissionsGranted()) {
             startCamera()
         } else {
@@ -67,26 +68,33 @@ class DashboardFragment : Fragment() {
         cameraProviderFuture.addListener({
             cameraProvider = cameraProviderFuture.get()
 
-            // Preview UseCase 설정
-            previewUseCase = Preview.Builder().build()
-            previewUseCase.setSurfaceProvider(binding.cameraPreview.surfaceProvider)
 
-            // ImageAnalysis UseCase 설정
+            previewUseCase = Preview.Builder().build().apply {
+                setSurfaceProvider(binding.cameraPreview.surfaceProvider)
+            }
+
+
             analysisUseCase = ImageAnalysis.Builder()
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                .build()
+                .build().apply {
+                    setAnalyzer(
+                        ContextCompat.getMainExecutor(requireContext()),
+                        BarcodeAnalyzer { barcodeValue ->
+                            // 바코드 인식 시 호출됨
+                            if (isScanning) {
+                                isScanning = false
 
-            analysisUseCase.setAnalyzer(
-                ContextCompat.getMainExecutor(requireContext()),
-                BarcodeAnalyzer { barcodeValue ->
-                    if (isScanning) {
-                        isScanning = false
-                        fetchFoodInfo(barcodeValue)
-                    }
+                                // ResultActivity로 이동
+                                val intent = Intent(requireContext(), ResultActivity::class.java).apply {
+                                    putExtra(ResultActivity.EXTRA_BARCODE, barcodeValue)
+                                }
+                                startActivity(intent)
+                            }
+                        }
+                    )
                 }
-            )
 
-            // 후면 카메라 선택
+            // 후면 카메라
             cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
             try {
@@ -103,76 +111,8 @@ class DashboardFragment : Fragment() {
         }, ContextCompat.getMainExecutor(requireContext()))
     }
 
-    private fun fetchFoodInfo(barcode: String) {
-        val apiKey = "a0e02a461adc46d593b5"
-        // C005 서비스 ID를 사용하고 BAR_CD 파라미터로 검색
-        val url = "http://openapi.foodsafetykorea.go.kr/api/$apiKey/I2570/xml/1/1/BAR_CD=$barcode"
-
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val response = URL(url).readText()
-
-                withContext(Dispatchers.Main) {
-                    val factory = XmlPullParserFactory.newInstance()
-                    val parser = factory.newPullParser()
-                    parser.setInput(response.reader())
-
-                    var eventType = parser.eventType
-                    var result = StringBuilder()
-                    var isResultFound = false
-
-                    while (eventType != XmlPullParser.END_DOCUMENT) {
-                        when (eventType) {
-                            XmlPullParser.START_TAG -> {
-                                when (parser.name) {
-                                    "RESULT" -> {
-                                        parser.next()
-                                        if (parser.text == "NO_RESULT") {
-                                            result.append("해당 바코드의 제품을 찾을 수 없습니다.")
-                                            break
-                                        }
-                                    }
-                                    "PRDLST_NM" -> {
-                                        parser.next()
-                                        result.append("제품명: ${parser.text}\n")
-                                        isResultFound = true
-                                    }
-                                    "NUTR_CONT1" -> {
-                                        parser.next()
-                                        result.append("열량: ${parser.text}kcal\n")
-                                    }
-                                    "NUTR_CONT2" -> {
-                                        parser.next()
-                                        result.append("탄수화물: ${parser.text}g\n")
-                                    }
-                                }
-                            }
-                        }
-                        eventType = parser.next()
-                    }
-
-                    if (!isResultFound) {
-                        binding.productInfoText.text = "해당 바코드의 제품을 찾을 수 없습니다."
-                    } else {
-                        binding.productInfoText.text = result.toString()
-                    }
-                    binding.scanText.text = "바코드: $barcode"
-
-                    Handler(Looper.getMainLooper()).postDelayed({
-                        isScanning = true
-                    }, 3000)
-                }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    binding.productInfoText.text = "정보를 불러오는데 실패했습니다."
-                }
-            }
-        }
-    }
-
     private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
-        ContextCompat.checkSelfPermission(
-            requireContext(), it) == PackageManager.PERMISSION_GRANTED
+        ContextCompat.checkSelfPermission(requireContext(), it) == PackageManager.PERMISSION_GRANTED
     }
 
     override fun onDestroyView() {
