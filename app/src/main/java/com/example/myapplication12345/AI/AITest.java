@@ -19,7 +19,7 @@ public class AITest extends AppCompatActivity {
     TextView text1, text2, text3, ing, text4;
     SensorManager manager;
     SensorEventListener listener;
-    Button startbtn;
+    Button startbtn, startaibtn;
 
     long startTime, nowTime;
     long times;
@@ -69,6 +69,7 @@ public class AITest extends AppCompatActivity {
         text4 = findViewById(R.id.textView4);
 
         startbtn = findViewById(R.id.start);
+        startaibtn = findViewById(R.id.startAI);
 
         startTime = 0;
 
@@ -227,6 +228,9 @@ public class AITest extends AppCompatActivity {
         };
 
 
+        startaibtn.setOnClickListener(v -> {
+
+        });
         startbtn.setOnClickListener(v -> {
             //아래 만들었던 리스너 연결
             ++btnnum;

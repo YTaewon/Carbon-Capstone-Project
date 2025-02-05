@@ -48,25 +48,40 @@ android {
 }
 
 dependencies {
-
+    // AndroidX Core 및 UI 라이브러리
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
-    implementation(libs.firebase.database.ktx)
+
+    // Navigation (Fragment 및 UI)
     implementation(libs.androidx.navigation.fragment.ktx)
     implementation(libs.androidx.navigation.ui.ktx)
+
+    // CameraX
     implementation(libs.androidx.camera.core)
-    implementation(libs.play.services.mlkit.barcode.scanning)
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)
-    testImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
 
+    // ML Kit (바코드 스캐닝)
+    implementation(libs.play.services.mlkit.barcode.scanning)
+
+    // Firebase (BOM을 사용하여 버전 자동 관리)
     implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-database-ktx")
+
+    // PyTorch (Full 버전 사용 시)
+    implementation("org.pytorch:pytorch_android:1.10.0")
+    implementation("org.pytorch:pytorch_android_torchvision:1.10.0")
+
+    // OR (Lite 버전 사용 시 `torchvision` 제거)
+    // implementation("org.pytorch:pytorch_android_lite:1.10.0")
+
+    // 테스트 종속성
+    testImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.espresso.core)
 }

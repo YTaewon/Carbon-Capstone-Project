@@ -7,6 +7,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import com.example.myapplication12345.AI.AI
 import com.example.myapplication12345.AI.AITest
 
 class MainActivity : AppCompatActivity() {
@@ -24,6 +25,12 @@ class MainActivity : AppCompatActivity() {
         val aiButton = findViewById<Button>(R.id.aiTest)
         aiButton.setOnClickListener {
             val intent = Intent(this, AITest::class.java)
+            startActivity(intent)
+        }
+
+        val ai2Button = findViewById<Button>(R.id.aiTest2)
+        aiButton.setOnClickListener {
+            val intent = Intent(this, AI::class.java)
             startActivity(intent)
         }
 
