@@ -45,6 +45,8 @@ android {
     buildFeatures {
         viewBinding = true
     }
+
+    
 }
 
 dependencies {
@@ -63,13 +65,13 @@ dependencies {
     implementation(libs.androidx.camera.core)
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)
-<<<<<<< HEAD
+
 
     // ML Kit (바코드 스캐닝)
     implementation(libs.play.services.mlkit.barcode.scanning)
 
     // Firebase (BOM을 사용하여 버전 자동 관리)
-=======
+
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
@@ -103,7 +105,7 @@ dependencies {
     implementation ("androidx.cardview:cardview:1.0.0")
 
 
->>>>>>> 614cd7f (실험목적)
+
     implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-auth")

@@ -16,6 +16,8 @@ public class WifiSensor {
      * 현재 감지된 WiFi BSSID 목록을 반환
      */
     public List<Map<String, Object>> getWifiData() {
+
+
         List<Map<String, Object>> wifiData = new ArrayList<>();
 
         // WiFi 스캔 실행

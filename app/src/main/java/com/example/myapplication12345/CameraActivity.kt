@@ -46,7 +46,8 @@ class CameraActivity : AppCompatActivity() {
             when (item.itemId) {
                 R.id.navigation_home -> viewPager.currentItem = 0
                 R.id.navigation_dashboard -> viewPager.currentItem = 1
-                R.id.navigation_notifications -> viewPager.currentItem = 2
+                R.id.navigation_ranking -> viewPager.currentItem = 2
+                R.id.navigation_calendar -> viewPager.currentItem = 3
             }
             true
         }
