@@ -6,4 +6,5 @@
     <string name="title_dashboard">Camera</string>
     <string name="title_rankingboard">Ranking</string>
     <string name="title_calendar">Calendar</string>
+    <string name="date_format">%s년 %s월</string>
 </resources>
