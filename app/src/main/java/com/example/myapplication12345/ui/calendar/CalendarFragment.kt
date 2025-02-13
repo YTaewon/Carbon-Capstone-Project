@@ -1,13 +1,13 @@
 package com.example.myapplication12345.ui.calendar
 
 import android.os.Bundle
-import android.text.InputType
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.BaseAdapter
 import android.widget.EditText
 import android.widget.GridView
+import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
@@ -68,17 +68,17 @@ class CalendarFragment : Fragment() {
         dayList.clear()
         val daysOfWeek = arrayOf("일", "월", "화", "수", "목", "금", "토")
         for (day in daysOfWeek) {
-            dayList.add(Day(day, -1))
+            dayList.add(Day(day, -1, -1))
         }
 
         mCal.set(Calendar.DAY_OF_MONTH, 1)
         val dayNum = mCal.get(Calendar.DAY_OF_WEEK)
         repeat(dayNum - 1) {
-            dayList.add(Day("", 0))
+            dayList.add(Day("", 0, 0))
         }
 
         for (i in 1..mCal.getActualMaximum(Calendar.DAY_OF_MONTH)) {
-            dayList.add(Day(i.toString(), 0))
+            dayList.add(Day(i.toString(), 0, 0))
         }
     }
 
@@ -90,7 +90,7 @@ class CalendarFragment : Fragment() {
     }
 
     // 날짜 데이터 클래스
-    data class Day(val date: String, var points: Int)
+    data class Day(val date: String, var productEmissions: Int, var transportEmissions: Int)
 
     // GridView 어댑터
     private inner class GridAdapter(private val list: List<Day>) : BaseAdapter() {
@@ -110,15 +110,16 @@ class CalendarFragment : Fragment() {
             }
 
             val day = getItem(position)
+            val totalEmissions = day.productEmissions + day.transportEmissions
             holder.tvItemGridView.text = day.date
-            holder.tvPoints.text = if (day.points > 0) "${day.points}" else ""
+            holder.tvPoints.text = if (totalEmissions > 0) totalEmissions.toString() else ""
 
             val today = Calendar.getInstance()
-            if (day.points == 0 && day.date.isNotEmpty() && day.date.toInt() == today.get(Calendar.DAY_OF_MONTH) &&
+            if (day.productEmissions == 0 && day.date.isNotEmpty() && day.date.toInt() == today.get(Calendar.DAY_OF_MONTH) &&
                 mCal.get(Calendar.MONTH) == today.get(Calendar.MONTH) &&
                 mCal.get(Calendar.YEAR) == today.get(Calendar.YEAR)) {
                 holder.tvItemGridView.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.holo_orange_light))
-            } else if (day.points == -1) {
+            } else if (day.productEmissions == -1) {
                 when (position % 7) {
                     0 -> holder.tvItemGridView.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.holo_red_dark))
                     6 -> holder.tvItemGridView.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.holo_blue_dark))
@@ -129,8 +130,8 @@ class CalendarFragment : Fragment() {
             }
 
             view.setOnLongClickListener {
-                if (day.date.isNotEmpty() && day.points >= 0) {
-                    showAddPointsDialog(day)
+                if (day.date.isNotEmpty() && day.productEmissions >= 0) {
+                    showPointsPopup(day)
                 }
                 true
             }
@@ -140,26 +141,54 @@ class CalendarFragment : Fragment() {
     }
 
     // 포인트 추가 다이얼로그
-    private fun showAddPointsDialog(day: Day) {
+    private fun showPointsPopup(day: Day) {
         val builder = AlertDialog.Builder(requireContext())
-        builder.setTitle("Add Points for ${day.date}")
+        builder.setTitle("Date: ${day.date}")
 
-        val input = EditText(requireContext()).apply {
-            hint = "Enter points"
-            inputType = InputType.TYPE_CLASS_NUMBER
+        // 텍스트뷰로 현재 포인트 조회
+        val totalEmissions = day.productEmissions + day.transportEmissions
+        val currentPointsView = TextView(requireContext()).apply {
+            text = "현재 총 배출량: $totalEmissions"
         }
-        builder.setView(input)
 
-        builder.setPositiveButton("Add") { _, _ ->
-            val points = input.text.toString().toIntOrNull() ?: 0
-            day.points += points
+        // Labels for emissions
+        val productLabel = TextView(requireContext()).apply {
+            text = "제품 탄소 배출량"
+        }
+
+        val transportLabel = TextView(requireContext()).apply {
+            text = "이동경로 탄소 배출량"
+        }
+
+        // EditTexts for emissions
+        val productInput = EditText(requireContext()).apply {
+            setText(day.productEmissions.toString())
+        }
+
+        val transportInput = EditText(requireContext()).apply {
+            setText(day.transportEmissions.toString())
+        }
+
+        val layout = LinearLayout(requireContext()).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(currentPointsView)
+            addView(productLabel)
+            addView(productInput)
+            addView(transportLabel)
+            addView(transportInput)
+        }
+        builder.setView(layout)
+
+        // "수정" 버튼으로 포인트를 업데이트
+        builder.setPositiveButton("수정") { _, _ ->
+            val newProductEmissions = productInput.text.toString().toIntOrNull() ?: day.productEmissions
+            val newTransportEmissions = transportInput.text.toString().toIntOrNull() ?: day.transportEmissions
+            day.productEmissions = newProductEmissions
+            day.transportEmissions = newTransportEmissions
             gridAdapter.notifyDataSetChanged()
         }
 
-        builder.setNegativeButton("Cancel") { dialog, _ ->
-            dialog.cancel()
-        }
-
+        builder.setNegativeButton("취소") { dialog, _ -> dialog.dismiss() }
         builder.show()
     }
 
