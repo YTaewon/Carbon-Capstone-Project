@@ -7,33 +7,33 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.get
-import com.example.myapplication12345.R
 import com.example.myapplication12345.databinding.FragmentHomeBinding
 
-
 class HomeFragment : Fragment() {
-    private var _binding: FragmentHomeBinding? = null
 
-    // This property is only valid between onCreateView and
-    // onDestroyView.
+    private var _binding: FragmentHomeBinding? = null
     private val binding get() = _binding!!
 
+    private lateinit var homeViewModel: HomeViewModel
+
     override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
+        inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        val homeViewModel =
-            ViewModelProvider(this).get(HomeViewModel::class.java)
+
+        homeViewModel = ViewModelProvider(this)[HomeViewModel::class.java]
+
 
         _binding = FragmentHomeBinding.inflate(inflater, container, false)
         val root: View = binding.root
 
-        val textView: TextView = binding.textHome
-        homeViewModel.text.observe(viewLifecycleOwner) {
-            textView.text = it
+
+        homeViewModel.text.observe(viewLifecycleOwner) { newText ->
+            binding.greetingText.text = newText
         }
+
+
+
         return root
     }
 
