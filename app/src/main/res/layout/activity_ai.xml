@@ -10,12 +10,12 @@
     <TextView
         android:id="@+id/textView1"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="110dp"
         android:gravity="center"
-        android:paddingTop="40dp"
-        android:text="당신의 발걸음"
+        android:paddingTop="10dp"
+        android:text="이동 거리 \n 이동수단 측정"
         android:textAlignment="center"
-        android:textSize="40sp"
+        android:textSize="30sp"
         tools:ignore="HardcodedText" />
 
     <TextView
@@ -23,7 +23,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center"
-        android:text="측정하기 버튼을 두 번, 눌러서 \n 초기 세팅해주세요!"
+        android:text=""
         android:textAlignment="center"
         android:textSize="20sp"
         tools:ignore="HardcodedText" />
@@ -31,7 +31,7 @@
     <TextView
         android:id="@+id/textView2"
         android:layout_width="match_parent"
-        android:layout_height="70dp"
+        android:layout_height="100dp"
         android:gravity="center"
         android:text=""
         android:textAlignment="center"
@@ -40,10 +40,10 @@
     <TextView
         android:id="@+id/textView3"
         android:layout_width="match_parent"
-        android:layout_height="184dp"
+        android:layout_height="180dp"
         android:gravity="center"
         android:paddingTop="15dp"
-        android:text="사용 방법 \n 기기를 손에 쥐고 흔들며 걸어주세요!"
+        android:text=""
 
         android:textAlignment="center"
         android:textSize="20sp" />
@@ -56,28 +56,36 @@
         android:text=""
         android:textAlignment="center"
         android:textSize="20sp"
+
+        />
+    <TextView
+        android:id="@+id/textView5"
+        android:layout_width="match_parent"
+        android:layout_height="160dp"
+        android:gravity="center"
+        android:text=""
+        android:textAlignment="center"
+        android:textSize="20sp"
         />
 
+    <TextView
+        android:id="@+id/textViewAI"
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:gravity="center"
+        android:text=""
+        android:textAlignment="center"
+        android:textSize="20sp"
+
+        />
     <Button
         android:id="@+id/start"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
-        android:layout_marginBottom="20sp"
-        android:background="@android:color/holo_green_dark"
-        android:text="거리측정 초기 세팅하기"
-        android:textSize="25sp"
-
-        tools:ignore="HardcodedText,TextContrastCheck" />
-
-    <Button
-        android:id="@+id/startAI"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:layout_marginBottom="20sp"
-        android:background="@android:color/holo_green_dark"
-        android:text="AI 작동 테스트"
+        android:layout_marginBottom="10sp"
+        android:background="@android:color/black"
+        android:text="초기 세팅하기"
         android:textSize="25sp"
 
         tools:ignore="HardcodedText,TextContrastCheck" />
