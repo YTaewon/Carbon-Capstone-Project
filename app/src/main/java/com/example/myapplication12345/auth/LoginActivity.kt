@@ -10,7 +10,6 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.databinding.DataBindingUtil
 import com.example.myapplication12345.MainActivity
-import com.example.myapplication12345.RankingActivity
 import com.example.myapplication12345.R
 import com.example.myapplication12345.databinding.ActivityLoginBinding
 import com.google.firebase.auth.FirebaseAuth
@@ -20,7 +19,6 @@ import com.google.firebase.ktx.Firebase
 class LoginActivity : AppCompatActivity() {
 
     private lateinit var auth: FirebaseAuth
-
     private lateinit var binding: ActivityLoginBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -28,7 +26,6 @@ class LoginActivity : AppCompatActivity() {
         enableEdgeToEdge()
 
         auth = Firebase.auth
-
         binding = DataBindingUtil.setContentView(this, R.layout.activity_login)
 
         binding.loginBtn.setOnClickListener {
@@ -42,8 +39,8 @@ class LoginActivity : AppCompatActivity() {
                         Toast.makeText(this, "로그인 성공", Toast.LENGTH_SHORT).show()
 
                         val intent = Intent(this, MainActivity::class.java)
-                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                         startActivity(intent)
+                        finish()
                     } else {
                         Log.d("LoginActivity", "로그인 실패")
                         Toast.makeText(this, "로그인 실패", Toast.LENGTH_SHORT).show()
@@ -51,9 +48,7 @@ class LoginActivity : AppCompatActivity() {
                 }
         }
 
-
-
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
+        ViewCompat.setOnApplyWindowInsetsListener(binding.main) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets

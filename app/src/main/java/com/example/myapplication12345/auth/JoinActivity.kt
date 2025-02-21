@@ -5,8 +5,6 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
 import androidx.databinding.DataBindingUtil
 import com.example.myapplication12345.R
 import com.example.myapplication12345.databinding.ActivityJoinBinding
@@ -93,7 +91,8 @@ class JoinActivity : AppCompatActivity() {
                     val userMap = mapOf(
                         "email" to email,
                         "nickname" to nickname,
-                        "score" to 10
+                        "score" to 10,
+                        "point" to 0
                     )
                     database.child("users").child(userId).setValue(userMap)
                         .addOnSuccessListener {
