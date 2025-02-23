@@ -32,7 +32,7 @@ class DashboardFragment : Fragment() {
     private var imageCapture: ImageCapture? = null
     private val EMISSION_FACTOR = 0.4567
 
-    // 갤러리에서 이미지 선택
+    // 갤러리에서 이미지 선택1
     private val getContent = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         uri?.let { processImageUri(it) }
     }
