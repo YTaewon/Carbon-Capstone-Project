@@ -16,6 +16,8 @@ cameraCore = "1.4.1"
 playServicesMlkitBarcodeScanning = "18.3.1"
 cameraLifecycle = "1.4.1"
 cameraView = "1.4.1"
+playServicesMlkitTextRecognitionCommon = "19.1.0"
+playServicesMlkitTextRecognitionKorean = "16.0.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -33,6 +35,8 @@ androidx-camera-core = { group = "androidx.camera", name = "camera-core", versio
 play-services-mlkit-barcode-scanning = { group = "com.google.android.gms", name = "play-services-mlkit-barcode-scanning", version.ref = "playServicesMlkitBarcodeScanning" }
 androidx-camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "cameraLifecycle" }
 androidx-camera-view = { group = "androidx.camera", name = "camera-view", version.ref = "cameraView" }
+play-services-mlkit-text-recognition-common = { group = "com.google.android.gms", name = "play-services-mlkit-text-recognition-common", version.ref = "playServicesMlkitTextRecognitionCommon" }
+play-services-mlkit-text-recognition-korean = { group = "com.google.android.gms", name = "play-services-mlkit-text-recognition-korean", version.ref = "playServicesMlkitTextRecognitionKorean" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

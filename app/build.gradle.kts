@@ -69,6 +69,8 @@ dependencies {
 
     // ML Kit (바코드 스캐닝)
     implementation(libs.play.services.mlkit.barcode.scanning)
+    implementation(libs.play.services.mlkit.text.recognition.common)
+    implementation(libs.play.services.mlkit.text.recognition.korean)
 
     // Firebase (BOM을 사용하여 버전 자동 관리)
 
@@ -110,6 +112,29 @@ dependencies {
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-database-ktx")
+
+    //timber
+    implementation ("com.jakewharton.timber:timber:5.0.1")
+
+    // Compose 관련 의존성
+    implementation(platform("androidx.compose:compose-bom:2024.01.00"))
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
+    implementation("androidx.activity:activity-compose:1.8.2")
+    implementation("androidx.compose.ui:ui:1.5.4")
+    implementation("androidx.compose.ui:ui-graphics:1.5.4")
+    implementation("androidx.compose.ui:ui-tooling-preview:1.5.4")
+    implementation("androidx.compose.material3:material3:1.2.0")
+
+    // Compose UI 테스트 및 디버깅 도구
+    androidTestImplementation(platform("androidx.compose:compose-bom:2024.01.00"))
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4:1.5.4")
+    debugImplementation("androidx.compose.ui:ui-tooling:1.5.4")
+    debugImplementation("androidx.compose.ui:ui-test-manifest:1.5.4")
+
+    // ML Kit 텍스트 인식 (한글 지원)
+    implementation("com.google.mlkit:text-recognition-korean:16.0.1")
+
+
 
     // PyTorch (Full 버전 사용 시)
     implementation("org.pytorch:pytorch_android:1.10.0")
