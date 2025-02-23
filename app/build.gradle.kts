@@ -103,7 +103,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 
-    implementation ("com.google.android.material:material:1.8.0") // 최신 버전으로 설정
+    implementation ("com.google.android.material:material:1.8.0")
     implementation ("androidx.cardview:cardview:1.0.0")
 
 
@@ -113,7 +113,7 @@ dependencies {
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-database-ktx")
 
-    //timber
+    //timbe
     implementation ("com.jakewharton.timber:timber:5.0.1")
 
     // Compose 관련 의존성
