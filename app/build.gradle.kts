@@ -134,14 +134,15 @@ dependencies {
     // ML Kit 텍스트 인식 (한글 지원)
     implementation("com.google.mlkit:text-recognition-korean:16.0.1")
 
-
-
-    // PyTorch (Full 버전 사용 시)
+    //math
+    implementation("org.apache.commons:commons-math3:3.6.1")
+    //AI 작동
     implementation("org.pytorch:pytorch_android:1.10.0")
     implementation("org.pytorch:pytorch_android_torchvision:1.10.0")
 
-    // OR (Lite 버전 사용 시 `torchvision` 제거)
-    // implementation("org.pytorch:pytorch_android_lite:1.10.0")
+    //지도
+    implementation("org.osmdroid:osmdroid-android:6.1.20")
+    implementation("com.github.MKergall:osmbonuspack:6.9.0")
 
     // 테스트 종속성
     testImplementation(libs.junit)
