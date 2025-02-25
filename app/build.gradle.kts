@@ -71,6 +71,7 @@ dependencies {
     implementation(libs.play.services.mlkit.barcode.scanning)
     implementation(libs.play.services.mlkit.text.recognition.common)
     implementation(libs.play.services.mlkit.text.recognition.korean)
+    implementation(libs.play.services.location)
 
     // Firebase (BOM을 사용하여 버전 자동 관리)
 
