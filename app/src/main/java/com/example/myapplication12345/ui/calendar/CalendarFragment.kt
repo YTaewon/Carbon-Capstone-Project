@@ -7,6 +7,7 @@ import android.view.ViewGroup
 import android.widget.BaseAdapter
 import android.widget.EditText
 import android.widget.GridView
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
@@ -27,6 +28,7 @@ class CalendarFragment : Fragment() {
     private lateinit var gridAdapter: GridAdapter
     private val mCal: Calendar = Calendar.getInstance()
     private lateinit var calendarViewModel: CalendarViewModel
+    private var selectedPosition: Int = -1
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -44,11 +46,19 @@ class CalendarFragment : Fragment() {
         binding.gridview.adapter = gridAdapter
 
         binding.btnPrevMonth.setOnClickListener {
+            //날짜 선택 초기화
+            hideIndicatorAtPosition(selectedPosition)
+            selectedPosition = -1;
+            //이전 달
             mCal.add(Calendar.MONTH, -1)
             updateCalendar()
         }
 
         binding.btnNextMonth.setOnClickListener {
+            //날짜 선택 초기화
+            hideIndicatorAtPosition(selectedPosition)
+            selectedPosition = -1;
+            //다음 달
             mCal.add(Calendar.MONTH, 1)
             updateCalendar()
         }
@@ -102,7 +112,7 @@ class CalendarFragment : Fragment() {
         override fun getView(position: Int, convertView: View?, parent: ViewGroup?): View {
             val view = convertView ?: LayoutInflater.from(parent?.context).inflate(R.layout.item_calendar_gridview, parent, false)
             val holder = if (convertView == null) {
-                ViewHolder(view.findViewById(R.id.tv_item_gridview), view.findViewById(R.id.tv_points)).also {
+                ViewHolder(view.findViewById(R.id.tv_item_gridview), view.findViewById(R.id.tv_points), view.findViewById(R.id.iv_indicator)).also {
                     view.tag = it
                 }
             } else {
@@ -129,6 +139,16 @@ class CalendarFragment : Fragment() {
                 holder.tvItemGridView.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.black))
             }
 
+            // 날짜 클릭 이벤트 추가
+            view.setOnClickListener {
+                if (day.date.isNotEmpty() && day.productEmissions >= 0) {
+                    hideIndicatorAtPosition(selectedPosition) // 이전 선택된 위치의 이미지를 숨김
+                    holder.ivIndicator.visibility = View.VISIBLE
+                    selectedPosition = position // 현재 선택된 위치 업데이트
+                }
+            }
+
+
             view.setOnLongClickListener {
                 if (day.date.isNotEmpty() && day.productEmissions >= 0) {
                     showPointsPopup(day)
@@ -137,6 +157,13 @@ class CalendarFragment : Fragment() {
             }
 
             return view
+        }
+    }
+
+    private fun hideIndicatorAtPosition(position: Int) {
+        if (position >= 0) {
+            val previousView = binding.gridview.getChildAt(position) as? ViewGroup
+            previousView?.findViewById<ImageView>(R.id.iv_indicator)?.visibility = View.INVISIBLE
         }
     }
 
@@ -197,5 +224,5 @@ class CalendarFragment : Fragment() {
         _binding = null
     }
 
-    private data class ViewHolder(val tvItemGridView: TextView, val tvPoints: TextView)
+    private data class ViewHolder(val tvItemGridView: TextView, val tvPoints: TextView, val ivIndicator: ImageView)
 }
