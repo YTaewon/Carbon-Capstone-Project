@@ -391,7 +391,7 @@
                             android:id="@+id/imageView13"
                             android:layout_width="40dp"
                             android:layout_height="40dp"
-                            android:src="@drawable/pic1"
+                            android:src="@drawable/pic12"
                             android:layout_gravity="center" />
 
                         <TextView
