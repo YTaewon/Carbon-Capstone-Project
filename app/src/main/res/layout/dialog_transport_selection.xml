@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <CheckBox
+        android:id="@+id/checkbox_walk"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Walk" />
+
+    <CheckBox
+        android:id="@+id/checkbox_bike"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Bike" />
+
+    <CheckBox
+        android:id="@+id/checkbox_bus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Bus" />
+
+    <CheckBox
+        android:id="@+id/checkbox_car"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Car" />
+
+    <CheckBox
+        android:id="@+id/checkbox_subway"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Subway" />
+
+    <CheckBox
+        android:id="@+id/checkbox_etc"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Etc" />
+
+    <CheckBox
+        android:id="@+id/checkbox_all"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="All" />
+</LinearLayout>

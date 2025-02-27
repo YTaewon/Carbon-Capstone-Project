@@ -1,5 +1,6 @@
 package com.example.myapplication12345.ui.calendar
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -46,40 +47,56 @@ class CalendarFragment : Fragment() {
         binding.gridview.adapter = gridAdapter
 
         binding.btnPrevMonth.setOnClickListener {
-            //날짜 선택 초기화
             hideIndicatorAtPosition(selectedPosition)
-            selectedPosition = -1;
-            //이전 달
+            selectedPosition = -1
             mCal.add(Calendar.MONTH, -1)
             updateCalendar()
+            updateTestMapButtonState() // 달력 변경 시 버튼 상태 업데이트
         }
 
         binding.btnNextMonth.setOnClickListener {
-            //날짜 선택 초기화
             hideIndicatorAtPosition(selectedPosition)
-            selectedPosition = -1;
-            //다음 달
+            selectedPosition = -1
             mCal.add(Calendar.MONTH, 1)
             updateCalendar()
+            updateTestMapButtonState() // 달력 변경 시 버튼 상태 업데이트
         }
 
-        // btn_open_map 클릭 시 동작 (예: MapFragment로 이동)
         binding.btnOpenMap.setOnClickListener {
-            // TODO: MapFragment로 이동하는 로직 추가
-            // 예: findNavController().navigate(R.id.action_calendarFragment_to_mapFragment)
+            if (selectedPosition != -1) {
+                val selectedDay = dayList[selectedPosition]
+                val selectedDate = formatDateForFile(selectedDay.date)
+
+                val intent = Intent(requireContext(), MapActivity::class.java).apply {
+                    putExtra("selectedDate", selectedDate)
+                }
+                startActivity(intent)
+            }
         }
 
+        binding.btnTestMap.setOnClickListener {
+            if (selectedPosition != -1) {
+                val selectedDay = dayList[selectedPosition]
+                val selectedDateStr = formatDateForFile(selectedDay.date)
+                val selectedDate = SimpleDateFormat("yyyyMMdd", Locale.getDefault()).parse(selectedDateStr)
+                if (selectedDate != null) {
+                    MapFragment.createTestCsvFile(requireContext(), selectedDate)
+                    updateTestMapButtonState() // CSV 생성 후 버튼 상태 업데이트
+                    binding.btnOpenMap.isEnabled = true // CSV 생성 후 btn_open_map 활성화
+                }
+            }
+        }
+
+        updateTestMapButtonState() // 초기 버튼 상태 설정
         return root
     }
 
-    // 날짜 텍스트 업데이트
     private fun updateDateText() {
         val curYearFormat = SimpleDateFormat("yyyy", Locale.KOREA)
         val curMonthFormat = SimpleDateFormat("MM", Locale.KOREA)
         binding.tvDate.text = getString(R.string.date_format, curYearFormat.format(mCal.time), curMonthFormat.format(mCal.time))
     }
 
-    // 달력 데이터 초기화
     private fun initCalendar() {
         dayList.clear()
         val daysOfWeek = arrayOf("일", "월", "화", "수", "목", "금", "토")
@@ -98,17 +115,14 @@ class CalendarFragment : Fragment() {
         }
     }
 
-    // 달력 업데이트
     private fun updateCalendar() {
         updateDateText()
         initCalendar()
         gridAdapter.notifyDataSetChanged()
     }
 
-    // 날짜 데이터 클래스
     data class Day(val date: String, var productEmissions: Int, var transportEmissions: Int)
 
-    // GridView 어댑터
     private inner class GridAdapter(private val list: List<Day>) : BaseAdapter() {
 
         override fun getCount(): Int = list.size
@@ -145,23 +159,17 @@ class CalendarFragment : Fragment() {
                 holder.tvItemGridView.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.black))
             }
 
-            // 날짜 클릭 이벤트 추가
             view.setOnClickListener {
                 if (day.date.isNotEmpty() && day.productEmissions >= 0) {
-                    hideIndicatorAtPosition(selectedPosition) // 이전 선택된 위치의 이미지를 숨김
+                    hideIndicatorAtPosition(selectedPosition)
                     holder.ivIndicator.visibility = View.VISIBLE
-                    selectedPosition = position // 현재 선택된 위치 업데이트
+                    selectedPosition = position
                     showPointVeiw(day)
-                    // CSV 파일 존재 여부 확인 및 버튼 상태 업데이트
                     val selectedDate = formatDateForFile(day.date)
-                    if (checkCsvFileExists(selectedDate)) {
-                        binding.btnOpenMap.isEnabled = true
-                    } else {
-                        binding.btnOpenMap.isEnabled = false
-                    }
+                    binding.btnOpenMap.isEnabled = checkCsvFileExists(selectedDate)
+                    updateTestMapButtonState() // 날짜 선택 시 버튼 상태 업데이트
                 }
             }
-
 
             view.setOnLongClickListener {
                 if (day.date.isNotEmpty() && day.productEmissions >= 0) {
@@ -174,17 +182,15 @@ class CalendarFragment : Fragment() {
         }
     }
 
-    // 선택된 날짜를 "yyyyMMdd" 형식으로 변환
     private fun formatDateForFile(day: String): String {
         val year = mCal.get(Calendar.YEAR)
-        val month = String.format("%02d", mCal.get(Calendar.MONTH) + 1) // 0부터 시작하므로 +1
+        val month = String.format("%02d", mCal.get(Calendar.MONTH) + 1)
         val dayFormatted = String.format("%02d", day.toInt())
         return "$year$month$dayFormatted"
     }
 
-    // CSV 파일 존재 여부 확인
     private fun checkCsvFileExists(date: String): Boolean {
-        val fileName = date + "_predictions.csv"
+        val fileName = "${date}_predictions.csv"
         val file = File(requireContext().getExternalFilesDir(null), "SensorData/$fileName")
         return file.exists()
     }
@@ -195,8 +201,7 @@ class CalendarFragment : Fragment() {
             previousView?.findViewById<ImageView>(R.id.iv_indicator)?.visibility = View.INVISIBLE
         }
     }
-    
-    //출력
+
     private fun showPointVeiw(day: Day) {
         val totalEmissions = day.productEmissions + day.transportEmissions
         val resultText = """
@@ -204,31 +209,17 @@ class CalendarFragment : Fragment() {
         전기 탄소 배출량: ${day.productEmissions}
         이동경로 탄소 배출량: ${day.transportEmissions}
     """.trimIndent()
-        binding.tvDayResult.setText(resultText)
+        binding.tvDayResult.text = resultText
     }
 
-    // 포인트 추가 다이얼로그
     private fun showPointsPopup(day: Day) {
         val builder = AlertDialog.Builder(requireContext())
         builder.setTitle("Date: ${day.date}")
 
-        // Labels for emissions
-        val productLabel = TextView(requireContext()).apply {
-            text = "전기 탄소 배출량"
-        }
-
-        val transportLabel = TextView(requireContext()).apply {
-            text = "이동경로 탄소 배출량"
-        }
-
-        // EditTexts for emissions
-        val productInput = EditText(requireContext()).apply {
-            setText(day.productEmissions.toString())
-        }
-
-        val transportInput = EditText(requireContext()).apply {
-            setText(day.transportEmissions.toString())
-        }
+        val productLabel = TextView(requireContext()).apply { text = "전기 탄소 배출량" }
+        val transportLabel = TextView(requireContext()).apply { text = "이동경로 탄소 배출량" }
+        val productInput = EditText(requireContext()).apply { setText(day.productEmissions.toString()) }
+        val transportInput = EditText(requireContext()).apply { setText(day.transportEmissions.toString()) }
 
         val layout = LinearLayout(requireContext()).apply {
             orientation = LinearLayout.VERTICAL
@@ -239,7 +230,6 @@ class CalendarFragment : Fragment() {
         }
         builder.setView(layout)
 
-        // "수정" 버튼으로 포인트를 업데이트
         builder.setPositiveButton("수정") { _, _ ->
             val newProductEmissions = productInput.text.toString().toIntOrNull() ?: day.productEmissions
             val newTransportEmissions = transportInput.text.toString().toIntOrNull() ?: day.transportEmissions
@@ -250,6 +240,17 @@ class CalendarFragment : Fragment() {
 
         builder.setNegativeButton("취소") { dialog, _ -> dialog.dismiss() }
         builder.show()
+    }
+
+    // btnTestMap 버튼 상태를 업데이트하는 함수
+    private fun updateTestMapButtonState() {
+        if (selectedPosition != -1) {
+            val selectedDay = dayList[selectedPosition]
+            val selectedDate = formatDateForFile(selectedDay.date)
+            binding.btnTestMap.isEnabled = !checkCsvFileExists(selectedDate) // CSV가 없으면 활성화, 있으면 비활성화
+        } else {
+            binding.btnTestMap.isEnabled = false // 날짜가 선택되지 않았으면 비활성화
+        }
     }
 
     override fun onDestroyView() {

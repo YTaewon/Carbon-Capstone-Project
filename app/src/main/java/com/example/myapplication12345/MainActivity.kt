@@ -2,6 +2,7 @@ package com.example.myapplication12345
 
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
+import com.example.myapplication12345.ui.calendar.CalendarFragment
 import com.example.myapplication12345.ui.home.HomeFragment
 
 class MainActivity : AppCompatActivity() {
@@ -13,5 +14,12 @@ class MainActivity : AppCompatActivity() {
         supportFragmentManager.beginTransaction()
             .replace(R.id.main_frame, HomeFragment())
             .commit()
+
+        if (savedInstanceState == null) {
+            val calendarFragment = CalendarFragment()
+            supportFragmentManager.beginTransaction()
+                .replace(R.id.fragment_container, calendarFragment)
+                .commit()
+        }
     }
 }

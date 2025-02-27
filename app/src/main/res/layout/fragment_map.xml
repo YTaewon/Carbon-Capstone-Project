@@ -2,20 +2,38 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical">
+    android:orientation="vertical"
+    android:padding="16dp">
 
-    <Spinner
-        android:id="@+id/date_spinner"
+    <TextView
+        android:id="@+id/date_text"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_margin="8dp" />
+        android:text="Selected Date" />
 
-    <Button
-        android:id="@+id/load_button"
+    <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="로드"
-        android:layout_gravity="center" />
+        android:orientation="horizontal"
+        android:gravity="center">
+
+        <Button
+            android:id="@+id/load_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:padding="10dp"
+            android:text="Load Data" />
+
+        <Button
+            android:id="@+id/select_transport_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:padding="10dp"
+            android:text="이동수단 선택" />
+
+    </LinearLayout>
+
+
 
     <org.osmdroid.views.MapView
         android:id="@+id/map_view"
@@ -23,9 +41,87 @@
         android:layout_height="0dp"
         android:layout_weight="1" />
 
+    <!-- 이동수단 종류 (범례) 추가 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="horizontal"
+            android:gravity="center">
+            <View
+                android:layout_width="12dp"
+                android:layout_height="12dp"
+                android:background="#00FF00" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=" 걷기  "
+                android:textColor="#000000" />
+
+            <View
+                android:layout_width="12dp"
+                android:layout_height="12dp"
+                android:background="#0000FF" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=" 자전거  "
+                android:textColor="#000000" />
+
+            <View
+                android:layout_width="12dp"
+                android:layout_height="12dp"
+                android:background="#FFFF00" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=" 버스  "
+                android:textColor="#000000" />
+
+            <View
+                android:layout_width="12dp"
+                android:layout_height="12dp"
+                android:background="#FF0000" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=" 자동차  "
+                android:textColor="#000000" />
+
+            <View
+                android:layout_width="12dp"
+                android:layout_height="12dp"
+                android:background="#FF00FF" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=" 지하철  "
+                android:textColor="#000000" />
+
+            <View
+                android:layout_width="12dp"
+                android:layout_height="12dp"
+                android:background="#808080" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=" 나머지 "
+                android:textColor="#000000" />
+        </LinearLayout>
+
+    </LinearLayout>
+
     <TextView
         android:id="@+id/text_distance_info"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="8dp" />
+        android:text="Distance Info" />
 </LinearLayout>

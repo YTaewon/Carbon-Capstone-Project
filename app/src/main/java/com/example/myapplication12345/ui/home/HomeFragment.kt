@@ -17,6 +17,7 @@ import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.ViewModelProvider
+import com.example.myapplication12345.R
 import com.example.myapplication12345.databinding.FragmentHomeBinding
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
@@ -125,6 +126,7 @@ class HomeFragment : Fragment() {
                 }, 500) // 500ms 이내에 두 번 클릭해야 더블 클릭으로 인식
             }
         }
+
 
         return root
     }

@@ -65,6 +65,8 @@
             android:name=".auth.IntroActivity"
             android:exported="false" />
 
+        <activity android:name=".ui.calendar.MapActivity" />
+
         <activity
             android:name=".SplashActivity"
             android:exported="true">

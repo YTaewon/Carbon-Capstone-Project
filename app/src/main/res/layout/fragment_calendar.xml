@@ -19,6 +19,9 @@
             android:id="@+id/btn_prev_month"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:backgroundTint="#919497"
+            android:textStyle="bold"
+            android:textSize="19sp"
             android:text="이전 달" />
 
         <TextView
@@ -38,6 +41,9 @@
             android:id="@+id/btn_next_month"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:backgroundTint="#919497"
+            android:textStyle="bold"
+            android:textSize="19sp"
             android:text="다음 달" />
     </LinearLayout>
 
@@ -57,10 +63,18 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="지도" />
+
+    <Button
+        android:id="@+id/btn_test_map"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="임시 지도 생성" />
+
     <TextView
         android:id="@+id/tv_day_result"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:textSize="16sp"
         />
 
 </LinearLayout>
