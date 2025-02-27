@@ -2,40 +2,30 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="10dp">
+    android:orientation="vertical">
 
-    <!-- 날짜 입력 -->
-    <EditText
-        android:id="@+id/date_input"
+    <Spinner
+        android:id="@+id/date_spinner"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="날짜 입력 (yyyyMMdd)"
-        android:inputType="date"
-        android:textSize="16sp" />
+        android:layout_margin="8dp" />
 
-    <!-- 데이터 로드 버튼 -->
     <Button
         android:id="@+id/load_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="데이터 로드"
+        android:text="로드"
         android:layout_gravity="center" />
 
-    <!-- osmdroid MapView -->
     <org.osmdroid.views.MapView
         android:id="@+id/map_view"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1" />
 
-    <!-- 이동 거리 및 이동수단 정보 -->
     <TextView
         android:id="@+id/text_distance_info"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="10dp"
-        android:text="이동 거리 및 이동수단 정보"
-        android:textSize="16sp" />
-
+        android:padding="8dp" />
 </LinearLayout>

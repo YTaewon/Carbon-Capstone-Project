@@ -1,5 +1,6 @@
 package com.example.myapplication12345.AI;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.util.Log;
 import androidx.work.PeriodicWorkRequest;
@@ -24,7 +25,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.security.Provider;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -38,6 +38,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+
+import timber.log.Timber;
 
 public class SensorDataProcessor {
     private static final String TAG = "SensorDataProcessor";
@@ -67,7 +69,7 @@ public class SensorDataProcessor {
         try {
             String modelPath = assetFilePath(context, MODEL_FILENAME);
             model = Module.load(modelPath);
-            Log.d(TAG, "PyTorch 모델 로드 완료: " + modelPath);
+            Timber.tag(TAG).d("PyTorch 모델 로드 완료: " + modelPath);
         } catch (IOException e) {
             Log.e(TAG, "모델 파일 복사 오류: " + e.getMessage(), e);
         } catch (Exception e) {
@@ -153,7 +155,6 @@ public class SensorDataProcessor {
                     String value = values[i];
                     if (headers[i].equals("timestamp")) {
                         try {
-                            // 실수형 처리 지원
                             if (value.contains(".")) {
                                 data.put(headers[i], (long) Float.parseFloat(value));
                             } else {
@@ -204,7 +205,7 @@ public class SensorDataProcessor {
         }
 
         List<Map<String, Object>> remainingData = new ArrayList<>();
-        String headerLine; // try 블록 내에서만 사용
+        String headerLine;
         try (BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(file)))) {
             headerLine = br.readLine();
             if (headerLine == null) {
@@ -275,63 +276,86 @@ public class SensorDataProcessor {
                     }
                     Log.d(TAG, sensorType + " CSV 업데이트 완료, 남은 데이터 크기: " + remainingData.size());
                 }
-            } else {
-                Log.w(TAG, "헤더가 null, 파일 비움");
             }
         } catch (IOException e) {
             Log.e(TAG, "CSV 쓰기 실패: " + sensorType, e);
         }
     }
-    public void processAPData() {
+
+    public boolean processAPData() {
         apDataList.clear();
         apDataList.addAll(loadOneMinuteCSVData("AP"));
         if (!apDataList.isEmpty()) {
             List<Map<String, Object>> clonedApDataList = cloneAndClearAPDataList(apDataList);
             List<Map<String, Object>> processedData = APProcessor.processAP(clonedApDataList, findEarliestTimestamp(clonedApDataList));
-            apProcessedDataList.clear();
-            apProcessedDataList.addAll(processedData);
-            Log.d(TAG, "Processed AP Data: " + processedData.toString());
-            removeProcessedDataFromCSV("AP", clonedApDataList);
+            if (!processedData.isEmpty()) {
+                apProcessedDataList.clear();
+                apProcessedDataList.addAll(processedData);
+                Log.d(TAG, "Processed AP Data: " + processedData.toString());
+                removeProcessedDataFromCSV("AP", clonedApDataList); // 전처리 성공 시에만 삭제
+                return true;
+            } else {
+                Log.w(TAG, "AP 데이터 전처리 실패: 결과가 비어 있음");
+            }
         }
+        return false;
     }
 
-    public void processBTSData() {
+    public boolean processBTSData() {
         btsDataList.clear();
         btsDataList.addAll(loadOneMinuteCSVData("BTS"));
         if (!btsDataList.isEmpty()) {
             List<Map<String, Object>> clonedBtsDataList = cloneAndClearAPDataList(btsDataList);
             List<Map<String, Object>> processedData = BTSProcessor.processBTS(clonedBtsDataList, findEarliestTimestamp(clonedBtsDataList));
-            btsProcessedDataList.clear();
-            btsProcessedDataList.addAll(processedData);
-            Log.d(TAG, "Processed BTS Data: " + processedData.toString());
-            removeProcessedDataFromCSV("BTS", clonedBtsDataList);
+            if (!processedData.isEmpty()) {
+                btsProcessedDataList.clear();
+                btsProcessedDataList.addAll(processedData);
+                Log.d(TAG, "Processed BTS Data: " + processedData.toString());
+                removeProcessedDataFromCSV("BTS", clonedBtsDataList); // 전처리 성공 시에만 삭제
+                return true;
+            } else {
+                Log.w(TAG, "BTS 데이터 전처리 실패: 결과가 비어 있음");
+            }
         }
+        return false;
     }
 
-    public void processGPSData() {
+    public boolean processGPSData() {
         gpsDataList.clear();
         gpsDataList.addAll(loadOneMinuteCSVData("GPS"));
         if (!gpsDataList.isEmpty()) {
             List<Map<String, Object>> clonedGpsDataList = cloneAndClearAPDataList(gpsDataList);
             List<Map<String, Object>> processedData = GPSProcessor.processGPS(clonedGpsDataList, findEarliestTimestamp(clonedGpsDataList));
-            gpsProcessedDataList.clear();
-            gpsProcessedDataList.addAll(processedData);
-            Log.d(TAG, "Processed GPS Data: " + processedData.toString());
-            removeProcessedDataFromCSV("GPS", clonedGpsDataList);
+            if (!processedData.isEmpty()) {
+                gpsProcessedDataList.clear();
+                gpsProcessedDataList.addAll(processedData);
+                Log.d(TAG, "Processed GPS Data: " + processedData.toString());
+                removeProcessedDataFromCSV("GPS", clonedGpsDataList); // 전처리 성공 시에만 삭제
+                return true;
+            } else {
+                Log.w(TAG, "GPS 데이터 전처리 실패: 결과가 비어 있음");
+            }
         }
+        return false;
     }
 
-    public void processIMUData() {
+    public boolean processIMUData() {
         imuDataList.clear();
         imuDataList.addAll(loadOneMinuteCSVData("IMU"));
         if (!imuDataList.isEmpty()) {
             List<Map<String, Object>> clonedImuDataList = cloneAndClearAPDataList(imuDataList);
             List<Map<String, Object>> processedData = IMUProcessor.preImu(clonedImuDataList);
-            imuProcessedDataList.clear();
-            imuProcessedDataList.addAll(processedData);
-            Log.d(TAG, "Processed IMU Data: " + processedData.toString());
-            removeProcessedDataFromCSV("IMU", clonedImuDataList);
+            if (!processedData.isEmpty()) {
+                imuProcessedDataList.clear();
+                imuProcessedDataList.addAll(processedData);
+                Log.d(TAG, "Processed IMU Data: " + processedData.toString());
+                removeProcessedDataFromCSV("IMU", clonedImuDataList); // 전처리 성공 시에만 삭제
+                return true;
+            } else {
+                Log.w(TAG, "IMU 데이터 전처리 실패: 결과가 비어 있음");
+            }
         }
+        return false;
     }
 
     public static List<Map<String, Object>> cloneAndClearAPDataList(List<Map<String, Object>> originalList) {
@@ -353,14 +377,13 @@ public class SensorDataProcessor {
     }
 
     public Tensor getProcessedFeatureVector() {
-        processAPData();
-        processBTSData();
-        processGPSData();
-        processIMUData();
+        boolean apSuccess = processAPData();
+        boolean btsSuccess = processBTSData();
+        boolean gpsSuccess = processGPSData();
+        boolean imuSuccess = processIMUData();
 
-        if (apProcessedDataList.isEmpty() || btsProcessedDataList.isEmpty() ||
-                gpsProcessedDataList.isEmpty() || imuProcessedDataList.isEmpty()) {
-            Log.e(TAG, "❌ 하나 이상의 처리된 데이터가 없습니다.");
+        if (!apSuccess || !btsSuccess || !gpsSuccess || !imuSuccess) {
+            Timber.tag(TAG).e("❌ 하나 이상의 데이터 전처리가 실패했습니다.");
             return null;
         }
 
@@ -379,7 +402,7 @@ public class SensorDataProcessor {
             max.add(row);
         }
 
-        Log.d(TAG, "📌 MAX 데이터 리스트 크기: " + max.size());
+        Timber.tag(TAG).d("📌 MAX 데이터 리스트 크기: %s", max.size());
         return convertListMapToTensor(max);
     }
 
@@ -418,21 +441,19 @@ public class SensorDataProcessor {
         return dataList;
     }
 
-    // 이동 거리 계산 (단위: 미터)
     private double calculateDistance(List<Map<String, Object>> gpsData) {
         double totalDistance = 0.0;
         for (int i = 0; i < gpsData.size() - 1; i++) {
-            double lat1 = (float) gpsData.get(i).get("latitude");
-            double lon1 = (float) gpsData.get(i).get("longitude");
-            double lat2 = (float) gpsData.get(i + 1).get("latitude");
-            double lon2 = (float) gpsData.get(i + 1).get("longitude");
+            double lat1 = ((Number) gpsData.get(i).get("latitude")).doubleValue();
+            double lon1 = ((Number) gpsData.get(i).get("longitude")).doubleValue();
+            double lat2 = ((Number) gpsData.get(i + 1).get("latitude")).doubleValue();
+            double lon2 = ((Number) gpsData.get(i + 1).get("longitude")).doubleValue();
 
             totalDistance += haversineDistance(lat1, lon1, lat2, lon2);
         }
         return totalDistance;
     }
 
-    // Haversine 공식으로 거리 계산 (미터 단위)
     private double haversineDistance(double lat1, double lon1, double lat2, double lon2) {
         final int R = 6371000; // 지구 반지름 (미터)
         double dLat = Math.toRadians(lat2 - lat1);
@@ -444,33 +465,36 @@ public class SensorDataProcessor {
         return R * c;
     }
 
-    // 예측 결과 및 거리 정보를 날짜별 CSV로 저장
-    private void savePredictionToCSV(String transportMode, double distance, long startTimestamp) {
-        String date = dateFormat.format(startTimestamp); // 타임스탬프 기반 날짜 사용
+    @SuppressLint("DefaultLocale")
+    private void savePredictionToCSV(String transportMode, double distance, long startTimestamp,
+                                     double startLat, double startLon, double endLat, double endLon) {
+        String date = dateFormat.format(startTimestamp);
         String fileName = date + "_predictions.csv";
         File file = new File(context.getExternalFilesDir(null), "SensorData/" + fileName);
 
         try (FileWriter writer = new FileWriter(file, true)) {
             if (!file.exists() || file.length() == 0) {
-                writer.append("start_timestamp,transport_mode,distance_meters\n");
+                writer.append("start_timestamp,transport_mode,distance_meters,start_latitude,start_longitude,end_latitude,end_longitude\n");
             }
-            writer.append(String.format("%d,%s,%.2f\n", startTimestamp, transportMode, distance));
-            Log.d(TAG, "예측 결과 CSV 저장 (" + fileName + "): " + transportMode + ", 거리: " + distance + " 미터");
+            writer.append(String.format("%d,%s,%.2f,%.6f,%.6f,%.6f,%.6f\n",
+                    startTimestamp, transportMode, distance, startLat, startLon, endLat, endLon));
+            Timber.tag(TAG).d("예측 결과 CSV 저장 (" + fileName + "): " + transportMode + ", 거리: " + distance + " 미터, " +
+                    "시작: (" + startLat + ", " + startLon + "), 끝: (" + endLat + ", " + endLon + ")");
         } catch (IOException e) {
-            Log.e(TAG, "예측 결과 CSV 저장 실패: " + e.getMessage(), e);
+            Timber.tag(TAG).e(e, "예측 결과 CSV 저장 실패: %s", e.getMessage());
         }
     }
 
     public void predictMovingMode(Tensor inputTensor) {
         try {
             long[] inputShape = inputTensor.shape();
-            Log.d(TAG, "✅ 입력 텐서 크기: " + Arrays.toString(inputShape));
+            Timber.tag(TAG).d("✅ 입력 텐서 크기: %s", Arrays.toString(inputShape));
             Tensor outputTensor = model.forward(IValue.from(inputTensor)).toTensor();
-            Log.d(TAG, "✅ 출력 텐서 크기: " + Arrays.toString(outputTensor.shape()));
+            Timber.tag(TAG).d("✅ 출력 텐서 크기: %s", Arrays.toString(outputTensor.shape()));
 
             float[] logits = outputTensor.getDataAsFloatArray();
             float[] probabilities = softmax(logits);
-            Log.d(TAG, "전체 확률 값: " + Arrays.toString(probabilities));
+            Timber.tag(TAG).d("전체 확률 값: %s", Arrays.toString(probabilities));
 
             int batchSize = (int) inputShape[0];
             if (probabilities.length != 11 * batchSize) {
@@ -500,10 +524,21 @@ public class SensorDataProcessor {
                 predictedResult = TRANSPORT_MODES[maxIndex];
                 Log.d(TAG, "예측된 이동수단: " + predictedResult + ", 확률: " + maxProb);
 
-                if (!gpsProcessedDataList.isEmpty()) {
+                if (!gpsDataList.isEmpty() && gpsDataList.size() >= 2) { // 전처리 전 데이터 사용
                     double distance = calculateDistance(gpsProcessedDataList);
                     long startTimestamp = findEarliestTimestamp(gpsProcessedDataList);
-                    savePredictionToCSV(predictedResult, distance, startTimestamp);
+
+                    // 전처리 전 GPS 데이터에서 맨 앞과 뒤 값 가져오기
+                    Map<String, Object> startData = gpsDataList.get(0);
+                    Map<String, Object> endData = gpsDataList.get(gpsDataList.size() - 1);
+                    double startLat = ((Number) startData.get("latitude")).doubleValue();
+                    double startLon = ((Number) startData.get("longitude")).doubleValue();
+                    double endLat = ((Number) endData.get("latitude")).doubleValue();
+                    double endLon = ((Number) endData.get("longitude")).doubleValue();
+
+                    savePredictionToCSV(predictedResult, distance, startTimestamp, startLat, startLon, endLat, endLon);
+                } else {
+                    Log.w(TAG, "GPS 데이터 부족으로 위치 정보 저장 불가");
                 }
             } else {
                 predictedResult = "알 수 없음 (확률 낮음)";

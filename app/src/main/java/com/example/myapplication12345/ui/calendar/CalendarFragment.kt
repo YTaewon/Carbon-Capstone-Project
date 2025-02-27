@@ -6,7 +6,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.BaseAdapter
 import android.widget.EditText
-import android.widget.GridView
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -16,6 +15,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import com.example.myapplication12345.R
 import com.example.myapplication12345.databinding.FragmentCalendarBinding
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -61,6 +61,12 @@ class CalendarFragment : Fragment() {
             //다음 달
             mCal.add(Calendar.MONTH, 1)
             updateCalendar()
+        }
+
+        // btn_open_map 클릭 시 동작 (예: MapFragment로 이동)
+        binding.btnOpenMap.setOnClickListener {
+            // TODO: MapFragment로 이동하는 로직 추가
+            // 예: findNavController().navigate(R.id.action_calendarFragment_to_mapFragment)
         }
 
         return root
@@ -145,6 +151,14 @@ class CalendarFragment : Fragment() {
                     hideIndicatorAtPosition(selectedPosition) // 이전 선택된 위치의 이미지를 숨김
                     holder.ivIndicator.visibility = View.VISIBLE
                     selectedPosition = position // 현재 선택된 위치 업데이트
+                    showPointVeiw(day)
+                    // CSV 파일 존재 여부 확인 및 버튼 상태 업데이트
+                    val selectedDate = formatDateForFile(day.date)
+                    if (checkCsvFileExists(selectedDate)) {
+                        binding.btnOpenMap.isEnabled = true
+                    } else {
+                        binding.btnOpenMap.isEnabled = false
+                    }
                 }
             }
 
@@ -160,11 +174,37 @@ class CalendarFragment : Fragment() {
         }
     }
 
+    // 선택된 날짜를 "yyyyMMdd" 형식으로 변환
+    private fun formatDateForFile(day: String): String {
+        val year = mCal.get(Calendar.YEAR)
+        val month = String.format("%02d", mCal.get(Calendar.MONTH) + 1) // 0부터 시작하므로 +1
+        val dayFormatted = String.format("%02d", day.toInt())
+        return "$year$month$dayFormatted"
+    }
+
+    // CSV 파일 존재 여부 확인
+    private fun checkCsvFileExists(date: String): Boolean {
+        val fileName = date + "_predictions.csv"
+        val file = File(requireContext().getExternalFilesDir(null), "SensorData/$fileName")
+        return file.exists()
+    }
+
     private fun hideIndicatorAtPosition(position: Int) {
         if (position >= 0) {
             val previousView = binding.gridview.getChildAt(position) as? ViewGroup
             previousView?.findViewById<ImageView>(R.id.iv_indicator)?.visibility = View.INVISIBLE
         }
+    }
+    
+    //출력
+    private fun showPointVeiw(day: Day) {
+        val totalEmissions = day.productEmissions + day.transportEmissions
+        val resultText = """
+        현재 총 배출량: $totalEmissions
+        전기 탄소 배출량: ${day.productEmissions}
+        이동경로 탄소 배출량: ${day.transportEmissions}
+    """.trimIndent()
+        binding.tvDayResult.setText(resultText)
     }
 
     // 포인트 추가 다이얼로그
@@ -172,15 +212,9 @@ class CalendarFragment : Fragment() {
         val builder = AlertDialog.Builder(requireContext())
         builder.setTitle("Date: ${day.date}")
 
-        // 텍스트뷰로 현재 포인트 조회
-        val totalEmissions = day.productEmissions + day.transportEmissions
-        val currentPointsView = TextView(requireContext()).apply {
-            text = "현재 총 배출량: $totalEmissions"
-        }
-
         // Labels for emissions
         val productLabel = TextView(requireContext()).apply {
-            text = "제품 탄소 배출량"
+            text = "전기 탄소 배출량"
         }
 
         val transportLabel = TextView(requireContext()).apply {
@@ -198,7 +232,6 @@ class CalendarFragment : Fragment() {
 
         val layout = LinearLayout(requireContext()).apply {
             orientation = LinearLayout.VERTICAL
-            addView(currentPointsView)
             addView(productLabel)
             addView(productInput)
             addView(transportLabel)

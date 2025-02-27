@@ -12,7 +12,6 @@
 │
 ├─AI
 │  │  AITest.java                   메인에 들어갈 코그 태스트
-│  │  MapFragment.java              지도
 │  │  PyTorchHelper.java            모델 실행
 │  │  SensorDataProcessor.java      전처리
 │  │  SensorDataService.java        센서 데이터
@@ -50,8 +49,9 @@
 │
 └─ui
     ├─calendar
-    │      CalendarFragment.kt
-    │      CalendarViewModel.kt
+    │      MapFragment.java             지도
+    │      CalendarFragment.kt          캘린더 백엔드
+    │      CalendarViewModel.kt         캘린터 실행
     │
     ├─dashboard
     │      DashboardFragment.kt
