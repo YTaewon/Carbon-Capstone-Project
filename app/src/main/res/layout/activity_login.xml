@@ -13,14 +13,14 @@
 
         <LinearLayout
             android:layout_width="match_parent"
-            android:background="@color/mainColor"
+            android:background="@color/headerBackground"
             android:layout_height="150dp">
 
             <TextView
                 android:text="로그인"
                 android:gravity="center"
                 android:textStyle="bold"
-                android:textColor="@color/black"
+                android:textColor="@color/white"
                 android:textSize="20sp"
                 android:layout_width="match_parent"
                 android:layout_height="50dp">
