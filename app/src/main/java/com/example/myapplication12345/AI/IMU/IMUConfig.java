@@ -1,4 +1,4 @@
-package com.example.myapplication12345.AI;
+package com.example.myapplication12345.AI.IMU;
 
 import java.util.Arrays;
 import java.util.HashMap;

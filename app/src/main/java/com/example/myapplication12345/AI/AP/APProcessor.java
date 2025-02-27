@@ -1,4 +1,4 @@
-package com.example.myapplication12345.AI;
+package com.example.myapplication12345.AI.AP;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -23,7 +23,9 @@ public class APProcessor {
                 for (Map<String, Object> record : apData) {
                     long timestamp = (long) record.get("timestamp");
                     if (timestamp >= windowStart && timestamp < windowEnd) {
-                        uniqueBSSIDs.add((String) record.getOrDefault("bssid", "N/A"));
+                        Object bssidObj = record.getOrDefault("bssid", "N/A");
+                        String bssid = bssidObj instanceof String ? (String) bssidObj : String.valueOf(bssidObj);
+                        uniqueBSSIDs.add(bssid);
                     }
                 }
 

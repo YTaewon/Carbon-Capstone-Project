@@ -1,4 +1,4 @@
-package com.example.myapplication12345.AI;
+package com.example.myapplication12345.AI.IMU;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -60,11 +60,11 @@ public class IMUProcessoing {
             x = rotated[0];
             y = rotated[1];
             z = rotated[2];
-            magnitude = FeatureExtractor.magnitude(x, y, z);
+            magnitude = IMUFeatureExtractor.magnitude(x, y, z);
         } else if ("horizontal".equals(process)) {
             //System.out.println("Debug: Calculating horizontal component...");
             double[][] theta = IMUUtils.calculateAngle(x, y, z, gravity);
-            magnitude = FeatureExtractor.magnitude(x, y, z);
+            magnitude = IMUFeatureExtractor.magnitude(x, y, z);
             for (int i = 0; i < rows; i++) {
                 for (int j = 0; j < cols; j++) {
                     magnitude[i][j] *= Math.cos(theta[i][j]);
@@ -77,7 +77,7 @@ public class IMUProcessoing {
         } else if ("vertical".equals(process)) {
             //System.out.println("Debug: Calculating vertical component...");
             double[][] theta = IMUUtils.calculateAngle(x, y, z, gravity);
-            magnitude = FeatureExtractor.magnitude(x, y, z);
+            magnitude = IMUFeatureExtractor.magnitude(x, y, z);
             for (int i = 0; i < rows; i++) {
                 for (int j = 0; j < cols; j++) {
                     magnitude[i][j] *= Math.sin(theta[i][j]);
@@ -89,7 +89,7 @@ public class IMUProcessoing {
             }
         } else {
             //System.out.println("Debug: No processing applied, using raw magnitude...");
-            magnitude = FeatureExtractor.magnitude(x, y, z);
+            magnitude = IMUFeatureExtractor.magnitude(x, y, z);
         }
 
         //System.out.println("Debug: Magnitude computation completed.");
@@ -100,22 +100,22 @@ public class IMUProcessoing {
 
         if (statFeatures) {
             System.out.println("Debug: Extracting statistical features...");
-            statFeaturesData = FeatureExtractor.calculateStatFeatures(magnitude, prefix + "M");
+            statFeaturesData = IMUFeatureExtractor.calculateStatFeatures(magnitude, prefix + "M");
             if (processEachAxis && numChannels > 1) {
-                Map<String, double[][]> statFeaturesX = FeatureExtractor.calculateStatFeatures(x, prefix + "X");
-                Map<String, double[][]> statFeaturesY = FeatureExtractor.calculateStatFeatures(y, prefix + "Y");
-                Map<String, double[][]> statFeaturesZ = FeatureExtractor.calculateStatFeatures(z, prefix + "Z");
+                Map<String, double[][]> statFeaturesX = IMUFeatureExtractor.calculateStatFeatures(x, prefix + "X");
+                Map<String, double[][]> statFeaturesY = IMUFeatureExtractor.calculateStatFeatures(y, prefix + "Y");
+                Map<String, double[][]> statFeaturesZ = IMUFeatureExtractor.calculateStatFeatures(z, prefix + "Z");
                 statFeaturesData = concatenateArrays(statFeaturesData, statFeaturesX, statFeaturesY, statFeaturesZ);
             }
         }
 
         if (spectralFeatures) {
             //System.out.println("Debug: Extracting spectral features...");
-            spectralFeaturesData = FeatureExtractor.calculateSpectralFeatures(magnitude, prefix + "M");
+            spectralFeaturesData = IMUFeatureExtractor.calculateSpectralFeatures(magnitude, prefix + "M");
             if (processEachAxis && numChannels > 1) {
-                Map<String, double[][]> spectralFeaturesX = FeatureExtractor.calculateSpectralFeatures(x, prefix + "X");
-                Map<String, double[][]> spectralFeaturesY = FeatureExtractor.calculateSpectralFeatures(y, prefix + "Y");
-                Map<String, double[][]> spectralFeaturesZ = FeatureExtractor.calculateSpectralFeatures(z, prefix + "Z");
+                Map<String, double[][]> spectralFeaturesX = IMUFeatureExtractor.calculateSpectralFeatures(x, prefix + "X");
+                Map<String, double[][]> spectralFeaturesY = IMUFeatureExtractor.calculateSpectralFeatures(y, prefix + "Y");
+                Map<String, double[][]> spectralFeaturesZ = IMUFeatureExtractor.calculateSpectralFeatures(z, prefix + "Z");
                 spectralFeaturesData = concatenateArrays(spectralFeaturesData, spectralFeaturesX, spectralFeaturesY, spectralFeaturesZ);
             }
         }

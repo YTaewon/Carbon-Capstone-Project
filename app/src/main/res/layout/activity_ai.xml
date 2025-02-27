@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/activity_main"
     android:layout_width="match_parent"
@@ -8,18 +7,18 @@
     android:orientation="vertical">
 
     <TextView
-        android:id="@+id/textView1"
+        android:id="@+id/text"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center"
         android:paddingTop="10dp"
-        android:text="이동 거리 및 이동수단 측정"
+        android:text="AI 태스트"
         android:textAlignment="center"
         android:textSize="30sp"
         tools:ignore="HardcodedText" />
 
     <TextView
-        android:id="@+id/ing"
+        android:id="@+id/textViewAI"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center"
@@ -29,37 +28,64 @@
         tools:ignore="HardcodedText" />
 
     <TextView
-        android:id="@+id/textView2"
+        android:id="@+id/textAP"
         android:layout_width="match_parent"
-        android:layout_height="100dp"
+        android:layout_height="30dp"
         android:gravity="center"
         android:text=""
         android:textAlignment="center"
-        android:textSize="23sp" />
-
-    <org.osmdroid.views.MapView
-        android:id="@+id/map"
-        android:layout_width="match_parent"
-        android:layout_height="350dp" />
+        android:textSize="10sp" />
 
     <TextView
-        android:id="@+id/textView5"
+        android:id="@+id/textBTS"
         android:layout_width="match_parent"
-        android:layout_height="177dp"
+        android:layout_height="180dp"
+        android:gravity="center"
+        android:paddingTop="15dp"
+        android:text=""
+
+        android:textAlignment="center"
+        android:textSize="10sp" />
+
+    <TextView
+        android:id="@+id/textGPS"
+        android:layout_width="match_parent"
+        android:layout_height="190dp"
         android:gravity="center"
         android:text=""
         android:textAlignment="center"
-        android:textSize="20sp" />
+        android:textSize="9sp"
+
+        />
+
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="150dp">
+
+        <ScrollView
+            android:layout_width="wrap_content"
+            android:layout_height="200dp">
+
+            <TextView
+                android:id="@+id/textIMU"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:scrollHorizontally="true"
+                android:text=""
+                android:textAlignment="center"
+                android:textSize="10sp" />
+        </ScrollView>
+    </HorizontalScrollView>
 
     <TextView
-        android:id="@+id/textViewAI"
+        android:id="@+id/textViewProcessed"
         android:layout_width="match_parent"
         android:layout_height="60dp"
         android:gravity="center"
         android:text=""
         android:textAlignment="center"
-        android:textSize="20sp"
-
+        android:textSize="18sp"
         />
 
     <LinearLayout
@@ -85,7 +111,7 @@
             android:layout_height="wrap_content"
             android:layout_marginEnd="10dp"
             android:background="@android:color/black"
-            android:text="현재 위치"
+            android:text="지도 보기"
             android:textColor="@android:color/white"
             android:textSize="16sp"
             tools:ignore="HardcodedText,TextContrastCheck" />
@@ -102,5 +128,6 @@
 
 
     </LinearLayout>
+
 
 </LinearLayout>

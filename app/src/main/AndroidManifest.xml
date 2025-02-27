@@ -15,6 +15,16 @@
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
 
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <!-- API 32 이하에서 필요 -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32"
+        tools:ignore="ScopedStorage" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+
 
     <application
         android:allowBackup="true"
@@ -39,13 +49,6 @@
             android:enabled="true"
             android:exported="true"
             tools:ignore="Instantiatable" />
-
-        <activity
-            android:name=".AI.AI"
-            android:exported="false" />
-        <activity
-            android:name=".AI.AITest"
-            android:exported="false" />
         <activity
             android:name=".MainActivity"
             android:exported="false" />
@@ -71,6 +74,8 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <service android:name=".AI.SensorDataService" />
     </application>
 
 </manifest>

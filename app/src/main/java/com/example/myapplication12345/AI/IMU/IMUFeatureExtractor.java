@@ -1,4 +1,4 @@
-package com.example.myapplication12345.AI;
+package com.example.myapplication12345.AI.IMU;
 
 import org.apache.commons.math3.stat.StatUtils;
 import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation;
@@ -13,7 +13,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-public class FeatureExtractor {
+public class IMUFeatureExtractor {
 
     /**
      * 벡터 크기(매그니튜드) 계산 (2D 배열 입력, 2D 배열 출력)

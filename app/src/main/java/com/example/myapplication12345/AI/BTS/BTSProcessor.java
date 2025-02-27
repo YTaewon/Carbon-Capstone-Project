@@ -1,4 +1,4 @@
-package com.example.myapplication12345.AI;
+package com.example.myapplication12345.AI.BTS;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -72,8 +72,8 @@ public class BTSProcessor {
         float total = uniqs.stream().flatMap(Set::stream).collect(Collectors.toSet()).size();
         float jerk_min = jerkList.isEmpty() ? -1 : Collections.min(jerkList);
         float jerk_max = jerkList.isEmpty() ? -1 : Collections.max(jerkList);
-        double jerk_mean = jerkList.isEmpty() ? -1.0 : jerkList.stream().mapToInt(Integer::intValue).average().orElse(-1.0);
-        double jerk_std = jerkList.isEmpty() ? -1.0 : Math.sqrt(jerkList.stream().mapToDouble(j -> Math.pow(j - jerk_mean, 2)).average().orElse(-1.0));
+        float jerk_mean = (float) (jerkList.isEmpty() ? -1.0 : jerkList.stream().mapToInt(Integer::intValue).average().orElse(-1.0));
+        float jerk_std = (float) (jerkList.isEmpty() ? -1.0 : Math.sqrt(jerkList.stream().mapToDouble(j -> Math.pow(j - jerk_mean, 2)).average().orElse(-1.0)));
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("timestamp", timestamp);
