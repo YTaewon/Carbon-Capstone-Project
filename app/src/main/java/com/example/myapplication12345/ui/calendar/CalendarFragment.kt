@@ -39,7 +39,6 @@ class CalendarFragment : Fragment() {
         _binding = FragmentCalendarBinding.inflate(inflater, container, false)
         val root: View = binding.root
 
-        // 날짜 설정 및 UI 초기화
         updateDateText()
         initCalendar()
 
@@ -51,7 +50,7 @@ class CalendarFragment : Fragment() {
             selectedPosition = -1
             mCal.add(Calendar.MONTH, -1)
             updateCalendar()
-            updateTestMapButtonState() // 달력 변경 시 버튼 상태 업데이트
+            updateTestMapButtonState()
         }
 
         binding.btnNextMonth.setOnClickListener {
@@ -59,14 +58,13 @@ class CalendarFragment : Fragment() {
             selectedPosition = -1
             mCal.add(Calendar.MONTH, 1)
             updateCalendar()
-            updateTestMapButtonState() // 달력 변경 시 버튼 상태 업데이트
+            updateTestMapButtonState()
         }
 
         binding.btnOpenMap.setOnClickListener {
             if (selectedPosition != -1) {
                 val selectedDay = dayList[selectedPosition]
                 val selectedDate = formatDateForFile(selectedDay.date)
-
                 val intent = Intent(requireContext(), MapActivity::class.java).apply {
                     putExtra("selectedDate", selectedDate)
                 }
@@ -81,20 +79,30 @@ class CalendarFragment : Fragment() {
                 val selectedDate = SimpleDateFormat("yyyyMMdd", Locale.getDefault()).parse(selectedDateStr)
                 if (selectedDate != null) {
                     MapFragment.createTestCsvFile(requireContext(), selectedDate)
-                    updateTestMapButtonState() // CSV 생성 후 버튼 상태 업데이트
-                    binding.btnOpenMap.isEnabled = true // CSV 생성 후 btn_open_map 활성화
+                    updateTestMapButtonState()
+                    binding.btnOpenMap.isEnabled = true
                 }
             }
         }
 
-        updateTestMapButtonState() // 초기 버튼 상태 설정
+        updateTestMapButtonState()
         return root
     }
 
     private fun updateDateText() {
-        val curYearFormat = SimpleDateFormat("yyyy", Locale.KOREA)
-        val curMonthFormat = SimpleDateFormat("MM", Locale.KOREA)
-        binding.tvDate.text = getString(R.string.date_format, curYearFormat.format(mCal.time), curMonthFormat.format(mCal.time))
+        val yearFormat = SimpleDateFormat("yyyy", Locale.KOREA)
+        val monthFormat = SimpleDateFormat("MM", Locale.KOREA)
+        val dayFormat = SimpleDateFormat("dd", Locale.KOREA)
+        val selectedDay = if (selectedPosition != -1 && dayList[selectedPosition].productEmissions >= 0) {
+            dayList[selectedPosition].date
+        } else {
+            "01" // 기본값
+        }
+        mCal.set(Calendar.DAY_OF_MONTH, selectedDay.toInt())
+        val year = yearFormat.format(mCal.time)
+        val month = monthFormat.format(mCal.time)
+        val day = dayFormat.format(mCal.time)
+        binding.tvDate.text = "${year}년 ${month}월 ${day}일"
     }
 
     private fun initCalendar() {
@@ -124,7 +132,6 @@ class CalendarFragment : Fragment() {
     data class Day(val date: String, var productEmissions: Int, var transportEmissions: Int)
 
     private inner class GridAdapter(private val list: List<Day>) : BaseAdapter() {
-
         override fun getCount(): Int = list.size
         override fun getItem(position: Int): Day = list[position]
         override fun getItemId(position: Int): Long = position.toLong()
@@ -145,33 +152,26 @@ class CalendarFragment : Fragment() {
             holder.tvPoints.text = if (totalEmissions > 0) totalEmissions.toString() else ""
 
             val today = Calendar.getInstance()
-            // 날짜가 있고, 요일 헤더가 아닌 경우 (day.productEmissions >= 0)
             if (day.date.isNotEmpty() && day.productEmissions >= 0) {
-                // 해당 날짜의 Calendar 객체 생성
                 val tempCal = mCal.clone() as Calendar
                 tempCal.set(Calendar.DAY_OF_MONTH, day.date.toInt())
                 val dayOfWeek = tempCal.get(Calendar.DAY_OF_WEEK)
 
-                // 오늘 날짜 색상
                 if (day.productEmissions == 0 && day.date.toInt() == today.get(Calendar.DAY_OF_MONTH) &&
                     mCal.get(Calendar.MONTH) == today.get(Calendar.MONTH) &&
                     mCal.get(Calendar.YEAR) == today.get(Calendar.YEAR)) {
                     holder.tvItemGridView.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.holo_orange_light))
-                }
-                // 토요일 (파란색) 또는 일요일 (빨간색)
-                else if (dayOfWeek == Calendar.SATURDAY) {
+                } else if (dayOfWeek == Calendar.SATURDAY) {
                     holder.tvItemGridView.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.holo_blue_dark))
                 } else if (dayOfWeek == Calendar.SUNDAY) {
                     holder.tvItemGridView.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.holo_red_dark))
                 } else {
                     holder.tvItemGridView.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.black))
                 }
-            }
-            // 요일 헤더 색상
-            else if (day.productEmissions == -1) {
+            } else if (day.productEmissions == -1) {
                 when (position % 7) {
-                    0 -> holder.tvItemGridView.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.holo_red_dark)) // 일요일
-                    6 -> holder.tvItemGridView.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.holo_blue_dark)) // 토요일
+                    0 -> holder.tvItemGridView.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.holo_red_dark))
+                    6 -> holder.tvItemGridView.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.holo_blue_dark))
                     else -> holder.tvItemGridView.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.black))
                 }
             }
@@ -259,14 +259,13 @@ class CalendarFragment : Fragment() {
         builder.show()
     }
 
-    // btnTestMap 버튼 상태를 업데이트하는 함수
     private fun updateTestMapButtonState() {
         if (selectedPosition != -1) {
             val selectedDay = dayList[selectedPosition]
             val selectedDate = formatDateForFile(selectedDay.date)
-            binding.btnTestMap.isEnabled = !checkCsvFileExists(selectedDate) // CSV가 없으면 활성화, 있으면 비활성화
+            binding.btnTestMap.isEnabled = !checkCsvFileExists(selectedDate)
         } else {
-            binding.btnTestMap.isEnabled = false // 날짜가 선택되지 않았으면 비활성화
+            binding.btnTestMap.isEnabled = false
         }
     }
 

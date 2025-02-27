@@ -1,5 +1,6 @@
 package com.example.myapplication12345.ui.calendar
 
+import android.annotation.SuppressLint
 import android.app.AlertDialog
 import android.content.Context
 import android.graphics.Color
@@ -12,7 +13,6 @@ import android.view.ViewGroup
 import android.widget.*
 import androidx.fragment.app.Fragment
 import com.example.myapplication12345.R
-import com.example.myapplication12345.ui.calendar.MapFragment.Companion.dateFormat
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
@@ -87,8 +87,9 @@ class MapFragment : Fragment() {
     private lateinit var mapView: MapView
     private lateinit var textDistanceInfo: TextView
     private lateinit var dateText: TextView
-    private lateinit var loadButton: Button
-    private lateinit var selectTransportButton: Button
+    private lateinit var loadButton: ImageView
+    private lateinit var selectTransportButton: ImageView
+    private lateinit var backButton: ImageView
 
     private val transportModes = listOf("WALK", "BIKE", "BUS", "CAR", "SUBWAY", "ETC")
     private val selectedModes = mutableSetOf<String>().apply { addAll(transportModes) } // 기본적으로 모두 선택
@@ -109,22 +110,42 @@ class MapFragment : Fragment() {
         dateText = view.findViewById(R.id.date_text)
         loadButton = view.findViewById(R.id.load_button)
         selectTransportButton = view.findViewById(R.id.select_transport_button)
+        backButton = view.findViewById(R.id.back_button)
 
         mapView.setTileSource(TileSourceFactory.MAPNIK)
         mapView.setMultiTouchControls(true)
         mapView.controller.setZoom(15.0)
 
         val selectedDate = arguments?.getString("selectedDate") ?: dateFormat.format(System.currentTimeMillis())
-        dateText.text = selectedDate
+        val year = selectedDate.substring(0, 4)
+        val month = selectedDate.substring(4, 6)
+        val day = selectedDate.substring(6, 8)
+        dateText.text = "${year}년 ${month}월 ${day}일"
         loadAndDisplayPredictionData(selectedDate)
 
         loadButton.setOnClickListener {
-            val selectedDate = dateText.text.toString()
-            loadAndDisplayPredictionData(selectedDate)
+            val selectedDateStr = dateText.text.toString()
+            // "yyyy년 MM월 dd일" → "yyyyMMdd"로 변환
+            val parsedDate = try {
+                val parts = selectedDateStr.split("년 ", "월 ", "일")
+                val yearPart = parts[0]
+                val monthPart = parts[1].padStart(2, '0')
+                val dayPart = parts[2].padStart(2, '0')
+                "$yearPart$monthPart$dayPart"
+            } catch (e: Exception) {
+                Log.e(TAG, "날짜 파싱 실패: $selectedDateStr", e)
+                dateFormat.format(System.currentTimeMillis()) // 기본값
+            }
+            loadAndDisplayPredictionData(parsedDate)
         }
 
         selectTransportButton.setOnClickListener {
             showTransportSelectionDialog()
+        }
+
+        // 뒤로가기 버튼 클릭 리스너
+        backButton.setOnClickListener {
+            requireActivity().finish()
         }
 
         return view
@@ -173,68 +194,110 @@ class MapFragment : Fragment() {
                         selectedModes.add(transportModes[index])
                     }
                 }
-                val selectedDate = dateText.text.toString()
-                loadAndDisplayPredictionData(selectedDate)
+                val selectedDateStr = dateText.text.toString()
+                // "yyyy년 MM월 dd일" → "yyyyMMdd"로 변환
+                val parsedDate = try {
+                    val parts = selectedDateStr.split("년 ", "월 ", "일")
+                    val yearPart = parts[0]
+                    val monthPart = parts[1].padStart(2, '0')
+                    val dayPart = parts[2].padStart(2, '0')
+                    "$yearPart$monthPart$dayPart"
+                } catch (e: Exception) {
+                    Log.e(TAG, "날짜 파싱 실패: $selectedDateStr", e)
+                    dateFormat.format(System.currentTimeMillis())
+                }
+                loadAndDisplayPredictionData(parsedDate)
             }
             .setNegativeButton("취소", null)
             .show()
     }
 
+    private fun getSelectedTransportModes(): List<String> {
+        return selectedModes.toList()
+    }
 
-
+    @SuppressLint("DefaultLocale")
     private fun displayPredictionOnMap(predictionData: List<Map<String, String>>) {
         mapView.overlays.clear()
         val distanceInfo = StringBuilder("이동 거리 합계:\n")
         var firstPoint: GeoPoint? = null
+        var hasData = false
 
         val selectedModes = getSelectedTransportModes()
+        val transportModeNames = mapOf(
+            "WALK" to "걷기",
+            "BIKE" to "자전거",
+            "BUS" to "버스",
+            "CAR" to "자동차",
+            "SUBWAY" to "지하철",
+            "ETC" to "나머지"
+        )
 
-        // 이동수단별로 데이터를 그룹화
         val groupedData = predictionData
             .filter { selectedModes.contains(it["transport_mode"]) }
             .groupBy { it["transport_mode"]!! }
 
-        groupedData.forEach { (transportMode, dataList) ->
-            val points = mutableListOf<GeoPoint>()
-            var totalDistance = 0.0
+        if (groupedData.isEmpty()) {
+            distanceInfo.clear()
+            distanceInfo.append("데이터 없음")
+        } else {
+            groupedData.forEach { (transportMode, dataList) ->
+                val points = mutableListOf<GeoPoint>()
+                var totalDistance = 0.0
 
-            dataList.sortedBy { it["start_timestamp"]!!.toLong() }.forEach { data ->
-                val distance = data["distance_meters"]!!.toDouble()
-                val latitude = data["latitude"]?.toDoubleOrNull()
-                val longitude = data["longitude"]?.toDoubleOrNull()
+                dataList.sortedBy { it["start_timestamp"]!!.toLong() }.forEach { data ->
+                    val distance = data["distance_meters"]!!.toDouble()
+                    val latitude = data["latitude"]?.toDoubleOrNull()
+                    val longitude = data["longitude"]?.toDoubleOrNull()
 
-                if (latitude != null && longitude != null) {
-                    val geoPoint = GeoPoint(latitude, longitude)
-                    points.add(geoPoint)
-                    totalDistance += distance
+                    if (latitude != null && longitude != null) {
+                        val geoPoint = GeoPoint(latitude, longitude)
+                        points.add(geoPoint)
+                        totalDistance += distance
 
-                    if (firstPoint == null) {
-                        firstPoint = geoPoint
+                        if (firstPoint == null) {
+                            firstPoint = geoPoint
+                        }
+                        hasData = true
                     }
+                }
+
+                if (points.isNotEmpty()) {
+                    val koreanTransportMode = transportModeNames[transportMode] ?: transportMode
+                    distanceInfo.append(
+                        String.format(
+                            "%s: %.2f m\n",
+                            koreanTransportMode, totalDistance
+                        )
+                    )
+
+                    val polyline = Polyline().apply {
+                        setPoints(points)
+                        setTitle("$koreanTransportMode - 총 거리: ${String.format("%.2f m", totalDistance)}")
+                        val borderPaint = Paint().apply {
+                            color = Color.BLACK // 테두리 색상
+                            strokeWidth = 10.0f // 테두리 두께
+                            style = Paint.Style.STROKE
+                            strokeCap = Paint.Cap.ROUND
+                            isAntiAlias = true
+                        }
+                        outlinePaintLists.add(MonochromaticPaintList(borderPaint))
+                        val innerPaint = Paint().apply {
+                            color = getTransportColor(transportMode) // 이동수단별 색상
+                            strokeWidth = 5.0f // 내부 선 두께
+                            style = Paint.Style.STROKE
+                            strokeCap = Paint.Cap.ROUND
+                            isAntiAlias = true
+                        }
+                        outlinePaintLists.add(MonochromaticPaintList(innerPaint))
+                    }
+                    mapView.overlays.add(polyline)
                 }
             }
 
-            // 이동수단별 총 거리 추가
-            distanceInfo.append(
-                String.format(
-                    "%s: %.2f m\n",
-                    transportMode, totalDistance
-                )
-            )
-
-            // Polyline 생성 및 추가
-            if (points.isNotEmpty()) {
-                val polyline = Polyline().apply {
-                    setPoints(points)
-                    setTitle("$transportMode - 총 거리: ${String.format("%.2f m", totalDistance)}")
-                    val paint = Paint().apply {
-                        color = getTransportColor(transportMode)
-                        strokeWidth = 5.0f
-                        style = Paint.Style.STROKE
-                    }
-                    outlinePaintLists.add(MonochromaticPaintList(paint))
-                }
-                mapView.overlays.add(polyline)
+            if (!hasData) {
+                distanceInfo.clear()
+                distanceInfo.append("데이터 없음")
             }
         }
 
@@ -245,6 +308,7 @@ class MapFragment : Fragment() {
         mapView.invalidate()
         textDistanceInfo.text = distanceInfo.toString()
     }
+
     private fun getTransportColor(transportMode: String): Int {
         return when (transportMode) {
             "WALK" -> Color.GREEN
@@ -255,10 +319,6 @@ class MapFragment : Fragment() {
             "ETC" -> Color.GRAY
             else -> Color.BLACK
         }
-    }
-
-    private fun getSelectedTransportModes(): List<String> {
-        return selectedModes.toList()
     }
 
     private fun loadAndDisplayPredictionData(date: String) {
