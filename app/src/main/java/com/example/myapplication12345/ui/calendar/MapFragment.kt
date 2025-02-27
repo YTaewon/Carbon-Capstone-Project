@@ -173,14 +173,21 @@ class MapFragment : Fragment() {
 
         // "All" 체크박스 동작
         checkBoxes.last().setOnCheckedChangeListener { _, isChecked ->
-            checkBoxes.dropLast(1).forEach { it.isChecked = isChecked }
+            if (isChecked) {
+                checkBoxes.dropLast(1).forEach { it.isChecked = true }
+            }
         }
 
         // 개별 체크박스 동작
         checkBoxes.dropLast(1).forEachIndexed { index, checkBox ->
-            checkBox.setOnCheckedChangeListener { _, _ ->
+            checkBox.setOnCheckedChangeListener { _, isChecked ->
                 val allChecked = checkBoxes.dropLast(1).all { it.isChecked }
-                checkBoxes.last().isChecked = allChecked
+                // "All"이 체크되어 있던 상태에서 개별 체크박스가 해제되면 "All"만 풀림
+                if (!isChecked && checkBoxes.last().isChecked) {
+                    checkBoxes.last().isChecked = false
+                } else {
+                    checkBoxes.last().isChecked = allChecked
+                }
             }
         }
 
