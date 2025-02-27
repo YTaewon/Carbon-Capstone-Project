@@ -1,4 +1,4 @@
-package com.example.myapplication12345.ui.dashboard
+package com.example.myapplication12345.ui.camera
 
 import android.Manifest
 import android.content.Intent
@@ -24,7 +24,7 @@ import com.google.mlkit.vision.text.korean.KoreanTextRecognizerOptions
 import timber.log.Timber
 import java.nio.ByteBuffer
 
-class DashboardFragment : Fragment() {
+class CameraFragment : Fragment() {
     private var _binding: FragmentDashboardBinding? = null
     private val binding get() = _binding!!
 

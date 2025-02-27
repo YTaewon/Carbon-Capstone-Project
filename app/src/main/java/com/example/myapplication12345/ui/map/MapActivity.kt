@@ -1,4 +1,4 @@
-package com.example.myapplication12345.ui.calendar
+package com.example.myapplication12345.ui.map
 
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity

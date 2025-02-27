@@ -12,7 +12,7 @@ import android.os.Bundle;
 import android.Manifest;
 
 import com.example.myapplication12345.R;
-import com.example.myapplication12345.ui.calendar.MapFragment;
+import com.example.myapplication12345.ui.map.MapFragment;
 
 import java.util.ArrayList;
 

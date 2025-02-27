@@ -16,6 +16,8 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import com.example.myapplication12345.R
 import com.example.myapplication12345.databinding.FragmentCalendarBinding
+import com.example.myapplication12345.ui.map.MapActivity
+import com.example.myapplication12345.ui.map.MapFragment
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
@@ -101,8 +103,7 @@ class CalendarFragment : Fragment() {
         mCal.set(Calendar.DAY_OF_MONTH, selectedDay.toInt())
         val year = yearFormat.format(mCal.time)
         val month = monthFormat.format(mCal.time)
-        val day = dayFormat.format(mCal.time)
-        binding.tvDate.text = "${year}년 ${month}월 ${day}일"
+        binding.tvDate.text = "${year}년 ${month}월"
     }
 
     private fun initCalendar() {

@@ -1,4 +1,4 @@
-package com.example.myapplication12345.ui.calendar
+package com.example.myapplication12345.ui.map
 
 import android.annotation.SuppressLint
 import android.app.AlertDialog
@@ -179,7 +179,7 @@ class MapFragment : Fragment() {
         }
 
         // 개별 체크박스 동작
-        checkBoxes.dropLast(1).forEachIndexed { index, checkBox ->
+        checkBoxes.dropLast(1).forEachIndexed { _, checkBox ->
             checkBox.setOnCheckedChangeListener { _, isChecked ->
                 val allChecked = checkBoxes.dropLast(1).all { it.isChecked }
                 // "All"이 체크되어 있던 상태에서 개별 체크박스가 해제되면 "All"만 풀림

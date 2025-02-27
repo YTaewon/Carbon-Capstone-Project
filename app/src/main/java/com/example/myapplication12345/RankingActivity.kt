@@ -15,18 +15,18 @@ import com.example.myapplication12345.fragments.NowFragment
 import com.example.myapplication12345.fragments.WeeklyFragment
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.ktx.auth
-import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ServerValue
 import com.google.firebase.ktx.Firebase
 
 class RankingActivity : AppCompatActivity() {
 
     private lateinit var auth: FirebaseAuth
+    private lateinit var scoreManager: ScoreManager // ScoreManager 추가
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         auth = Firebase.auth
+        scoreManager = ScoreManager(this) // ScoreManager 초기화
         setContentView(R.layout.activity_ranking)
 
         enableEdgeToEdge()
@@ -41,14 +41,11 @@ class RankingActivity : AppCompatActivity() {
 
         for (button in buttons) {
             button.setOnClickListener { clickedButton ->
-                // 모든 버튼의 textSize를 16sp로 초기화
                 for (b in buttons) {
                     b.textSize = 16f
                 }
-                // 클릭된 버튼의 textSize를 20sp로 변경
                 val clickedButtonView = findViewById<Button>(clickedButton.id)
                 clickedButtonView.textSize = 20f
-                // Fragment 전환
                 when (button) {
                     btnNow -> setFrag(0)
                     btnDaily -> setFrag(1)
@@ -58,12 +55,9 @@ class RankingActivity : AppCompatActivity() {
             }
         }
 
-
-
         // 로그아웃 버튼 설정
         findViewById<Button>(R.id.logoutBtn).setOnClickListener {
             auth.signOut()
-
             val intent = Intent(this, IntroActivity::class.java)
             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             startActivity(intent)
@@ -71,7 +65,10 @@ class RankingActivity : AppCompatActivity() {
 
         // Plus 버튼 설정
         findViewById<Button>(R.id.plusBtn).setOnClickListener {
-            addScoreToCurrentUser(5)
+            scoreManager.addScoreToCurrentUser(5) {
+                // 점수 추가 완료 후 수행할 작업 (옵셔널)
+                Toast.makeText(this, "점수 추가 완료!2", Toast.LENGTH_SHORT).show()
+            }
         }
 
         // 시스템 바 Insets 설정
@@ -79,66 +76,16 @@ class RankingActivity : AppCompatActivity() {
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
-
-
-        }
-    }
-
-    private fun addScoreToCurrentUser(scoreToAdd: Int) {
-        val currentUser = auth.currentUser
-        val currentUserId = currentUser?.uid
-
-        if (currentUserId != null) {
-            val userRef = FirebaseDatabase.getInstance().reference.child("users").child(currentUserId)
-
-            // 현재 점수 가져오기
-            userRef.child("score").get().addOnSuccessListener { dataSnapshot ->
-                val currentScore = dataSnapshot.getValue(Int::class.java) ?: 0
-
-                // 점수 추가 및 업데이트
-                val newScore = currentScore + scoreToAdd
-                val scoreData = mapOf(
-                    "value" to scoreToAdd, // 추가된 점수 값
-                    "timestamp" to ServerValue.TIMESTAMP // 타임스탬프 추가
-                )
-
-                userRef.child("scores").push().setValue(scoreData) // scores 노드에 새로운 점수 데이터 추가
-                    .addOnSuccessListener {
-                        userRef.child("score").setValue(newScore) // score 노드 업데이트
-                            .addOnSuccessListener {
-                                Toast.makeText(this, "점수가 추가되었습니다.", Toast.LENGTH_SHORT).show()
-                            }
-                            .addOnFailureListener { exception ->
-                                Toast.makeText(this, "점수 추가 실패: ${exception.message}", Toast.LENGTH_SHORT).show()
-                            }
-                    }
-                    .addOnFailureListener { exception ->
-                        Toast.makeText(this, "점수 추가 실패: ${exception.message}", Toast.LENGTH_SHORT).show()
-                    }
-            }
-        } else {
-            Toast.makeText(this, "로그인이 필요합니다.", Toast.LENGTH_SHORT).show()
         }
     }
 
     private fun setFrag(fragNum: Int) {
         val ft = supportFragmentManager.beginTransaction()
         when (fragNum) {
-            0 -> {
-                ft.replace(R.id.main_frame, NowFragment()).commit()
-            }
-
-            1 -> {
-                ft.replace(R.id.main_frame, DailyFragment()).commit()
-            }
-
-            2 -> {
-                ft.replace(R.id.main_frame, WeeklyFragment()).commit()
-            }
-
-            3 -> {
-                ft.replace(R.id.main_frame, MonthlyFragment()).commit()
-            }
+            0 -> ft.replace(R.id.main_frame, NowFragment()).commit()
+            1 -> ft.replace(R.id.main_frame, DailyFragment()).commit()
+            2 -> ft.replace(R.id.main_frame, WeeklyFragment()).commit()
+            3 -> ft.replace(R.id.main_frame, MonthlyFragment()).commit()
         }
     }
 }

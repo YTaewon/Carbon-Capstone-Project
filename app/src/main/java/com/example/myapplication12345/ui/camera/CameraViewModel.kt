@@ -1,9 +1,9 @@
-package com.example.myapplication12345.ui.dashboard
+package com.example.myapplication12345.ui.camera
 
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 
-class DashboardViewModel {
+class CameraViewModel {
 
     private val _text = MutableLiveData<String>().apply {
         value = "카메라 나올 화면"
