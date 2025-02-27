@@ -146,6 +146,9 @@ dependencies {
     implementation("org.osmdroid:osmdroid-android:6.1.20")
     implementation("com.github.MKergall:osmbonuspack:6.9.0")
 
+    //런타임
+    runtimeOnly("androidx.work:work-runtime:2.10.0")
+
     // 테스트 종속성
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
