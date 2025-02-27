@@ -6,6 +6,12 @@
         android:icon="@drawable/ic_home_24dp"
         android:title="@string/title_home" />
 
+
+    <item
+        android:id="@+id/navigation_stepper"
+        android:icon="@drawable/ic_stepper2_24dp"
+        android:title="@string/title_stepper" />
+
     <item
         android:id="@+id/navigation_dashboard"
         android:icon="@drawable/ic_camera_24dp"
@@ -20,4 +26,5 @@
         android:id="@+id/navigation_calendar"
         android:icon="@drawable/ic_calendar_24dp"
         android:title="@string/title_calendar" />
+
 </menu>

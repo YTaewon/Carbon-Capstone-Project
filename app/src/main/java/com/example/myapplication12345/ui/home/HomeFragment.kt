@@ -17,6 +17,7 @@ import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.ViewModelProvider
+import com.example.myapplication12345.AI.AITest
 import com.example.myapplication12345.databinding.FragmentHomeBinding
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
@@ -44,6 +45,9 @@ class HomeFragment : Fragment() {
         val root: View = binding.root
 
         profileImage = binding.profileImage
+
+
+
 
         // 갤러리 런처 초기화
         galleryLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
