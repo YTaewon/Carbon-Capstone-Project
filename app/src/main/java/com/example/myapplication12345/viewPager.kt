@@ -7,16 +7,19 @@ import com.example.myapplication12345.ui.home.HomeFragment
 import com.example.myapplication12345.ui.dashboard.DashboardFragment
 import com.example.myapplication12345.fragments.RankingFragment
 import com.example.myapplication12345.ui.calendar.CalendarFragment
+import com.example.myapplication12345.ui.pedometer.pedometerFragment
 
 class ViewPagerAdapter(fragmentActivity: FragmentActivity) : FragmentStateAdapter(fragmentActivity) {
-    override fun getItemCount(): Int = 4
+    override fun getItemCount(): Int = 5
 
     override fun createFragment(position: Int): Fragment {
         return when (position) {
             0 -> HomeFragment()
-            1 -> DashboardFragment()
-            2 -> RankingFragment()
-            3 -> CalendarFragment()
+            1 -> pedometerFragment()
+            2 -> DashboardFragment()
+            3 -> RankingFragment()
+            4 -> CalendarFragment()
+
             else -> HomeFragment()
         }
     }

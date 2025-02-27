@@ -48,6 +48,7 @@ class CameraActivity : AppCompatActivity() {
                 R.id.navigation_dashboard -> viewPager.currentItem = 1
                 R.id.navigation_ranking -> viewPager.currentItem = 2
                 R.id.navigation_calendar -> viewPager.currentItem = 3
+                R.id.navigation_pedometer -> viewPager.currentItem = 4
             }
             true
         }

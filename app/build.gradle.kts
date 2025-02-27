@@ -47,6 +47,7 @@ android {
         dataBinding = true
         viewBinding = true
     }
+
 }
 
 dependencies {
@@ -118,6 +119,7 @@ dependencies {
     implementation ("com.jakewharton.timber:timber:5.0.1")
 
     // Compose 관련 의존성
+
     implementation(platform("androidx.compose:compose-bom:2024.01.00"))
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
     implementation("androidx.activity:activity-compose:1.8.2")
