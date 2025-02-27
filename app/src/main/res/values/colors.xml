@@ -13,6 +13,7 @@
     <color name="colorWhite">#FFFFFF</color>
     <color name="colorTextPrimary">#212121</color>
     <color name="colorTextHint">#808080</color>
+    <color name="light_green">#90EE90</color>
 
     <!-- 헤더 배경색 -->
     <color name="headerBackground">#388E3C</color> <!-- 친환경을 상징하는 녹색 -->

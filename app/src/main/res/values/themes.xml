@@ -13,5 +13,9 @@
 
     </style>
 
+    <style name="circleImageview">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">50%</item>
+    </style>
     <style name="Theme.MyApplication12345" parent="Base.Theme.MyApplication12345" />
 </resources>
