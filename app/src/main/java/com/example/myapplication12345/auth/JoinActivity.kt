@@ -38,10 +38,10 @@ class JoinActivity : AppCompatActivity() {
 
     // 입력값 검증 함수
     private fun isValidInput(): Boolean {
-        val email = binding.emailArea.text.toString()
-        val password1 = binding.passwordArea1.text.toString()
-        val password2 = binding.passwordArea2.text.toString()
-        val nickname = binding.nicknameArea.text.toString()
+        val email = binding.emailEditText.text.toString()
+        val password1 = binding.passwordEditText.text.toString()
+        val password2 = binding.confirmPasswordEditText.text.toString()
+        val nickname = binding.nicknameEditText.text.toString()
 
         if (email.isEmpty()) {
             Toast.makeText(this, "이메일을 입력해주세요", Toast.LENGTH_SHORT).show()
@@ -78,9 +78,9 @@ class JoinActivity : AppCompatActivity() {
 
     // 회원가입 진행 함수
     private fun registerUser() {
-        val email = binding.emailArea.text.toString()
-        val password = binding.passwordArea1.text.toString()
-        val nickname = binding.nicknameArea.text.toString()
+        val email = binding.emailEditText.text.toString()
+        val password = binding.passwordEditText.text.toString()
+        val nickname = binding.nicknameEditText.text.toString()
 
         auth.createUserWithEmailAndPassword(email, password)
             .addOnCompleteListener(this) { task ->
