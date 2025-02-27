@@ -145,18 +145,35 @@ class CalendarFragment : Fragment() {
             holder.tvPoints.text = if (totalEmissions > 0) totalEmissions.toString() else ""
 
             val today = Calendar.getInstance()
-            if (day.productEmissions == 0 && day.date.isNotEmpty() && day.date.toInt() == today.get(Calendar.DAY_OF_MONTH) &&
-                mCal.get(Calendar.MONTH) == today.get(Calendar.MONTH) &&
-                mCal.get(Calendar.YEAR) == today.get(Calendar.YEAR)) {
-                holder.tvItemGridView.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.holo_orange_light))
-            } else if (day.productEmissions == -1) {
+            // 날짜가 있고, 요일 헤더가 아닌 경우 (day.productEmissions >= 0)
+            if (day.date.isNotEmpty() && day.productEmissions >= 0) {
+                // 해당 날짜의 Calendar 객체 생성
+                val tempCal = mCal.clone() as Calendar
+                tempCal.set(Calendar.DAY_OF_MONTH, day.date.toInt())
+                val dayOfWeek = tempCal.get(Calendar.DAY_OF_WEEK)
+
+                // 오늘 날짜 색상
+                if (day.productEmissions == 0 && day.date.toInt() == today.get(Calendar.DAY_OF_MONTH) &&
+                    mCal.get(Calendar.MONTH) == today.get(Calendar.MONTH) &&
+                    mCal.get(Calendar.YEAR) == today.get(Calendar.YEAR)) {
+                    holder.tvItemGridView.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.holo_orange_light))
+                }
+                // 토요일 (파란색) 또는 일요일 (빨간색)
+                else if (dayOfWeek == Calendar.SATURDAY) {
+                    holder.tvItemGridView.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.holo_blue_dark))
+                } else if (dayOfWeek == Calendar.SUNDAY) {
+                    holder.tvItemGridView.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.holo_red_dark))
+                } else {
+                    holder.tvItemGridView.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.black))
+                }
+            }
+            // 요일 헤더 색상
+            else if (day.productEmissions == -1) {
                 when (position % 7) {
-                    0 -> holder.tvItemGridView.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.holo_red_dark))
-                    6 -> holder.tvItemGridView.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.holo_blue_dark))
+                    0 -> holder.tvItemGridView.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.holo_red_dark)) // 일요일
+                    6 -> holder.tvItemGridView.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.holo_blue_dark)) // 토요일
                     else -> holder.tvItemGridView.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.black))
                 }
-            } else {
-                holder.tvItemGridView.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.black))
             }
 
             view.setOnClickListener {
@@ -167,7 +184,7 @@ class CalendarFragment : Fragment() {
                     showPointVeiw(day)
                     val selectedDate = formatDateForFile(day.date)
                     binding.btnOpenMap.isEnabled = checkCsvFileExists(selectedDate)
-                    updateTestMapButtonState() // 날짜 선택 시 버튼 상태 업데이트
+                    updateTestMapButtonState()
                 }
             }
 

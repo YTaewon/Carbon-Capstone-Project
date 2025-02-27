@@ -9,41 +9,41 @@
         android:id="@+id/checkbox_walk"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Walk" />
+        android:text="걷기" />
 
     <CheckBox
         android:id="@+id/checkbox_bike"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Bike" />
+        android:text="자전거" />
 
     <CheckBox
         android:id="@+id/checkbox_bus"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Bus" />
+        android:text="버스" />
 
     <CheckBox
         android:id="@+id/checkbox_car"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Car" />
+        android:text="자동차" />
 
     <CheckBox
         android:id="@+id/checkbox_subway"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Subway" />
+        android:text="지하철" />
 
     <CheckBox
         android:id="@+id/checkbox_etc"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Etc" />
+        android:text="기타" />
 
     <CheckBox
         android:id="@+id/checkbox_all"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="All" />
+        android:text="전체" />
 </LinearLayout>
