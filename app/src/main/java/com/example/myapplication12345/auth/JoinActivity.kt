@@ -91,7 +91,7 @@ class JoinActivity : AppCompatActivity() {
                     val userMap = mapOf(
                         "email" to email,
                         "nickname" to nickname,
-                        "score" to 10,
+                        "score" to 0,
                         "point" to 0
                     )
                     database.child("users").child(userId).setValue(userMap)

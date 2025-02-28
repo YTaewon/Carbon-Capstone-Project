@@ -67,7 +67,7 @@ class RankingActivity : AppCompatActivity() {
         findViewById<Button>(R.id.plusBtn).setOnClickListener {
             scoreManager.addScoreToCurrentUser(5) {
                 // 점수 추가 완료 후 수행할 작업 (옵셔널)
-                Toast.makeText(this, "점수 추가 완료!2", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "점수 추가 완료!", Toast.LENGTH_SHORT).show()
             }
         }
 
