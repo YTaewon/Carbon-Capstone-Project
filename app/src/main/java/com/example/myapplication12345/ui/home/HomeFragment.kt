@@ -128,7 +128,7 @@ class HomeFragment : Fragment() {
         }
 
 
-        return root
+        return inflater.inflate(R.layout.fragment_home, container, false)
     }
 
     // 갤러리 열기

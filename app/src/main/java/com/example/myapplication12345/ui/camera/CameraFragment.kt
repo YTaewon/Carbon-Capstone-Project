@@ -17,7 +17,7 @@ import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
-import com.example.myapplication12345.databinding.FragmentDashboardBinding
+import com.example.myapplication12345.databinding.FragmentCameraBinding
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.korean.KoreanTextRecognizerOptions
@@ -25,15 +25,24 @@ import timber.log.Timber
 import java.nio.ByteBuffer
 
 class CameraFragment : Fragment() {
-    private var _binding: FragmentDashboardBinding? = null
+    private var _binding: FragmentCameraBinding? = null
     private val binding get() = _binding!!
 
     private var imageCapture: ImageCapture? = null
     private val EMISSION_FACTOR = 0.4567
 
-    // 갤러리에서 이미지 선택1
+    // 갤러리에서 이미지 선택
     private val getContent = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         uri?.let { processImageUri(it) }
+    }
+
+    // 권한 요청 런처
+    private val requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+        if (isGranted) {
+            startCamera()
+        } else {
+            Toast.makeText(requireContext(), "카메라 권한이 필요합니다.", Toast.LENGTH_SHORT).show()
+        }
     }
 
     override fun onCreateView(
@@ -41,7 +50,7 @@ class CameraFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        _binding = FragmentDashboardBinding.inflate(inflater, container, false)
+        _binding = FragmentCameraBinding.inflate(inflater, container, false)
         return binding.root
     }
 
@@ -52,10 +61,10 @@ class CameraFragment : Fragment() {
         if (allPermissionsGranted()) {
             startCamera()
         } else {
-            requestPermissions(REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS)
+            requestPermissionLauncher.launch(Manifest.permission.CAMERA)
         }
 
-        // 카메라 캡쳐 버튼 클릭 시 현재 프리뷰 이미지를 캡쳐
+        // 카메라 캡처 버튼 클릭 시 현재 프리뷰 이미지를 캡처
         binding.captureButton.setOnClickListener {
             capturePhoto()
         }
@@ -71,8 +80,8 @@ class CameraFragment : Fragment() {
         cameraProviderFuture.addListener({
             val cameraProvider = cameraProviderFuture.get()
 
-            val preview = Preview.Builder().build().apply {
-                setSurfaceProvider(binding.cameraPreview.surfaceProvider)
+            val preview = Preview.Builder().build().also {
+                it.setSurfaceProvider(binding.cameraPreview.surfaceProvider)
             }
 
             imageCapture = ImageCapture.Builder().build()
@@ -88,7 +97,8 @@ class CameraFragment : Fragment() {
                     imageCapture
                 )
             } catch (exc: Exception) {
-                Log.e(TAG, "카메라 바인딩 실패", exc)
+                Timber.e(exc, "카메라 바인딩 실패")
+                Toast.makeText(requireContext(), "카메라 시작에 실패했습니다.", Toast.LENGTH_SHORT).show()
             }
         }, ContextCompat.getMainExecutor(requireContext()))
     }
@@ -107,7 +117,8 @@ class CameraFragment : Fragment() {
                 }
 
                 override fun onError(exception: ImageCaptureException) {
-                    Log.e(TAG, "캡쳐 실패: ${exception.message}", exception)
+                    Timber.e(exception, "캡처 실패: ${exception.message}")
+                    Toast.makeText(requireContext(), "사진 캡처에 실패했습니다.", Toast.LENGTH_SHORT).show()
                 }
             }
         )
@@ -122,7 +133,7 @@ class CameraFragment : Fragment() {
 
     private fun processImageUri(uri: Uri) {
         try {
-            val inputStream = requireActivity().contentResolver.openInputStream(uri)
+            val inputStream = requireContext().contentResolver.openInputStream(uri)
             inputStream?.use { stream ->
                 val bitmap = BitmapFactory.decodeStream(stream)
                 val image = InputImage.fromBitmap(bitmap, 0)
@@ -130,7 +141,7 @@ class CameraFragment : Fragment() {
             }
         } catch (e: Exception) {
             Timber.e(e, "이미지 처리 오류")
-            Toast.makeText(requireContext(), "이미지 처리 중 오류가 발생했습니다", Toast.LENGTH_SHORT).show()
+            Toast.makeText(requireContext(), "이미지 처리 중 오류가 발생했습니다.", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -139,26 +150,22 @@ class CameraFragment : Fragment() {
 
         recognizer.process(image)
             .addOnSuccessListener { visionText ->
-                // 텍스트 블록 단위로 검사
                 val usage = visionText.textBlocks
                     .asSequence()
                     .map { it.text }
                     .filter { it.contains("사용량") || it.contains("당월") }
                     .mapNotNull { extractUsage(it) }
-                    .firstOrNull()
+                    .firstOrNull() ?: extractUsage(visionText.text)
 
-                // 전체 텍스트에서 한 번 더 시도
-                val finalUsage = usage ?: extractUsage(visionText.text)
-
-                if (finalUsage != null) {
-                    calculateAndDisplayCarbon(finalUsage)
+                if (usage != null) {
+                    calculateAndDisplayCarbon(usage)
                 } else {
                     binding.resultText.text = "전기 사용량을 찾을 수 없습니다.\n다른 이미지를 시도해보세요."
                 }
             }
             .addOnFailureListener { e ->
                 Timber.e(e, "텍스트 인식 실패")
-                Toast.makeText(requireContext(), "텍스트 인식에 실패했습니다", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "텍스트 인식에 실패했습니다.", Toast.LENGTH_SHORT).show()
             }
     }
 
@@ -209,15 +216,14 @@ class CameraFragment : Fragment() {
         return numberMatch
     }
 
-
     private fun calculateAndDisplayCarbon(usage: Double) {
         val carbonEmission = usage * EMISSION_FACTOR
-        val intent = Intent(requireContext(), ResultActivity::class.java)
-        intent.putExtra("USAGE", usage)
-        intent.putExtra("CARBON_EMISSION", carbonEmission)
+        val intent = Intent(requireContext(), ResultActivity::class.java).apply {
+            putExtra("USAGE", usage)
+            putExtra("CARBON_EMISSION", carbonEmission)
+        }
         startActivity(intent)
     }
-
 
     private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
         ContextCompat.checkSelfPermission(requireContext(), it) == PackageManager.PERMISSION_GRANTED
@@ -229,8 +235,7 @@ class CameraFragment : Fragment() {
     }
 
     companion object {
-        private const val TAG = "DashboardFragment"
-        private const val REQUEST_CODE_PERMISSIONS = 10
+        private const val TAG = "CameraFragment"
         private val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA)
     }
 }
