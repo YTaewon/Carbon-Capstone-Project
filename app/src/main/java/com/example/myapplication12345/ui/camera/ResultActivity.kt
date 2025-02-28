@@ -1,6 +1,7 @@
 package com.example.myapplication12345.ui.camera
 
 import android.os.Bundle
+import android.widget.ImageView
 import androidx.appcompat.app.AppCompatActivity
 import android.widget.TextView
 import android.widget.Toast
@@ -20,7 +21,10 @@ class ResultActivity : AppCompatActivity() {
 
         val usage = intent.getDoubleExtra("USAGE", 0.0)
         val carbonEmission = intent.getDoubleExtra("CARBON_EMISSION", 0.0)
-
+        val backButton: ImageView = findViewById(R.id.back_button)
+        backButton.setOnClickListener {
+            finish() // 현재 액티비티 종료 -> 이전 화면으로 이동ㅇ
+        }
         val resultTextView = findViewById<TextView>(R.id.textViewResult)
         resultTextView.text = """
             전기 사용량: ${String.format("%.1f", usage)} kWh
