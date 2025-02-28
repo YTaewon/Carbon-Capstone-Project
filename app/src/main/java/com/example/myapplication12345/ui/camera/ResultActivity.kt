@@ -23,7 +23,7 @@ class ResultActivity : AppCompatActivity() {
         val carbonEmission = intent.getDoubleExtra("CARBON_EMISSION", 0.0)
         val backButton: ImageView = findViewById(R.id.back_button)
         backButton.setOnClickListener {
-            finish() // 현재 액티비티 종료 -> 이전 화면으로 이동
+            finish() // 현재 액티비티 종료 -> 이전 화면으로 이동ㅇ
         }
         val resultTextView = findViewById<TextView>(R.id.textViewResult)
         resultTextView.text = """
