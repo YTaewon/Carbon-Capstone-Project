@@ -63,7 +63,7 @@ class SplashActivity : AppCompatActivity() {
                 requestPermissions()
             } else {
                 Timber.tag(TAG).d("모든 권한 확인됨, 서비스 시작")
-                startSensorService()
+                //startSensorService()
                 navigateToMain()
             }
         }

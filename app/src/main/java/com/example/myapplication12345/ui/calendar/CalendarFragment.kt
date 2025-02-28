@@ -15,6 +15,7 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import com.example.myapplication12345.R
+import com.example.myapplication12345.ScoreManager
 import com.example.myapplication12345.databinding.FragmentCalendarBinding
 import com.example.myapplication12345.ui.map.MapActivity
 import com.example.myapplication12345.ui.map.MapFragment
@@ -32,6 +33,7 @@ class CalendarFragment : Fragment() {
     private val mCal: Calendar = Calendar.getInstance()
     private lateinit var calendarViewModel: CalendarViewModel
     private var selectedPosition: Int = -1
+    private lateinit var scoreManager: ScoreManager
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -39,6 +41,7 @@ class CalendarFragment : Fragment() {
     ): View {
         calendarViewModel = ViewModelProvider(this)[CalendarViewModel::class.java]
         _binding = FragmentCalendarBinding.inflate(inflater, container, false)
+        scoreManager = ScoreManager(requireContext())
         val root: View = binding.root
 
         updateDateText()
@@ -94,13 +97,14 @@ class CalendarFragment : Fragment() {
     private fun updateDateText() {
         val yearFormat = SimpleDateFormat("yyyy", Locale.KOREA)
         val monthFormat = SimpleDateFormat("MM", Locale.KOREA)
-        val dayFormat = SimpleDateFormat("dd", Locale.KOREA)
         val selectedDay = if (selectedPosition != -1 && dayList[selectedPosition].productEmissions >= 0) {
             dayList[selectedPosition].date
         } else {
-            "01" // 기본값
+            "01"
         }
-        mCal.set(Calendar.DAY_OF_MONTH, selectedDay.toInt())
+        if (selectedDay.isNotEmpty() && selectedDay.all { it.isDigit() }) {
+            mCal.set(Calendar.DAY_OF_MONTH, selectedDay.toInt())
+        }
         val year = yearFormat.format(mCal.time)
         val month = monthFormat.format(mCal.time)
         binding.tvDate.text = "${year}년 ${month}월"
@@ -119,8 +123,25 @@ class CalendarFragment : Fragment() {
             dayList.add(Day("", 0, 0))
         }
 
-        for (i in 1..mCal.getActualMaximum(Calendar.DAY_OF_MONTH)) {
+        val daysInMonth = mCal.getActualMaximum(Calendar.DAY_OF_MONTH)
+        for (i in 1..daysInMonth) {
+            val dayCal = Calendar.getInstance().apply {
+                set(mCal.get(Calendar.YEAR), mCal.get(Calendar.MONTH), i)
+            }
             dayList.add(Day(i.toString(), 0, 0))
+            fetchScoreForDay(dayCal, i - 1 + dayNum - 1 + daysOfWeek.size)
+        }
+    }
+
+    private fun fetchScoreForDay(date: Calendar, position: Int) {
+        scoreManager.getScoresForDate(date) { score ->
+            if (position < dayList.size) {
+                val day = dayList[position]
+                day.productEmissions = score
+                activity?.runOnUiThread {
+                    gridAdapter.notifyDataSetChanged()
+                }
+            }
         }
     }
 
@@ -130,7 +151,7 @@ class CalendarFragment : Fragment() {
         gridAdapter.notifyDataSetChanged()
     }
 
-    data class Day(val date: String, var productEmissions: Int, var transportEmissions: Int)
+    data class Day(var date: String, var productEmissions: Int, var transportEmissions: Int)
 
     private inner class GridAdapter(private val list: List<Day>) : BaseAdapter() {
         override fun getCount(): Int = list.size
@@ -138,11 +159,14 @@ class CalendarFragment : Fragment() {
         override fun getItemId(position: Int): Long = position.toLong()
 
         override fun getView(position: Int, convertView: View?, parent: ViewGroup?): View {
-            val view = convertView ?: LayoutInflater.from(parent?.context).inflate(R.layout.item_calendar_gridview, parent, false)
+            val view = convertView ?: LayoutInflater.from(parent?.context)
+                .inflate(R.layout.item_calendar_gridview, parent, false)
             val holder = if (convertView == null) {
-                ViewHolder(view.findViewById(R.id.tv_item_gridview), view.findViewById(R.id.tv_points), view.findViewById(R.id.iv_indicator)).also {
-                    view.tag = it
-                }
+                ViewHolder(
+                    view.findViewById(R.id.tv_item_gridview),
+                    view.findViewById(R.id.tv_points),
+                    view.findViewById(R.id.iv_indicator)
+                ).also { view.tag = it }
             } else {
                 view.tag as ViewHolder
             }
@@ -153,7 +177,7 @@ class CalendarFragment : Fragment() {
             holder.tvPoints.text = if (totalEmissions > 0) totalEmissions.toString() else ""
 
             val today = Calendar.getInstance()
-            if (day.date.isNotEmpty() && day.productEmissions >= 0) {
+            if (day.date.isNotEmpty() && day.productEmissions >= 0 && day.date.all { it.isDigit() }) {
                 val tempCal = mCal.clone() as Calendar
                 tempCal.set(Calendar.DAY_OF_MONTH, day.date.toInt())
                 val dayOfWeek = tempCal.get(Calendar.DAY_OF_WEEK)
@@ -178,7 +202,7 @@ class CalendarFragment : Fragment() {
             }
 
             view.setOnClickListener {
-                if (day.date.isNotEmpty() && day.productEmissions >= 0) {
+                if (day.date.isNotEmpty() && day.productEmissions >= 0 && day.date.all { it.isDigit() }) {
                     hideIndicatorAtPosition(selectedPosition)
                     holder.ivIndicator.visibility = View.VISIBLE
                     selectedPosition = position
@@ -190,7 +214,7 @@ class CalendarFragment : Fragment() {
             }
 
             view.setOnLongClickListener {
-                if (day.date.isNotEmpty() && day.productEmissions >= 0) {
+                if (day.date.isNotEmpty() && day.productEmissions >= 0 && day.date.all { it.isDigit() }) {
                     showPointsPopup(day)
                 }
                 true
@@ -223,10 +247,10 @@ class CalendarFragment : Fragment() {
     private fun showPointVeiw(day: Day) {
         val totalEmissions = day.productEmissions + day.transportEmissions
         val resultText = """
-        현재 총 배출량: $totalEmissions
-        전기 탄소 배출량: ${day.productEmissions}
-        이동경로 탄소 배출량: ${day.transportEmissions}
-    """.trimIndent()
+            현재 총 배출량: $totalEmissions
+            전기 탄소 배출량: ${day.productEmissions}
+            이동경로 탄소 배출량: ${day.transportEmissions}
+        """.trimIndent()
         binding.tvDayResult.text = resultText
     }
 
