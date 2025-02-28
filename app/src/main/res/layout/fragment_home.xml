@@ -4,7 +4,8 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    tools:context=".ui.home.HomeFragment">
+    tools:context=".ui.home.HomeFragment"
+    >
 
 
     <data>
@@ -183,7 +184,7 @@
                         android:id="@+id/tipText"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="자전거를 타고 출근해보세요. 교통비도 절약되고 탄소 배출도 줄일 수 있습니다."
+                        android:text="@{homeViewModel.currentTip}"
                         android:textColor="@color/textSecondary"
                         android:textSize="14sp"
                         android:layout_marginTop="8dp" />
