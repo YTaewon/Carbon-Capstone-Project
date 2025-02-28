@@ -30,7 +30,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupViewPager() {
         binding.viewPager.adapter = ViewPagerAdapter(this)
-        binding.viewPager.isUserInputEnabled = false // 스와이프 비활성화
+        binding.viewPager.isUserInputEnabled = true // 스와이프 비활성화
     }
 
     private fun setupBottomNavigation() {
@@ -47,9 +47,11 @@ class MainActivity : AppCompatActivity() {
         bottomNav.setOnItemSelectedListener { item ->
             when (item.itemId) {
                 R.id.navigation_home -> viewPager.currentItem = 0
-                R.id.navigation_camera -> viewPager.currentItem = 1
-                R.id.navigation_ranking -> viewPager.currentItem = 2
-                R.id.navigation_calendar -> viewPager.currentItem = 3
+                R.id.navigation_stepper -> viewPager.currentItem = 1
+                R.id.navigation_camera -> viewPager.currentItem = 2
+                R.id.navigation_ranking -> viewPager.currentItem = 3
+                R.id.navigation_calendar -> viewPager.currentItem = 4
+
                 else -> return@setOnItemSelectedListener false
             }
             true
