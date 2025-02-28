@@ -30,13 +30,14 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupViewPager() {
         binding.viewPager.adapter = ViewPagerAdapter(this)
-        binding.viewPager.isUserInputEnabled = false // 스와이프 비활성화
+        binding.viewPager.isUserInputEnabled = true // 스와이프 활성화
     }
 
     private fun setupBottomNavigation() {
         val viewPager = binding.viewPager
         val bottomNav = binding.bottomNavigation
 
+        // 페이지 변경 시 BottomNavigation 업데이트
         viewPager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
             override fun onPageSelected(position: Int) {
                 super.onPageSelected(position)
@@ -44,6 +45,7 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
+        // BottomNavigation 선택 시 ViewPager 이동
         bottomNav.setOnItemSelectedListener { item ->
             when (item.itemId) {
                 R.id.navigation_home -> viewPager.currentItem = 0
