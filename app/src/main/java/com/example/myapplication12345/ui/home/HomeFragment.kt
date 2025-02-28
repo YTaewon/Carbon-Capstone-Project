@@ -8,7 +8,6 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.MediaStore
 import android.util.Log
-import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -16,6 +15,7 @@ import android.widget.ImageView
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import com.example.myapplication12345.R
 import com.example.myapplication12345.databinding.FragmentHomeBinding
@@ -38,12 +38,15 @@ class HomeFragment : Fragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-
+        // ViewModel 초기화
         homeViewModel = ViewModelProvider(this)[HomeViewModel::class.java]
 
+        // 바인딩 초기화
         _binding = FragmentHomeBinding.inflate(inflater, container, false)
-        val root: View = binding.root
+        binding.homeViewModel = homeViewModel // XML의 homeViewModel과 연결
+        binding.lifecycleOwner = viewLifecycleOwner // LiveData 관찰을 위해 설정
 
+        val root: View = binding.root
         profileImage = binding.profileImage
 
         // 갤러리 런처 초기화
@@ -69,12 +72,12 @@ class HomeFragment : Fragment() {
             userRef.child("nickname").addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(dataSnapshot: DataSnapshot) {
                     val nickname = dataSnapshot.getValue(String::class.java)
-                    binding.nicknameText.text = nickname ?: "익명" // 기본값 "익명"으로 변경
+                    binding.nicknameText.text = nickname ?: "익명"
                 }
 
                 override fun onCancelled(databaseError: DatabaseError) {
                     Log.w("FirebaseDatabase", "loadNickname:onCancelled", databaseError.toException())
-                    binding.nicknameText.text = "익명" // 기본값 "익명"으로 변경
+                    binding.nicknameText.text = "익명"
                 }
             })
 
@@ -109,6 +112,7 @@ class HomeFragment : Fragment() {
             binding.pointText.text = "탄소 포인트: 0"
         }
 
+        // 인사말 텍스트 관찰
         homeViewModel.text.observe(viewLifecycleOwner) { newText ->
             binding.greetingText.text = newText
         }
@@ -116,19 +120,22 @@ class HomeFragment : Fragment() {
         // 더블 클릭 이벤트 처리
         profileImage.setOnClickListener {
             if (doubleClick) {
-                // 더블 클릭 시 갤러리 열기
                 openGallery()
                 doubleClick = false
             } else {
                 doubleClick = true
                 doubleHandler.postDelayed({
                     doubleClick = false
-                }, 500) // 500ms 이내에 두 번 클릭해야 더블 클릭으로 인식
+                }, 500)
             }
         }
 
+        // "다음 팁" 버튼 클릭 리스너 설정
+        binding.nextTipButton.setOnClickListener {
+            homeViewModel.showRandomTip() // HomeViewModel에 정의 필요
+        }
 
-        return inflater.inflate(R.layout.fragment_home, container, false)
+        return root
     }
 
     // 갤러리 열기
