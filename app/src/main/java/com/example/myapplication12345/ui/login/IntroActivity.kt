@@ -1,4 +1,4 @@
-package com.example.myapplication12345.auth
+package com.example.myapplication12345.ui.login
 
 import android.content.Intent
 import android.os.Bundle
