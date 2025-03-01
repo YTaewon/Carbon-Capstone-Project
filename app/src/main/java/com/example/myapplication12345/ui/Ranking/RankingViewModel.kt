@@ -1,4 +1,4 @@
-package com.example.myapplication12345.ui.Ranking
+package com.example.myapplication12345.ui.ranking
 
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
