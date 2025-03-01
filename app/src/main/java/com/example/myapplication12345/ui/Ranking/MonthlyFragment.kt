@@ -1,4 +1,4 @@
-package com.example.myapplication12345.fragments
+package com.example.myapplication12345.ui.ranking
 
 import android.os.Bundle
 import androidx.fragment.app.Fragment
@@ -16,7 +16,7 @@ import com.google.firebase.auth.ktx.auth
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.ktx.Firebase
 
-class WeeklyFragment : Fragment() {
+class MonthlyFragment : Fragment() {
     private lateinit var auth: FirebaseAuth
 
     override fun onCreateView(
@@ -41,7 +41,7 @@ class WeeklyFragment : Fragment() {
 
                 // Current time in milliseconds
                 val currentTimeMillis = System.currentTimeMillis()
-                val twentyFourHoursMillis = 7* 24 * 60 * 60 * 1000 // 7 days in milliseconds
+                val twentyFourHoursMillis = 30L * 24 * 60 * 60 * 1000 // 30days in milliseconds
 
                 for (userSnapshot in snapshot.children) {
                     val nickname = userSnapshot.child("nickname").value.toString()

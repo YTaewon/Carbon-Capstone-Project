@@ -1,4 +1,4 @@
-package com.example.myapplication12345.fragments
+package com.example.myapplication12345.ui.ranking
 
 import android.content.Intent
 import android.os.Bundle

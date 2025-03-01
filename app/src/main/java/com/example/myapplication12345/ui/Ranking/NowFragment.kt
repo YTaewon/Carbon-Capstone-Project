@@ -1,4 +1,4 @@
-package com.example.myapplication12345.fragments
+package com.example.myapplication12345.ui.ranking
 
 import android.os.Bundle
 import androidx.fragment.app.Fragment
@@ -16,7 +16,7 @@ import com.google.firebase.auth.ktx.auth
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.ktx.Firebase
 
-class MonthlyFragment : Fragment() {
+class NowFragment : Fragment() {
     private lateinit var auth: FirebaseAuth
 
     override fun onCreateView(
@@ -39,30 +39,13 @@ class MonthlyFragment : Fragment() {
             .addOnSuccessListener { snapshot ->
                 val profileList = arrayListOf<Profiles>()
 
-                // Current time in milliseconds
-                val currentTimeMillis = System.currentTimeMillis()
-                val twentyFourHoursMillis = 30L * 24 * 60 * 60 * 1000 // 30days in milliseconds
-
                 for (userSnapshot in snapshot.children) {
                     val nickname = userSnapshot.child("nickname").value.toString()
-                    var recentScore = 0
-
-                    // Iterate through scores
-                    val scoresSnapshot = userSnapshot.child("scores")
-                    for (scoreSnapshot in scoresSnapshot.children) {
-                        val scoreValue = scoreSnapshot.child("value").getValue(Int::class.java) ?: 0
-                        val timestamp = scoreSnapshot.child("timestamp").getValue(Long::class.java) ?: 0
-
-                        // Check if the score was added in the last 24 hours
-                        if (currentTimeMillis - timestamp <= twentyFourHoursMillis) {
-                            recentScore += scoreValue
-                        }
-                    }
-
-                    profileList.add(Profiles(R.drawable.user, nickname, recentScore))
+                    val score = userSnapshot.child("score").getValue(Int::class.java) ?: 0
+                    profileList.add(Profiles(R.drawable.user, nickname, score))
                 }
 
-                // Sort by score in descending order
+                // score에 따라 내림차순으로 정렬
                 profileList.sortByDescending { it.score }
 
                 recyclerView.adapter = RankingAdapter(profileList)
