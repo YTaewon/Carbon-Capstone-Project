@@ -56,7 +56,7 @@
                     android:layout_height="160dp"
                     android:layout_margin="16dp"
                     android:padding="16dp"
-                    android:background="@drawable/blue_background">
+                    android:background="@drawable/background_radius_blue">
 
                     <!-- 프로필 이미지 -->
                     <ImageView

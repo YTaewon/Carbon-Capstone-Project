@@ -6,7 +6,7 @@ import androidx.viewpager2.adapter.FragmentStateAdapter
 
 import com.example.myapplication12345.ui.home.HomeFragment
 import com.example.myapplication12345.ui.camera.CameraFragment
-import com.example.myapplication12345.fragments.RankingFragment
+import com.example.myapplication12345.ui.ranking.RankingFragment
 import com.example.myapplication12345.ui.calendar.CalendarFragment
 import com.example.myapplication12345.ui.stepper.StepperFragment
 

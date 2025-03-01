@@ -32,36 +32,39 @@
 │          IMUProcessor.java
 │          IMUUtils.java
 │
-├─auth
-│      IntroActivity.kt
-│      JoinActivity.kt
-│      LoginActivity.kt
-│
-├─fragments
-│      DailyFragment.kt
-│      MonthlyFragment.kt
-│      NowFragment.kt
-│      RankingFragment.kt
-│      WeeklyFragment.kt
-│
 ├─network
 │      BarcodeAnalyzer.kt
 │
 └─ui
+    ├─login
+    │      IntroActivity.kt             로딩 화면
+    │      JoinActivity.kt              회원 가입 화면
+    │      LoginActivity.kt             로그인 화면
+    │
+    ├─ranking
+    │      NowFragment.kt               전체 랭킹
+    │      DailyFragment.kt             24시간 랭킹
+    │      WeeklyFragment.kt            주간 랭킹
+    │      MonthlyFragment.kt           월간 랭킹
+    │      RankingFragment.kt           랭킹 백엔드
     ├─calendar
     │      MapFragment.java             지도
     │      CalendarFragment.kt          캘린더 백엔드
     │      CalendarViewModel.kt         캘린터 실행
     │
-    ├─dashboard
-    │      DashboardFragment.kt
-    │      DashboardViewModel.kt
-    │      ResultActivity.kt
+    ├─camera
+    │      CameraFragment.kt            카메라 백엔드
+    │      CameraViewModel.kt           카메라 실행
+    │      ResultActivity.kt            카메라 출력 값
     │
     ├─home
-    │      HomeFragment.kt
-    │      HomeViewModel.kt
+    │      HomeFragment.kt              홈 백엔드
+    │      HomeViewModel.kt             홈 실행
     │
-    └─Ranking
-            NoFragment.kt
-            RankingViewModel.kt
+    ├─stepper
+    │      StepperFragment.kt           만보기 백엔드
+    │      StepperViewModel.kt          만보기 실행
+    │
+    └─map
+           MapFragment.kt              맵 백엔드
+           MapViewModel.kt             맵 실행

@@ -1,4 +1,4 @@
-package com.example.myapplication12345.network
+package com.example.myapplication12345.ui.camera
 
 import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageAnalysis

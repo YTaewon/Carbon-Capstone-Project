@@ -46,16 +46,16 @@
             android:name=".MainActivity"
             android:exported="false" />
         <activity
-            android:name=".auth.JoinActivity"
+            android:name=".ui.login.JoinActivity"
             android:exported="false" />
         <activity
-            android:name=".auth.LoginActivity"
+            android:name=".ui.login.LoginActivity"
             android:exported="false" />
         <activity
-            android:name=".auth.IntroActivity"
+            android:name=".ui.login.IntroActivity"
             android:exported="false" />
 
-        <activity android:name=".ui.map.MapActivity" />
+        <activity android:name=".ui.map.MapViewModel" />
 
         <activity
             android:name=".SplashActivity"

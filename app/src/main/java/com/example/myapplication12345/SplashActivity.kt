@@ -4,7 +4,6 @@ import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.util.Log
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -12,7 +11,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import com.example.myapplication12345.auth.IntroActivity
+import com.example.myapplication12345.ui.login.IntroActivity
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
@@ -23,6 +22,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import com.example.myapplication12345.AI.SensorDataProcessor
 import com.example.myapplication12345.AI.SensorDataService
+
 import java.util.ArrayList
 
 class SplashActivity : AppCompatActivity() {

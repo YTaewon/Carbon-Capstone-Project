@@ -1,4 +1,4 @@
-package com.example.myapplication12345
+package com.example.myapplication12345.ui.ranking
 
 import android.view.LayoutInflater
 import android.view.View
@@ -7,6 +7,7 @@ import android.widget.ImageView
 import android.widget.TextView
 
 import androidx.recyclerview.widget.RecyclerView
+import com.example.myapplication12345.R
 
 class RankingAdapter(private val profileList: ArrayList<Profiles>) : RecyclerView.Adapter<RankingAdapter.CustomViewHolder>() {
 

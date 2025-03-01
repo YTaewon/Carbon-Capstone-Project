@@ -17,7 +17,7 @@ import androidx.lifecycle.ViewModelProvider
 import com.example.myapplication12345.R
 import com.example.myapplication12345.ScoreManager
 import com.example.myapplication12345.databinding.FragmentCalendarBinding
-import com.example.myapplication12345.ui.map.MapActivity
+import com.example.myapplication12345.ui.map.MapViewModel
 import com.example.myapplication12345.ui.map.MapFragment
 import java.io.File
 import java.text.SimpleDateFormat
@@ -70,7 +70,7 @@ class CalendarFragment : Fragment() {
             if (selectedPosition != -1) {
                 val selectedDay = dayList[selectedPosition]
                 val selectedDate = formatDateForFile(selectedDay.date)
-                val intent = Intent(requireContext(), MapActivity::class.java).apply {
+                val intent = Intent(requireContext(), MapViewModel::class.java).apply {
                     putExtra("selectedDate", selectedDate)
                 }
                 startActivity(intent)

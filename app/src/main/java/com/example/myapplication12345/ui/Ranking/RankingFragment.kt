@@ -11,7 +11,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.Fragment
 import com.example.myapplication12345.R
 import com.example.myapplication12345.ScoreManager
-import com.example.myapplication12345.auth.IntroActivity
+import com.example.myapplication12345.ui.login.IntroActivity
 import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.auth

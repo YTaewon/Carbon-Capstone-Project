@@ -17,7 +17,7 @@
         android:id="@+id/iv_indicator"
         android:layout_width="20dp"
         android:layout_height="2dp"
-        android:src="@drawable/calendar_circle"
+        android:src="@drawable/circle_calendar"
         android:gravity="center"
         android:visibility="invisible"/>
     
