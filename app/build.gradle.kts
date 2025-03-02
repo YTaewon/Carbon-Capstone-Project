@@ -46,6 +46,11 @@ android {
         //noinspection DataBindingWithoutKapt
         dataBinding = true
         viewBinding = true
+        compose = true
+    }
+
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.5.14" // Kotlin 1.9.24와 호환
     }
 
 }

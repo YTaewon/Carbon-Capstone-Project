@@ -7,7 +7,7 @@ import com.example.myapplication12345.ui.home.HomeFragment
 import com.example.myapplication12345.ui.dashboard.DashboardFragment
 import com.example.myapplication12345.fragments.RankingFragment
 import com.example.myapplication12345.ui.calendar.CalendarFragment
-import com.example.myapplication12345.ui.pedometer.pedometerFragment
+import com.example.myapplication12345.ui.pedometer.PedometerFragment
 
 class ViewPagerAdapter(fragmentActivity: FragmentActivity) : FragmentStateAdapter(fragmentActivity) {
     override fun getItemCount(): Int = 5
@@ -15,7 +15,7 @@ class ViewPagerAdapter(fragmentActivity: FragmentActivity) : FragmentStateAdapte
     override fun createFragment(position: Int): Fragment {
         return when (position) {
             0 -> HomeFragment()
-            1 -> pedometerFragment()
+            1 -> PedometerFragment()
             2 -> DashboardFragment()
             3 -> RankingFragment()
             4 -> CalendarFragment()
