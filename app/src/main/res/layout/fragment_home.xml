@@ -197,15 +197,6 @@
                         android:layout_marginTop="8dp"
                         android:backgroundTint="@color/green"
                         android:textColor="@color/white" />
-
-                    <Button
-                        android:id="@+id/aiButton"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="ai버튼"
-                        android:layout_marginTop="8dp"
-                        android:backgroundTint="@color/green"
-                        android:textColor="@color/white" />
                 </LinearLayout>
 
                 <!-- 성과 및 보상 섹션 -->

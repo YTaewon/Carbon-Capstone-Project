@@ -9,7 +9,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.databinding.DataBindingUtil
-import com.example.myapplication12345.CameraActivity
 import com.example.myapplication12345.MainActivity
 import com.example.myapplication12345.R
 import com.example.myapplication12345.databinding.ActivityLoginBinding

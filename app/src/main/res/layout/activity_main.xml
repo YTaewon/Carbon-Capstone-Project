@@ -12,7 +12,7 @@
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="80dp"
-            android:background="@color/headerBackground"
+            android:background="@color/default_green"
             android:padding="16dp">
 
             <ImageView
@@ -46,7 +46,9 @@
             android:id="@+id/bottomNavigation"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            app:menu="@menu/bottom_nav_menu" />
+            app:menu="@menu/bottom_nav_menu"
+            app:itemTextColor="@color/default_green"
+            app:itemIconTint="@color/default_green"/>
 
     </LinearLayout>
 </layout>

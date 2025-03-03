@@ -17,6 +17,7 @@
 
     <!-- 헤더 배경색 -->
     <color name="headerBackground">#388E3C</color> <!-- 친환경을 상징하는 녹색 -->
+    <color name="default_green">#388E3C</color> <!-- 기본 녹색 색상 -->
 
     <!-- 진행 상황 표시 색상 -->
     <color name="green">#4CAF50</color> <!-- 진한 녹색 진행 바 -->
