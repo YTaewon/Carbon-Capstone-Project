@@ -46,7 +46,13 @@ android {
         //noinspection DataBindingWithoutKapt
         dataBinding = true
         viewBinding = true
+        compose = true
     }
+
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.5.14" // Kotlin 1.9.24와 호환
+    }
+
 }
 
 dependencies {
@@ -119,6 +125,7 @@ dependencies {
     implementation ("com.jakewharton.timber:timber:5.0.1")
 
     // Compose 관련 의존성
+
     implementation(platform("androidx.compose:compose-bom:2024.01.00"))
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
     implementation("androidx.activity:activity-compose:1.8.2")
