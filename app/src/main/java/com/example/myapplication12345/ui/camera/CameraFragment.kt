@@ -78,27 +78,28 @@ class CameraFragment : Fragment() {
     private fun startCamera() {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(requireContext())
         cameraProviderFuture.addListener({
-            val cameraProvider = cameraProviderFuture.get()
+            _binding?.let { binding ->  // Null 체크 추가
+                val cameraProvider = cameraProviderFuture.get()
+                val preview = Preview.Builder().build().also {
+                    it.setSurfaceProvider(binding.cameraPreview.surfaceProvider)
+                }
+                imageCapture = ImageCapture.Builder().build()
+                val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
-            val preview = Preview.Builder().build().also {
-                it.setSurfaceProvider(binding.cameraPreview.surfaceProvider)
-            }
-
-            imageCapture = ImageCapture.Builder().build()
-
-            val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
-
-            try {
-                cameraProvider.unbindAll()
-                cameraProvider.bindToLifecycle(
-                    viewLifecycleOwner,
-                    cameraSelector,
-                    preview,
-                    imageCapture
-                )
-            } catch (exc: Exception) {
-                Timber.e(exc, "카메라 바인딩 실패")
-                Toast.makeText(requireContext(), "카메라 시작에 실패했습니다.", Toast.LENGTH_SHORT).show()
+                try {
+                    cameraProvider.unbindAll()
+                    cameraProvider.bindToLifecycle(
+                        viewLifecycleOwner,
+                        cameraSelector,
+                        preview,
+                        imageCapture
+                    )
+                } catch (exc: Exception) {
+                    Timber.e(exc, "카메라 바인딩 실패")
+                    Toast.makeText(requireContext(), "카메라 시작에 실패했습니다.", Toast.LENGTH_SHORT).show()
+                }
+            } ?: run {
+                Timber.w("Binding is null, camera setup skipped")
             }
         }, ContextCompat.getMainExecutor(requireContext()))
     }
