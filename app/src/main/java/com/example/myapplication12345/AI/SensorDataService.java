@@ -41,7 +41,7 @@ import java.util.concurrent.Executors;
 public class SensorDataService extends Service {
     private static final int PROCESS_INTERVAL_01 = 1000; // 1초 간격
     private static final int IMU_INTERVAL_MS = 10; // 10ms 간격
-    private static final int MAX_IMU_PER_SECOND = 100; // 1초에 최대 25개
+    private static final int MAX_IMU_PER_SECOND = 100; // 1초에 최대 100개
     private static final int INITIAL_DELAY_MS = 3000; // 최초 3초 지연
     private static final String TAG = "SensorDataService";
 
@@ -139,7 +139,6 @@ public class SensorDataService extends Service {
             }
         }
     }
-
     private void collectBTSData(long timestamp) {
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_PHONE_STATE)
                 == PackageManager.PERMISSION_GRANTED) {
@@ -203,15 +202,16 @@ public class SensorDataService extends Service {
 
         final List<Map<String, Object>> imuDataBuffer = new ArrayList<>(MAX_IMU_PER_SECOND);
         final long startTime = timestamp;
+        final boolean[] isFirstLogged = {false};
 
         class SensorDataHolder {
-            float[] accel = new float[3];
-            float[] gyro = new float[3];
-            float[] mag = new float[3];
-            float[] rot = new float[4];
-            float[] pressure = new float[1];
-            float[] gravity = new float[3];
-            float[] linear = new float[3];
+            final float[] accel = new float[3];
+            final float[] gyro = new float[3];
+            final float[] mag = new float[3];
+            final float[] rot = new float[4];
+            final float[] pressure = new float[1];
+            final float[] gravity = new float[3];
+            final float[] linear = new float[3];
             boolean accelSet, gyroSet, magSet, rotSet, pressureSet, gravitySet, linearSet;
 
             void update(SensorEvent event) {
@@ -284,7 +284,8 @@ public class SensorDataService extends Service {
                     } else {
                         Log.d(TAG, "IMU 데이터 저장: " + imuDataBuffer.size() + "개");
                         for (Map<String, Object> data : imuDataBuffer) {
-                            saveToCSV("IMU", data);
+                            saveToCSV("IMU", data, !isFirstLogged[0]);
+                            isFirstLogged[0] = true;
                         }
                     }
                     imuDataBuffer.clear();
@@ -293,7 +294,7 @@ public class SensorDataService extends Service {
 
                 if (sensorData.isAllSet()) {
                     Map<String, Object> data = new LinkedHashMap<>(20);
-                    data.put("timestamp", startTime);
+                    data.put("timestamp", timestamp);
                     data.put("accel.x", sensorData.accel[0]);
                     data.put("accel.y", sensorData.accel[1]);
                     data.put("accel.z", sensorData.accel[2]);
@@ -328,6 +329,10 @@ public class SensorDataService extends Service {
     }
 
     private void saveToCSV(String sensorType, Map<String, Object> data) {
+        saveToCSV(sensorType, data, true);
+    }
+
+    private void saveToCSV(String sensorType, Map<String, Object> data, boolean shouldLog) {
         executorService.execute(() -> {
             try {
                 File directory = new File(getExternalFilesDir(null), "SensorData");
@@ -354,7 +359,6 @@ public class SensorDataService extends Service {
                     StringBuilder line = new StringBuilder(data.size() * 10);
                     for (Object value : data.values()) {
                         if (line.length() > 0) line.append(",");
-                        // timestamp는 소수점 없이 기록
                         if (value instanceof Long) {
                             line.append(Long.toString((Long) value));
                         } else {
@@ -362,13 +366,33 @@ public class SensorDataService extends Service {
                         }
                     }
                     writer.append(line.toString()).append("\n");
-//                    Log.d(TAG, sensorType + " CSV 데이터 기록: " + line.toString());
+
+//                    if (shouldLog) {
+//                        switch (sensorType) {
+//                            case "AP":
+//                                Log.d(TAG, "AP CSV 데이터 기록: " + line.toString());
+//                                break;
+//                            case "BTS":
+//                                Log.d(TAG, "BTS CSV 데이터 기록: " + line.toString());
+//                                break;
+//                            case "GPS":
+//                                Log.d(TAG, "GPS CSV 데이터 기록: " + line.toString());
+//                                break;
+//                            case "IMU":
+//                                Log.d(TAG, "IMU CSV 데이터 기록 (첫 번째): " + line.toString());
+//                                break;
+//                            default:
+//                                Log.w(TAG, "알 수 없는 센서 타입: " + sensorType);
+//                                break;
+//                        }
+//                    }
                 }
             } catch (IOException e) {
                 Log.e(TAG, "CSV 저장 실패: " + sensorType, e);
             }
         });
     }
+
     @Override
     public void onDestroy() {
         super.onDestroy();

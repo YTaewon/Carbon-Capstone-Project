@@ -7,37 +7,34 @@ import java.util.Map;
 
 public class IMUProcessoing {
 
-    public static Map<String, double[][]> processingImu(
-            double[][][] sensor, 
-            int numChannels, 
-            boolean statFeatures, 
+    /**
+     * IMU 데이터 처리
+     */
+    public static Map<String, float[][]> processingImu(
+            float[][][] sensor,
+            int numChannels,
+            boolean statFeatures,
             boolean spectralFeatures,
-            String process, 
-            boolean processEachAxis, 
+            String process,
+            boolean processEachAxis,
             boolean calculateJerk,
-            double[][][] rotation, 
-            double[][][] gravity, 
-            String prefix) 
-        {
-        //System.out.println("Starting :" + prefix);
+            float[][][] rotation,
+            float[][][] gravity,
+            String prefix) {
         if (sensor == null || sensor.length == 0) {
-            System.err.println("⚠ Warning: " + prefix + " 센서 데이터가 비어 있습니다.");
-            return new HashMap<>();  // ✅ 빈 배열 반환
+            return new HashMap<>();
         }
 
         int rows = sensor.length;
         int cols = sensor[0].length;
 
         if (cols == 0) {
-            System.err.println("⚠ Warning: " + prefix + " 데이터 크기가 잘못되었습니다.");
-            return new HashMap<>();  // ✅ 빈 배열 반환
+            return new HashMap<>();
         }
-        
-        double[][] x = new double[rows][cols];
-        double[][] y = new double[rows][cols];
-        double[][] z = new double[rows][cols];
 
-        //System.out.println("Debug: processingImu() called with input size: " + rows + "x" + cols);
+        float[][] x = new float[rows][cols];
+        float[][] y = new float[rows][cols];
+        float[][] z = new float[rows][cols];
 
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
@@ -49,131 +46,124 @@ public class IMUProcessoing {
             }
         }
 
-        double[][] magnitude;
-        Map<String, double[][]> jerk = null;
+        float[][] magnitude;
+        Map<String, float[][]> jerk = null;
 
-        //System.out.println("Debug: Processing type - " + process);
+        // process가 null일 경우 기본값 설정
+        String safeProcess = process != null ? process : "default";
 
-        if ("rotate".equals(process)) {
-            //System.out.println("Debug: Applying rotation transformation...");
-            double[][][] rotated = IMUUtils.rotateAxis(x, y, z, rotation);
-            x = rotated[0];
-            y = rotated[1];
-            z = rotated[2];
-            magnitude = IMUFeatureExtractor.magnitude(x, y, z);
-        } else if ("horizontal".equals(process)) {
-            //System.out.println("Debug: Calculating horizontal component...");
-            double[][] theta = IMUUtils.calculateAngle(x, y, z, gravity);
-            magnitude = IMUFeatureExtractor.magnitude(x, y, z);
-            for (int i = 0; i < rows; i++) {
-                for (int j = 0; j < cols; j++) {
-                    magnitude[i][j] *= Math.cos(theta[i][j]);
+        // 처리 유형에 따라 데이터 변환
+        switch (safeProcess) {
+            case "rotate":
+                float[][][] rotated = com.example.myapplication12345.AI.IMU.IMUUtils.rotateAxis(x, y, z, rotation);
+                x = rotated[0];
+                y = rotated[1];
+                z = rotated[2];
+                magnitude = IMUFeatureExtractor.magnitude(x, y, z);
+                break;
+            case "horizontal":
+                float[][] thetaH = com.example.myapplication12345.AI.IMU.IMUUtils.calculateAngle(x, y, z, gravity);
+                magnitude = IMUFeatureExtractor.magnitude(x, y, z);
+                for (int i = 0; i < rows; i++) {
+                    for (int j = 0; j < cols; j++) {
+                        magnitude[i][j] *= (float) Math.cos(thetaH[i][j]);
+                    }
                 }
-            }
-            if(calculateJerk){
-                //System.out.println("Debug: Calculating Jerk...");
-                jerk = IMUUtils.diff(magnitude);
-            }
-        } else if ("vertical".equals(process)) {
-            //System.out.println("Debug: Calculating vertical component...");
-            double[][] theta = IMUUtils.calculateAngle(x, y, z, gravity);
-            magnitude = IMUFeatureExtractor.magnitude(x, y, z);
-            for (int i = 0; i < rows; i++) {
-                for (int j = 0; j < cols; j++) {
-                    magnitude[i][j] *= Math.sin(theta[i][j]);
+                if (calculateJerk) {
+                    jerk = com.example.myapplication12345.AI.IMU.IMUUtils.diff(magnitude);
                 }
-            }
-            if(calculateJerk){
-                //System.out.println("Debug: Calculating Jerk...");
-                jerk = IMUUtils.diff(magnitude);
-            }
-        } else {
-            //System.out.println("Debug: No processing applied, using raw magnitude...");
-            magnitude = IMUFeatureExtractor.magnitude(x, y, z);
+                break;
+            case "vertical":
+                float[][] thetaV = com.example.myapplication12345.AI.IMU.IMUUtils.calculateAngle(x, y, z, gravity);
+                magnitude = IMUFeatureExtractor.magnitude(x, y, z);
+                for (int i = 0; i < rows; i++) {
+                    for (int j = 0; j < cols; j++) {
+                        magnitude[i][j] *= (float) Math.sin(thetaV[i][j]);
+                    }
+                }
+                if (calculateJerk) {
+                    jerk = com.example.myapplication12345.AI.IMU.IMUUtils.diff(magnitude);
+                }
+                break;
+            default:
+                magnitude = IMUFeatureExtractor.magnitude(x, y, z);
+                break;
         }
 
-        //System.out.println("Debug: Magnitude computation completed.");
+        Map<String, float[][]> features;
+        Map<String, float[][]> statFeaturesData = null;
+        Map<String, float[][]> spectralFeaturesData = null;
 
-        Map<String, double[][]> features ;
-        Map<String, double[][]> statFeaturesData = null;
-        Map<String, double[][]> spectralFeaturesData = null;
-
+        // 통계 특징 계산
         if (statFeatures) {
-            System.out.println("Debug: Extracting statistical features...");
             statFeaturesData = IMUFeatureExtractor.calculateStatFeatures(magnitude, prefix + "M");
             if (processEachAxis && numChannels > 1) {
-                Map<String, double[][]> statFeaturesX = IMUFeatureExtractor.calculateStatFeatures(x, prefix + "X");
-                Map<String, double[][]> statFeaturesY = IMUFeatureExtractor.calculateStatFeatures(y, prefix + "Y");
-                Map<String, double[][]> statFeaturesZ = IMUFeatureExtractor.calculateStatFeatures(z, prefix + "Z");
+                Map<String, float[][]> statFeaturesX = IMUFeatureExtractor.calculateStatFeatures(x, prefix + "X");
+                Map<String, float[][]> statFeaturesY = IMUFeatureExtractor.calculateStatFeatures(y, prefix + "Y");
+                Map<String, float[][]> statFeaturesZ = IMUFeatureExtractor.calculateStatFeatures(z, prefix + "Z");
                 statFeaturesData = concatenateArrays(statFeaturesData, statFeaturesX, statFeaturesY, statFeaturesZ);
             }
         }
 
+        // 주파수 특징 계산
         if (spectralFeatures) {
-            //System.out.println("Debug: Extracting spectral features...");
             spectralFeaturesData = IMUFeatureExtractor.calculateSpectralFeatures(magnitude, prefix + "M");
             if (processEachAxis && numChannels > 1) {
-                Map<String, double[][]> spectralFeaturesX = IMUFeatureExtractor.calculateSpectralFeatures(x, prefix + "X");
-                Map<String, double[][]> spectralFeaturesY = IMUFeatureExtractor.calculateSpectralFeatures(y, prefix + "Y");
-                Map<String, double[][]> spectralFeaturesZ = IMUFeatureExtractor.calculateSpectralFeatures(z, prefix + "Z");
+                Map<String, float[][]> spectralFeaturesX = IMUFeatureExtractor.calculateSpectralFeatures(x, prefix + "X");
+                Map<String, float[][]> spectralFeaturesY = IMUFeatureExtractor.calculateSpectralFeatures(y, prefix + "Y");
+                Map<String, float[][]> spectralFeaturesZ = IMUFeatureExtractor.calculateSpectralFeatures(z, prefix + "Z");
                 spectralFeaturesData = concatenateArrays(spectralFeaturesData, spectralFeaturesX, spectralFeaturesY, spectralFeaturesZ);
             }
         }
 
+        // 결과 병합
         if (statFeatures && spectralFeatures) {
             features = concatenateArrays(statFeaturesData, spectralFeaturesData);
-            //System.out.println("Debug: Statistical and Spectral Features Returned");
         } else if (statFeatures) {
             features = statFeaturesData;
-            //System.out.println("Debug: Statistical Features Returned");
         } else if (spectralFeatures) {
             features = spectralFeaturesData;
-            //System.out.println("Debug: Spectral Features Returned");
         } else {
-            features = new HashMap<>();  // ✅ 모든 데이터가 없을 경우 빈 배열 반환
+            features = new HashMap<>(); // 특징이 없으면 빈 맵 반환
         }
-        
-        // ✅ Jerk 데이터를 최종 피처셋에 추가
-        if (calculateJerk) {
-            features = concatenateArrays(features, jerk);
-           // System.out.println("Debug: Jerk Features Added");
+
+        // Jerk 데이터 추가
+        if (calculateJerk && jerk != null) {
+            features.putAll(jerk);
         }
         return features;
     }
-
     /**
-     * 2D 배열을 가로 방향으로 병합
+     * 여러 맵의 2D 배열을 키별로 병합
      */
     @SafeVarargs
-    private static Map<String, double[][]> concatenateArrays(Map<String, double[][]>... maps) {
-        Map<String, List<double[][]>> combinedMap = new HashMap<>();
+    private static Map<String, float[][]> concatenateArrays(Map<String, float[][]>... maps) {
+        Map<String, List<float[][]>> combinedMap = new HashMap<>();
 
-        // Extract and combine arrays from each map by key
-        for (Map<String, double[][]> mapData : maps) {
-            for (Map.Entry<String, double[][]> entry : mapData.entrySet()) {
+        // 각 맵에서 배열 추출 및 결합
+        for (Map<String, float[][]> mapData : maps) {
+            for (Map.Entry<String, float[][]> entry : mapData.entrySet()) {
                 String key = entry.getKey();
-                double[][] array = entry.getValue();
+                float[][] array = entry.getValue();
 
                 if (array != null && array.length > 0 && array[0].length > 0) {
-                    combinedMap
-                        .computeIfAbsent(key, k -> new ArrayList<>())
-                        .add(array);
+                    combinedMap.computeIfAbsent(key, k -> new ArrayList<>()).add(array);
                 }
             }
         }
 
-        // Create the result map with concatenated arrays
-        Map<String, double[][]> resultMap = new HashMap<>();
-        for (Map.Entry<String, List<double[][]>> entry : combinedMap.entrySet()) {
+        // 병합된 배열 생성
+        Map<String, float[][]> resultMap = new HashMap<>();
+        for (Map.Entry<String, List<float[][]>> entry : combinedMap.entrySet()) {
             String key = entry.getKey();
-            List<double[][]> arrays = entry.getValue();
+            List<float[][]> arrays = entry.getValue();
 
             int rows = arrays.get(0).length;
             int totalCols = arrays.stream().mapToInt(a -> a[0].length).sum();
 
-            double[][] concatenatedArray = new double[rows][totalCols];
+            float[][] concatenatedArray = new float[rows][totalCols];
             int colOffset = 0;
-            for (double[][] array : arrays) {
+            for (float[][] array : arrays) {
                 for (int i = 0; i < rows; i++) {
                     System.arraycopy(array[i], 0, concatenatedArray[i], colOffset, array[i].length);
                 }

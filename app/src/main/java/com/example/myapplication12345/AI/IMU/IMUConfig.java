@@ -4,16 +4,17 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class IMUConfig {
     private static final Map<String, Integer> SENSOR_CHANNELS = new HashMap<>();
-    private static final Map<String, Boolean> SENSOR_ENABLED = new HashMap<>();
+    private static final ThreadLocal<Map<String, Boolean>> SENSOR_ENABLED = ThreadLocal.withInitial(HashMap::new);
     private static final Map<String, String> SENSOR_PROCESS_TYPE = new HashMap<>();
     private static final Map<String, Boolean> SENSOR_PROCESS_EACH_AXIS = new HashMap<>();
     private static final Map<String, Boolean> SENSOR_STAT_FEATURES = new HashMap<>();
     private static final Map<String, Boolean> SENSOR_SPECTRAL_FEATURES = new HashMap<>();
     private static final Map<String, Boolean> SENSOR_CALCULATE_JERK = new HashMap<>();
-    private static final Map<String, String> SENSOR_USING_DATA = new HashMap<>(); 
+    private static final Map<String, String> SENSOR_USING_DATA = new HashMap<>();
 
     static {
         // ✅ 센서 채널 개수 설정
@@ -29,61 +30,61 @@ public class IMUConfig {
         List<String> enabledSensors = Arrays.asList("gyro", "accel", "linear_accel", "accel_h", "accel_v", "jerk_h",
                 "jerk_v", "mag", "gravity", "pressure");
         for (String sensor : enabledSensors) {
-            SENSOR_ENABLED.put(sensor, true);
+            Objects.requireNonNull(SENSOR_ENABLED.get()).put(sensor, true);
         }
 
         // ✅ 센서별 특징 추출 및 처리 방식 설정
         setSensorConfig(
-            "gyro",
-            "gyro", 
-            true,
+                "gyro",
+                "gyro",
+                true,
                 null);
         setSensorConfig(
-            "accel",
-            "accel",
-            true,
+                "accel",
+                "accel",
+                true,
                 "rotate");
         setSensorConfig(
-            "linear_accel",
-            "linear_accel", 
-            false,
+                "linear_accel",
+                "linear_accel",
+                false,
                 "rotate");
         setSensorConfig(
-            "accel_h",
-            "linear_accel",
-            false,
+                "accel_h",
+                "linear_accel",
+                false,
                 "horizontal");
         setSensorConfig(
-            "accel_v",
-            "linear_accel", 
-            false,
+                "accel_v",
+                "linear_accel",
+                false,
                 "vertical");
         setSensorConfig(
-            "jerk_h",
-            "linear_accel", 
-            false,
+                "jerk_h",
+                "linear_accel",
+                false,
                 "horizontal",
-            true);
+                true);
         setSensorConfig(
-            "jerk_v",
-            "linear_accel", 
-            false,
+                "jerk_v",
+                "linear_accel",
+                false,
                 "vertical",
-            true);
+                true);
         setSensorConfig(
-            "mag",
-            "mag", 
-            true,
+                "mag",
+                "mag",
+                true,
                 null);
         setSensorConfig(
-            "gravity",
-            "gravity", 
-            true,
+                "gravity",
+                "gravity",
+                true,
                 null);
         setSensorConfig(
-            "pressure",
-            "pressure", 
-            false,
+                "pressure",
+                "pressure",
+                false,
                 null);
     }
 
@@ -101,23 +102,24 @@ public class IMUConfig {
     }
 
     public static int getSensorChannels(String sensor) {
-        return SENSOR_CHANNELS.getOrDefault(sensor, 0);
+        var orDefault = SENSOR_CHANNELS.getOrDefault(sensor, 0);
+        return orDefault;
     }
 
     public static boolean isProcessEachAxis(String sensor) {
-        return SENSOR_PROCESS_EACH_AXIS.getOrDefault(sensor, false);
+        return Boolean.TRUE.equals(SENSOR_PROCESS_EACH_AXIS.getOrDefault(sensor, false));
     }
 
     public static boolean isStatFeaturesEnabled(String sensor) {
-        return SENSOR_STAT_FEATURES.getOrDefault(sensor, false);
+        return Boolean.TRUE.equals(SENSOR_STAT_FEATURES.getOrDefault(sensor, false));
     }
 
     public static boolean isSpectralFeaturesEnabled(String sensor) {
-        return SENSOR_SPECTRAL_FEATURES.getOrDefault(sensor, false);
+        return Boolean.TRUE.equals(SENSOR_SPECTRAL_FEATURES.getOrDefault(sensor, false));
     }
 
     public static boolean isCalculateJerkEnabled(String sensor) {
-        return SENSOR_CALCULATE_JERK.getOrDefault(sensor, false);
+        return Boolean.TRUE.equals(SENSOR_CALCULATE_JERK.getOrDefault(sensor, false));
     }
 
     public static String getProcessType(String sensor) {

@@ -1,50 +1,71 @@
 package com.example.myapplication12345.AI.AP;
 
 import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public class APProcessor {
+    private static final long ONE_MINUTE_MS = 60 * 1000;
+    private static final long TEN_MINUTES_MS = 10 * ONE_MINUTE_MS;
+
     public static List<Map<String, Object>> processAP(List<Map<String, Object>> apData, long startTimestamp) {
         List<Map<String, Object>> results = new ArrayList<>();
-        long step = 60 * 1000; // 60초(1분) 단위 처리
-        boolean hasData = false; // wifi_cnt > 0인 데이터가 있는지 확인하는 변수
 
-        synchronized (apData) { // ✅ 동기화 블록
-            for (long curTime = startTimestamp; curTime < startTimestamp + 10 * 60 * 1000; curTime += step) {
-                long windowStart = curTime;
-                long windowEnd = curTime + step;
+        // 데이터가 없으면 조기 반환
+        if (apData == null || apData.isEmpty()) {
+            Map<String, Object> emptyResult = new HashMap<>(2); // 초기 용량 지정
+            emptyResult.put("timestamp", startTimestamp);
+            emptyResult.put("wifi_cnt", 0);
+            results.add(emptyResult);
+            return results;
+        }
 
-                // ✅ 현재 간격 내 데이터 필터링
-                Set<String> uniqueBSSIDs = new HashSet<>();
-                for (Map<String, Object> record : apData) {
-                    long timestamp = (long) record.get("timestamp");
-                    if (timestamp >= windowStart && timestamp < windowEnd) {
-                        Object bssidObj = record.getOrDefault("bssid", "N/A");
-                        String bssid = bssidObj instanceof String ? (String) bssidObj : String.valueOf(bssidObj);
-                        uniqueBSSIDs.add(bssid);
-                    }
+        // 시간대별 고유 BSSID 미리 계산
+        Map<Long, Map<String, Boolean>> timeWindowBssids = new HashMap<>();
+        long endTimestamp = startTimestamp + TEN_MINUTES_MS;
+
+        synchronized (apData) {
+            // 먼저 각 시간대별 고유 BSSID 수집
+            for (Map<String, Object> record : apData) {
+                long timestamp = (long) record.get("timestamp");
+                if (timestamp < startTimestamp || timestamp >= endTimestamp) {
+                    continue; // 범위 밖의 데이터 스킵
                 }
 
-                float wifiCount = uniqueBSSIDs.size();
-                if (wifiCount > 0) {
-                    hasData = true; // wifi_cnt가 0보다 큰 값이 하나라도 있으면 true 설정
-                    Map<String, Object> result = new LinkedHashMap<>(); // 순서 보장
-                    result.put("timestamp", curTime);
-                    result.put("wifi_cnt", wifiCount); // 고유한 AP 개수
-                    results.add(result);
-                }
+                // 시간대 식별
+                long timeWindow = startTimestamp + ((timestamp - startTimestamp) / ONE_MINUTE_MS) * ONE_MINUTE_MS;
+
+                // 해당 시간대 맵 조회 또는 생성
+                Map<String, Boolean> bssids = timeWindowBssids.computeIfAbsent(timeWindow, k -> new HashMap<>());
+
+                // BSSID 추가
+                Object bssidObj = record.getOrDefault("bssid", "N/A");
+                String bssid = bssidObj instanceof String ? (String) bssidObj : String.valueOf(bssidObj);
+                bssids.put(bssid, Boolean.TRUE);
             }
         }
 
-        // ✅ 모든 결과가 비어 있으면 "wifi_cnt: 0" 한 번만 추가
+        // 시간대별 결과 생성
+        boolean hasData = false;
+
+        for (long curTime = startTimestamp; curTime < endTimestamp; curTime += ONE_MINUTE_MS) {
+            Map<String, Boolean> bssids = timeWindowBssids.get(curTime);
+
+            if (bssids != null && !bssids.isEmpty()) {
+                hasData = true;
+                Map<String, Object> result = new HashMap<>(2);
+                result.put("timestamp", curTime);
+                result.put("wifi_cnt", (float) bssids.size());
+                results.add(result);
+            }
+        }
+
+        // 데이터가 없으면 빈 결과 추가
         if (!hasData) {
-            Map<String, Object> emptyResult = new LinkedHashMap<>(); // 순서 보장
+            Map<String, Object> emptyResult = new HashMap<>(2);
             emptyResult.put("timestamp", startTimestamp);
-            emptyResult.put("wifi_cnt", 0);
+            emptyResult.put("wifi_cnt", 0f);
             results.add(emptyResult);
         }
 

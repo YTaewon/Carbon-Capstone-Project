@@ -1,5 +1,6 @@
 package com.example.myapplication12345.AI.IMU;
 
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -12,68 +13,60 @@ import java.util.Set;
 import java.util.TreeSet;
 
 public class IMUProcessor {
+
+    /**
+     * IMU 데이터를 전처리하여 반환
+     */
     public static List<Map<String, Object>> preImu(List<Map<String, Object>> imu) {
         if (imu == null || imu.isEmpty()) {
             throw new IllegalArgumentException("⚠ IMU 데이터가 비어 있습니다! CSV 파일을 확인하세요.");
         }
 
-        // ✅ 센서 목록 정렬
         List<String> sensors = Arrays.asList("gyro", "accel", "mag", "rot", "pressure", "gravity", "linear_accel");
-
         List<String> enabledSensors = Arrays.asList("gyro", "accel", "linear_accel", "accel_h", "accel_v", "jerk_h",
                 "jerk_v", "mag", "gravity", "pressure");
 
-        Map<String, Integer> channels = new HashMap<>();
-
+        Map<String, Integer> channels = new HashMap<>(sensors.size());
         for (String sensor : sensors) {
             channels.put(sensor, getSensorChannelCount(sensor));
         }
-        imu = extendIMUDataByTimestamp(imu);
-        Collections.sort(sensors);
 
-        // ✅ 센서 데이터 초기화
-        Map<String, double[][][]> dfs = new HashMap<>();
+        imu = extendIMUDataByTimestamp(imu);
+
+        Map<String, float[][][]> dfs = new HashMap<>(sensors.size());
         for (String sensor : sensors) {
             dfs.put(sensor, null);
         }
 
-        // ✅ 센서별 데이터 분할 및 변환
         for (String sensor : sensors) {
             String usingSensorData = IMUConfig.getUsingSensorData(sensor);
             if (usingSensorData == null) {
-                usingSensorData = sensor; // 기본적으로 자신을 사용
+                usingSensorData = sensor;
             }
-            double[][] cutData = cutImu(usingSensorData, channels.get(usingSensorData), imu);
-            int cols = cutData[0].length;
-            //System.out.println("Debug: " + sensor + " to "+ usingSensorData +" has " + cols + " columns");
-
-            // 3D 배열 변환 (-1, 100, cols)
-
-            double[][][] reshapedData = reshapeData(cutData, cols);
+            float[][] cutData = cutImu(usingSensorData, channels.get(usingSensorData), imu);
+            float[][][] reshapedData = reshapeData(cutData, cutData[0].length);
             dfs.put(sensor, reshapedData);
         }
 
-        // ✅ 최종 데이터 병합 준비 (타임스탬프 추가)
-        Map<String, Object> calcDfs = new HashMap<>();
+        Map<String, Object> calcDfs = new HashMap<>(enabledSensors.size() + 1);
         calcDfs.putAll(getUniqueTimestamps(imu));
 
-        // ✅ `processingImu()` 호출하여 데이터 전처리 수행
         for (String sensor : enabledSensors) {
             int numChannels = IMUConfig.getSensorChannels(sensor);
-            boolean configStatFeatures = IMUConfig.isStatFeaturesEnabled(sensor);  // ✅ 변수명 변경
-            boolean configSpectralFeatures = IMUConfig.isSpectralFeaturesEnabled(sensor);
-            boolean configProcessEachAxis = IMUConfig.isProcessEachAxis(sensor);
-            boolean configCalculateJerk = IMUConfig.isCalculateJerkEnabled(sensor);
-            String configProcess = IMUConfig.getProcessType(sensor);
+            boolean statFeatures = IMUConfig.isStatFeaturesEnabled(sensor);
+            boolean spectralFeatures = IMUConfig.isSpectralFeaturesEnabled(sensor);
+            boolean processEachAxis = IMUConfig.isProcessEachAxis(sensor);
+            boolean calculateJerk = IMUConfig.isCalculateJerkEnabled(sensor);
+            String process = IMUConfig.getProcessType(sensor);
 
-            Map<String, double[][]> processed = IMUProcessoing.processingImu(
+            Map<String, float[][]> processed = IMUProcessoing.processingImu(
                     dfs.get(IMUConfig.getUsingSensorData(sensor)),
                     numChannels,
-                    configStatFeatures,
-                    configSpectralFeatures,
-                    configProcess,
-                    configProcessEachAxis,
-                    configCalculateJerk,
+                    statFeatures,
+                    spectralFeatures,
+                    process,
+                    processEachAxis,
+                    calculateJerk,
                     dfs.get("rot"),
                     dfs.get("gravity"),
                     sensor
@@ -81,30 +74,29 @@ public class IMUProcessor {
             calcDfs.putAll(processed);
         }
 
-        // ✅ 최종 데이터 병합 후 반환
         return processData(concatenateAll(calcDfs));
     }
 
-    public static List<Map<String, Object>> extendIMUDataByTimestamp(List<Map<String, Object>> imuData) {
-        // 그룹화된 데이터 저장
-        Map<Long, List<Map<String, Object>>> groupedByTimestamp = new HashMap<>();
+    /**
+     * 타임스탬프 기준으로 IMU 데이터 확장 (100개로 맞춤)
+     */
+    private static List<Map<String, Object>> extendIMUDataByTimestamp(List<Map<String, Object>> imuData) {
+        Map<Long, List<Map<String, Object>>> groupedByTimestamp = new HashMap<>(imuData.size() / 10);
+        Random random = new Random();
 
-        // 각 행을 timestamp 기준으로 그룹화
         for (Map<String, Object> entry : imuData) {
             long timestamp = getFirstValueAsLong(entry.get("timestamp"));
             groupedByTimestamp.computeIfAbsent(timestamp, k -> new ArrayList<>()).add(entry);
         }
 
-        List<Map<String, Object>> extendedData = new ArrayList<>();
-
-        // 각 그룹에 대해 100개가 될 때까지 복제
-        for (Map.Entry<Long, List<Map<String, Object>>> entry : groupedByTimestamp.entrySet()) {
-            List<Map<String, Object>> group = entry.getValue();
-            while (group.size() < 100) {
-                // 랜덤하게 복제
-                int randomIndex = new Random().nextInt(group.size());
-                Map<String, Object> clonedEntry = new HashMap<>(group.get(randomIndex));
-                group.add(clonedEntry);
+        List<Map<String, Object>> extendedData = new ArrayList<>(imuData.size());
+        for (List<Map<String, Object>> group : groupedByTimestamp.values()) {
+            int size = group.size();
+            if (size < 100) {
+                for (int i = size; i < 100; i++) {
+                    int randomIndex = random.nextInt(size);
+                    group.add(new HashMap<>(group.get(randomIndex)));
+                }
             }
             extendedData.addAll(group);
         }
@@ -112,87 +104,74 @@ public class IMUProcessor {
         return extendedData;
     }
 
-    public static List<Map<String, Object>> processData(Map<String, Object> dataMap) {
-        List<Map<String, Object>> resultList = new ArrayList<>();
-
-        int numRows = dataMap.isEmpty() ? 0 : ((double[][]) dataMap.values().iterator().next()).length;
+    /**
+     * 병합된 데이터를 리스트 형태로 변환
+     */
+    private static List<Map<String, Object>> processData(Map<String, Object> dataMap) {
+        if (dataMap.isEmpty()) return Collections.emptyList();
+        int numRows = ((float[][]) dataMap.values().iterator().next()).length;
+        List<Map<String, Object>> resultList = new ArrayList<>(numRows);
 
         for (int rowIndex = 0; rowIndex < numRows; rowIndex++) {
             Map<String, Object> entry = new LinkedHashMap<>();
-
             for (String header : predefinedHeaders) {
-                if (dataMap.containsKey(header)) {
-                    Object data = dataMap.get(header);
-
-                    if (data instanceof double[][]) {
-                        double[][] doubleData = (double[][]) data;
-                        if (rowIndex < doubleData.length && doubleData[rowIndex].length == 1) {
-                            entry.put(header, doubleData[rowIndex][0]);
-                        }
-                    } else if (data instanceof long[][]) {
-                        long[][] longData = (long[][]) data;
-                        if (rowIndex < longData.length && longData[rowIndex].length == 1) {
-                            entry.put(header, longData[rowIndex][0]);
-                        }
-                    }
+                Object data = dataMap.get(header);
+                if (data instanceof float[][] && rowIndex < ((float[][]) data).length && ((float[][]) data)[rowIndex].length == 1) {
+                    entry.put(header, ((float[][]) data)[rowIndex][0]);
+                } else if (data instanceof long[][] && rowIndex < ((long[][]) data).length && ((long[][]) data)[rowIndex].length == 1) {
+                    entry.put(header, ((long[][]) data)[rowIndex][0]);
                 }
             }
-
             resultList.add(entry);
         }
 
         return resultList;
     }
 
-
     /**
-     * 센서 데이터를 3D 배열로 변환 (-1, 100, cols)
+     * 데이터를 3D 배열로 변환 (-1, 100, cols)
      */
-    private static double[][][] reshapeData(double[][] data, int cols) {
+    private static float[][][] reshapeData(float[][] data, int cols) {
         int numSegments = data.length / 100;
-        double[][][] reshaped = new double[numSegments][100][cols];
-
+        float[][][] reshaped = new float[numSegments][100][cols];
         for (int i = 0; i < numSegments; i++) {
-            for (int j = 0; j < 100; j++) {
-                System.arraycopy(data[i * 100 + j], 0, reshaped[i][j], 0, cols);
-            }
+            System.arraycopy(data, i * 100, reshaped[i], 0, 100);
         }
         return reshaped;
     }
+
     /**
-     * 유니크 타임스탬프 데이터 추출
+     * 유니크 타임스탬프 추출
      */
     private static Map<String, long[][]> getUniqueTimestamps(List<Map<String, Object>> imu) {
         Set<Long> timestamps = new TreeSet<>();
-
-        // imu 리스트를 순회하면서 "timestamp" 데이터를 추출
         for (Map<String, Object> imuEntry : imu) {
-            if (imuEntry.containsKey("timestamp")) {
-                long time = getFirstValueAsLong(imuEntry.get("timestamp"));
-                timestamps.add(time);
-            }
+            Object ts = imuEntry.get("timestamp");
+            if (ts != null) timestamps.add(getFirstValueAsLong(ts));
         }
 
-        // TreeSet을 2D 배열로 변환
         long[][] timestampArray = new long[timestamps.size()][1];
         int index = 0;
         for (Long time : timestamps) {
             timestampArray[index++][0] = time;
         }
 
-        // 고유한 타임스탬프를 결과 맵에 저장
-        Map<String, long[][]> result = new HashMap<>();
+        Map<String, long[][]> result = new HashMap<>(1);
         result.put("timestamp", timestampArray);
-
         return result;
     }
 
-    // getFirstValueAsLong method to handle Long values
+    /**
+     * 객체에서 Long 값 추출 - Java 11 호환
+     */
     private static long getFirstValueAsLong(Object obj) {
         if (obj instanceof List) {
             List<?> list = (List<?>) obj;
-            if (!list.isEmpty() && list.get(0) instanceof Number) {
-                return ((Number) list.get(0)).longValue();
+            if (!list.isEmpty()) {
+                Object first = list.get(0);
+                if (first instanceof Number) {
+                    return ((Number) first).longValue();
+                }
             }
         } else if (obj instanceof Number) {
             return ((Number) obj).longValue();
@@ -200,134 +179,80 @@ public class IMUProcessor {
         return 0L;
     }
 
-
     /**
-     * 센서 데이터를 잘라서 반환 (Python의 cut_imu() 변환)
+     * 센서 데이터 잘라서 반환
      */
-    private static double[][] cutImu(String sensor, int numChannels, List<Map<String, Object>> imu) {
-        // 데이터를 저장할 리스트
-        List<double[]> dataList = new ArrayList<>();
+    private static float[][] cutImu(String sensor, int numChannels, List<Map<String, Object>> imu) {
+        float[][] data = new float[imu.size()][numChannels];
+        int row = 0;
 
-        // imu 리스트를 순회하며 데이터를 추출
         for (Map<String, Object> imuEntry : imu) {
-            double[] row = new double[numChannels];
+            float[] currentRow = data[row++];
             int col = 0;
-
-            // X축 데이터
-            if (imuEntry.containsKey(sensor + ".x")) {
-                row[col++] = getFirstValue(imuEntry.get(sensor + ".x"));
-            }
-
-            // Y축 데이터 (필요한 경우)
-            if (numChannels > 1 && imuEntry.containsKey(sensor + ".y")) {
-                row[col++] = getFirstValue(imuEntry.get(sensor + ".y"));
-            }
-
-            // Z축 데이터 (필요한 경우)
-            if (numChannels > 2 && imuEntry.containsKey(sensor + ".z")) {
-                row[col++] = getFirstValue(imuEntry.get(sensor + ".z"));
-            }
-
-            // W축 데이터 (필요한 경우)
-            if (numChannels > 3 && imuEntry.containsKey(sensor + ".w")) {
-                row[col] = getFirstValue(imuEntry.get(sensor + ".w"));
-            }
-
-            // 리스트에 추가
-            dataList.add(row);
+            if (imuEntry.containsKey(sensor + ".x")) currentRow[col++] = getFirstValue(imuEntry.get(sensor + ".x"));
+            if (numChannels > 1 && imuEntry.containsKey(sensor + ".y")) currentRow[col++] = getFirstValue(imuEntry.get(sensor + ".y"));
+            if (numChannels > 2 && imuEntry.containsKey(sensor + ".z")) currentRow[col++] = getFirstValue(imuEntry.get(sensor + ".z"));
+            if (numChannels > 3 && imuEntry.containsKey(sensor + ".w")) currentRow[col] = getFirstValue(imuEntry.get(sensor + ".w"));
         }
 
-        // 리스트를 2D 배열로 변환
-        return dataList.toArray(new double[0][]);
+        return data;
     }
 
-    private static double getFirstValue(Object obj) {
+    /**
+     * 객체에서 Float 값 추출 - Java 11 호환
+     */
+    private static float getFirstValue(Object obj) {
         if (obj instanceof List) {
             List<?> list = (List<?>) obj;
-            if (!list.isEmpty() && list.get(0) instanceof Number) {
-                return ((Number) list.get(0)).doubleValue();
+            if (!list.isEmpty()) {
+                Object first = list.get(0);
+                if (first instanceof Number) {
+                    return ((Number) first).floatValue();
+                }
             }
         } else if (obj instanceof Number) {
-            return ((Number) obj).doubleValue();
+            return ((Number) obj).floatValue();
         }
-        return 0.0;
+        return 0.0f;
     }
 
-
-
     /**
-     * ✅ IMU 데이터를 병합하여 하나의 2D 배열로 반환 (row 크기 자동 조정)
+     * 모든 데이터를 병합하여 하나의 맵으로 반환
      */
     private static Map<String, Object> concatenateAll(Map<String, Object> dataMap) {
         if (dataMap == null || dataMap.isEmpty()) {
-            throw new IllegalArgumentException("⚠ Error: 데이터 맵이 비어 있습니다.");
+            throw new IllegalArgumentException("⚠ 데이터 맵이 비어 있습니다.");
         }
 
-        Map<String, Object> sensorDataMap = new HashMap<>();
-
+        Map<String, Object> sensorDataMap = new HashMap<>(dataMap.size());
         for (Map.Entry<String, Object> entry : dataMap.entrySet()) {
             Object data = entry.getValue();
-            if (data instanceof double[][]) {
-                double[][] doubleData = (double[][]) data;
-                if (doubleData.length == 0) continue;
-
-                int rows = doubleData.length;
-                int cols = doubleData[0].length;
-
-                double[][] newData = new double[rows][cols];
-
-                for (int i = 0; i < rows; i++) {
-                    System.arraycopy(doubleData[i], 0, newData[i], 0, cols);
-                }
-
-                sensorDataMap.put(entry.getKey(), newData);
-            } else if (data instanceof long[][]) {
-                long[][] longData = (long[][]) data;
-                if (longData.length == 0) continue;
-
-                int rows = longData.length;
-                int cols = longData[0].length;
-
-                long[][] newData = new long[rows][cols];
-
-                for (int i = 0; i < rows; i++) {
-                    System.arraycopy(longData[i], 0, newData[i], 0, cols);
-                }
-
-                sensorDataMap.put(entry.getKey(), newData);
+            if (data instanceof float[][] && ((float[][]) data).length > 0) {
+                sensorDataMap.put(entry.getKey(), ((float[][]) data).clone());
+            } else if (data instanceof long[][] && ((long[][]) data).length > 0) {
+                sensorDataMap.put(entry.getKey(), ((long[][]) data).clone());
             }
         }
-
         return sensorDataMap;
     }
 
-
-
-
-
     /**
-     * ✅ 센서별 채널 개수를 반환
+     * 센서별 채널 수 반환 - Java 11 호환
      */
     private static int getSensorChannelCount(String sensor) {
-        switch (sensor) {
-            case "gyro":
-            case "accel":
-            case "mag":
-            case "gravity":
-            case "linear_accel":
-                return 3;
-            case "rot":
-                return 4;
-            case "pressure":
-                return 1;
-            default:
-                return 0;
+        if ("gyro".equals(sensor) || "accel".equals(sensor) || "mag".equals(sensor) ||
+                "gravity".equals(sensor) || "linear_accel".equals(sensor)) {
+            return 3;
+        } else if ("rot".equals(sensor)) {
+            return 4;
+        } else if ("pressure".equals(sensor)) {
+            return 1;
         }
+        return 0;
     }
 
     private static final List<String> predefinedHeaders = Arrays.asList(
             "timestamp",
-            // ✅ 가속도계 (Accelerometer) 기본 통계
             "accelM_mean", "accelM_std", "accelM_max", "accelM_min", "accelM_mad", "accelM_iqr",
             "accelM_max.corr", "accelM_idx.max.corr", "accelM_zcr", "accelM_fzc",
             "accelX_mean", "accelX_std", "accelX_max", "accelX_min", "accelX_mad", "accelX_iqr",
@@ -337,18 +262,15 @@ public class IMUProcessor {
             "accelZ_mean", "accelZ_std", "accelZ_max", "accelZ_min", "accelZ_mad", "accelZ_iqr",
             "accelZ_max.corr", "accelZ_idx.max.corr", "accelZ_zcr", "accelZ_fzc",
             "accelM_max.psd", "accelM_entropy", "accelM_fc", "accelM_kurt", "accelM_skew",
-            // ✅ 가속도계 (Accelerometer) per-axis PSD 및 통계
             "accelX_max.psd", "accelX_entropy", "accelX_fc", "accelX_kurt", "accelX_skew",
             "accelY_max.psd", "accelY_entropy", "accelY_fc", "accelY_kurt", "accelY_skew",
             "accelZ_max.psd", "accelZ_entropy", "accelZ_fc", "accelZ_kurt", "accelZ_skew",
-            // ✅ 가속도계 수평/수직 (Horizontal/Vertical)
             "accel_hM_mean", "accel_hM_std", "accel_hM_max", "accel_hM_min", "accel_hM_mad", "accel_hM_iqr",
             "accel_hM_max.corr", "accel_hM_idx.max.corr", "accel_hM_zcr", "accel_hM_fzc",
             "accel_hM_max.psd", "accel_hM_entropy", "accel_hM_fc", "accel_hM_kurt", "accel_hM_skew",
             "accel_vM_mean", "accel_vM_std", "accel_vM_max", "accel_vM_min", "accel_vM_mad", "accel_vM_iqr",
             "accel_vM_max.corr", "accel_vM_idx.max.corr", "accel_vM_zcr", "accel_vM_fzc",
             "accel_vM_max.psd", "accel_vM_entropy", "accel_vM_fc", "accel_vM_kurt", "accel_vM_skew",
-            // ✅ 중력 센서 (Gravity)
             "gravityM_mean", "gravityM_std", "gravityM_max", "gravityM_min", "gravityM_mad", "gravityM_iqr",
             "gravityM_max.corr", "gravityM_idx.max.corr", "gravityM_zcr", "gravityM_fzc",
             "gravityX_mean", "gravityX_std", "gravityX_max", "gravityX_min", "gravityX_mad", "gravityX_iqr",
@@ -361,7 +283,6 @@ public class IMUProcessor {
             "gravityX_max.psd", "gravityX_entropy", "gravityX_fc", "gravityX_kurt", "gravityX_skew",
             "gravityY_max.psd", "gravityY_entropy", "gravityY_fc", "gravityY_kurt", "gravityY_skew",
             "gravityZ_max.psd", "gravityZ_entropy", "gravityZ_fc", "gravityZ_kurt", "gravityZ_skew",
-            // ✅ 자이로스코프 (Gyroscope)
             "gyroM_mean", "gyroM_std", "gyroM_max", "gyroM_min", "gyroM_mad", "gyroM_iqr",
             "gyroM_max.corr", "gyroM_idx.max.corr", "gyroM_zcr", "gyroM_fzc",
             "gyroX_mean", "gyroX_std", "gyroX_max", "gyroX_min", "gyroX_mad", "gyroX_iqr",
@@ -374,18 +295,15 @@ public class IMUProcessor {
             "gyroX_max.psd", "gyroX_entropy", "gyroX_fc", "gyroX_kurt", "gyroX_skew",
             "gyroY_max.psd", "gyroY_entropy", "gyroY_fc", "gyroY_kurt", "gyroY_skew",
             "gyroZ_max.psd", "gyroZ_entropy", "gyroZ_fc", "gyroZ_kurt", "gyroZ_skew",
-            // ✅ 저크 센서 (Jerk) - 수평 및 수직
             "jerk_hM_mean", "jerk_hM_std", "jerk_hM_max", "jerk_hM_min", "jerk_hM_mad", "jerk_hM_iqr",
             "jerk_hM_max.corr", "jerk_hM_idx.max.corr", "jerk_hM_zcr", "jerk_hM_fzc",
             "jerk_hM_max.psd", "jerk_hM_entropy", "jerk_hM_fc", "jerk_hM_kurt", "jerk_hM_skew",
             "jerk_vM_mean", "jerk_vM_std", "jerk_vM_max", "jerk_vM_min", "jerk_vM_mad", "jerk_vM_iqr",
             "jerk_vM_max.corr", "jerk_vM_idx.max.corr", "jerk_vM_zcr", "jerk_vM_fzc",
             "jerk_vM_max.psd", "jerk_vM_entropy", "jerk_vM_fc", "jerk_vM_kurt", "jerk_vM_skew",
-            // ✅ 선형 가속도 센서 (Linear Acceleration)
             "linear_accelM_mean", "linear_accelM_std", "linear_accelM_max", "linear_accelM_min", "linear_accelM_mad", "linear_accelM_iqr",
             "linear_accelM_max.corr", "linear_accelM_idx.max.corr", "linear_accelM_zcr", "linear_accelM_fzc",
             "linear_accelM_max.psd", "linear_accelM_entropy", "linear_accelM_fc", "linear_accelM_kurt", "linear_accelM_skew",
-            // ✅ 자기장 센서 (Magnetometer)
             "magM_mean", "magM_std", "magM_max", "magM_min", "magM_mad", "magM_iqr",
             "magM_max.corr", "magM_idx.max.corr", "magM_zcr", "magM_fzc",
             "magX_mean", "magX_std", "magX_max", "magX_min", "magX_mad", "magX_iqr",
@@ -398,7 +316,6 @@ public class IMUProcessor {
             "magX_max.psd", "magX_entropy", "magX_fc", "magX_kurt", "magX_skew",
             "magY_max.psd", "magY_entropy", "magY_fc", "magY_kurt", "magY_skew",
             "magZ_max.psd", "magZ_entropy", "magZ_fc", "magZ_kurt", "magZ_skew",
-            // ✅ 압력 센서 (Pressure)
             "pressureM_mean", "pressureM_std", "pressureM_max", "pressureM_min", "pressureM_mad", "pressureM_iqr",
             "pressureM_max.corr", "pressureM_idx.max.corr", "pressureM_zcr", "pressureM_fzc",
             "pressureM_max.psd", "pressureM_entropy", "pressureM_fc", "pressureM_kurt", "pressureM_skew"

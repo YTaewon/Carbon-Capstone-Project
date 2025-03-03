@@ -16,53 +16,66 @@ import java.util.Map;
 public class IMUFeatureExtractor {
 
     /**
-     * 벡터 크기(매그니튜드) 계산 (2D 배열 입력, 2D 배열 출력)
-     * @param x X축 데이터 (2D 배열)
-     * @param y Y축 데이터 (2D 배열)
-     * @param z Z축 데이터 (2D 배열)
-     * @return 각 샘플의 벡터 크기(매그니튜드) (2D 배열)
+     * 벡터 크기(매그니튜드) 계산 - 루프 최적화 및 float 사용
      */
-    public static double[][] magnitude(double[][] x, double[][] y, double[][] z) {
+    public static float[][] magnitude(float[][] x, float[][] y, float[][] z) {
         int rows = x.length;
         int cols = x[0].length;
-        double[][] result = new double[rows][cols];
+        float[][] result = new float[rows][cols];
 
         for (int i = 0; i < rows; i++) {
+            float[] xRow = x[i], yRow = y[i], zRow = z[i], resRow = result[i];
             for (int j = 0; j < cols; j++) {
-                result[i][j] = Math.sqrt(x[i][j] * x[i][j] + y[i][j] * y[i][j] + z[i][j] * z[i][j]);
+                float xVal = xRow[j], yVal = yRow[j], zVal = zRow[j];
+                resRow[j] = (float) Math.sqrt(xVal * xVal + yVal * yVal + zVal * zVal);
             }
         }
         return result;
     }
 
-
-    public static Map<String, double[][]> calculateStatFeatures(double[][] magnitude, String prefix) {
+    /**
+     * 통계 특징 계산 - 스트림 제거 및 직접 계산
+     */
+    public static Map<String, float[][]> calculateStatFeatures(float[][] magnitude, String prefix) {
         int rows = magnitude.length;
-        Map<String, double[][]> result = new HashMap<>();
+        Map<String, float[][]> result = new HashMap<>(10);
 
-        double[][] mean = new double[rows][1];
-        double[][] std = new double[rows][1];
-        double[][] max = new double[rows][1];
-        double[][] min = new double[rows][1];
-        double[][] mad = new double[rows][1];
-        double[][] iqr = new double[rows][1];
-        double[][] maxcorr = new double[rows][1];
-        double[][] argmax_corr = new double[rows][1];
-        double[][] zcr = new double[rows][1];
-        double[][] fzc = new double[rows][1];
+        float[][] mean = new float[rows][1];
+        float[][] std = new float[rows][1];
+        float[][] max = new float[rows][1];
+        float[][] min = new float[rows][1];
+        float[][] mad = new float[rows][1];
+        float[][] iqr = new float[rows][1];
+        float[][] maxCorr = new float[rows][1];
+        float[][] argmaxCorr = new float[rows][1];
+        float[][] zcr = new float[rows][1];
+        float[][] fzc = new float[rows][1];
+
+        StandardDeviation stdDev = new StandardDeviation();
+        Max maxCalc = new Max();
+        Min minCalc = new Min();
 
         for (int i = 0; i < rows; i++) {
-            double[] data = magnitude[i];
-            mean[i][0] = StatUtils.mean(data);
-            std[i][0] = new StandardDeviation().evaluate(data);
-            max[i][0] = new Max().evaluate(data);
-            min[i][0] = new Min().evaluate(data);
-            mad[i][0] = medianAbsoluteDeviation(data);
-            iqr[i][0] = interquartileRange(data);
-            maxcorr[i][0] = autocorrelationMax(data);
-            argmax_corr[i][0] = argMaxAutocorrelation(data);
-            zcr[i][0] = zeroCrossingRate(data);
-            fzc[i][0] = firstZeroCrossing(data);
+            float[] row = magnitude[i];
+            double[] data = new double[row.length];
+            for (int j = 0; j < row.length; j++) {
+                data[j] = row[j];
+            }
+
+            mean[i][0] = (float) StatUtils.mean(data);
+            std[i][0] = (float) stdDev.evaluate(data);
+            max[i][0] = (float) maxCalc.evaluate(data);
+            min[i][0] = (float) minCalc.evaluate(data);
+            mad[i][0] = computeMAD(row);
+            iqr[i][0] = computeIQR(row);
+
+            float[] autocorrData = computeAutocorrelation(row);
+            float[] autocorrResult = findMaxAndArgMax(autocorrData);
+            maxCorr[i][0] = autocorrResult[0];
+            argmaxCorr[i][0] = autocorrResult[1];
+
+            zcr[i][0] = computeZCR(row);
+            fzc[i][0] = computeFZC(row);
         }
 
         result.put(prefix + "_mean", mean);
@@ -71,46 +84,42 @@ public class IMUFeatureExtractor {
         result.put(prefix + "_min", min);
         result.put(prefix + "_mad", mad);
         result.put(prefix + "_iqr", iqr);
-        result.put(prefix + "_max.corr", maxcorr);
-        result.put(prefix + "_idx.max.corr", argmax_corr);
+        result.put(prefix + "_max.corr", maxCorr);
+        result.put(prefix + "_idx.max.corr", argmaxCorr);
         result.put(prefix + "_zcr", zcr);
         result.put(prefix + "_fzc", fzc);
 
         return result;
     }
 
-    /** 중앙절대편차 (MAD) 계산 */
-    private static double medianAbsoluteDeviation(double[] data) {
-        double median = StatUtils.percentile(data, 50);
-        double[] deviations = Arrays.stream(data).map(d -> Math.abs(d - median)).toArray();
-        return StatUtils.percentile(deviations, 50);
+    /** 중앙절대편차 (MAD) 계산 - float 기반으로 직접 계산 */
+    private static float computeMAD(float[] data) {
+        float[] copy = data.clone();
+        Arrays.sort(copy);
+        float median = copy[copy.length / 2];
+        float[] deviations = new float[data.length];
+        for (int i = 0; i < data.length; i++) {
+            deviations[i] = Math.abs(data[i] - median);
+        }
+        Arrays.sort(deviations);
+        return deviations[deviations.length / 2];
     }
 
-    /** 사분위 범위 (IQR) 계산 */
-    private static double interquartileRange(double[] data) {
-        double q1 = StatUtils.percentile(data, 25);
-        double q3 = StatUtils.percentile(data, 75);
-        return q3 - q1;
+    /** 사분위 범위 (IQR) 계산 - float 기반으로 직접 계산 */
+    private static float computeIQR(float[] data) {
+        float[] copy = data.clone();
+        Arrays.sort(copy);
+        int q1Idx = copy.length / 4;
+        int q3Idx = copy.length * 3 / 4;
+        return copy[q3Idx] - copy[q1Idx];
     }
 
-    /** 최대 자기상관계수 계산 */
-    private static double autocorrelationMax(double[] data) {
-        double[] autocorr = computeAutocorrelation(data);
-        return Arrays.stream(autocorr).max().orElse(0);
-    }
-
-    /** 자기상관 최대값 위치 계산 */
-    private static double argMaxAutocorrelation(double[] data) {
-        double[] autocorr = computeAutocorrelation(data);
-        return Arrays.stream(autocorr).max().orElse(0);
-    }
-
-    /** 자기상관 함수 계산 */
-    private static double[] computeAutocorrelation(double[] x) {
+    /** 자기상관 계산 - float 기반 */
+    private static float[] computeAutocorrelation(float[] x) {
         int n = x.length;
-        double[] result = new double[n];
+        float[] result = new float[n];
         for (int lag = 0; lag < n; lag++) {
-            double sum = 0;
+            float sum = 0;
             for (int i = 0; i < n - lag; i++) {
                 sum += x[i] * x[i + lag];
             }
@@ -119,155 +128,179 @@ public class IMUFeatureExtractor {
         return result;
     }
 
+    /** 최대값과 그 위치 계산 */
+    private static float[] findMaxAndArgMax(float[] autocorr) {
+        float maxValue = autocorr[0];
+        int maxIndex = 0;
+        for (int i = 1; i < autocorr.length; i++) {
+            if (autocorr[i] > maxValue) {
+                maxValue = autocorr[i];
+                maxIndex = i;
+            }
+        }
+        return new float[]{maxValue, maxIndex};
+    }
+
     /** Zero Crossing Rate (ZCR) 계산 */
-    private static double zeroCrossingRate(double[] data) {
+    private static float computeZCR(float[] data) {
         int count = 0;
         for (int i = 1; i < data.length; i++) {
-            if (Math.signum(data[i]) != Math.signum(data[i - 1])) {
+            if ((data[i] >= 0) != (data[i - 1] >= 0)) {
                 count++;
             }
         }
-        return (double) count / data.length;
+        return (float) count / data.length;
     }
 
-    /** First Zero Crossing (FZC) 계산 */
-    private static int firstZeroCrossing(double[] data) {
+    /** 첫 번째 Zero Crossing (FZC) 계산 */
+    private static float computeFZC(float[] data) {
         for (int i = 1; i < data.length; i++) {
-            if (Math.signum(data[i]) != Math.signum(data[i - 1])) {
+            if ((data[i] >= 0) != (data[i - 1] >= 0)) {
                 return i;
             }
         }
         return 0;
     }
 
-    /** 주파수 특징 계산 (Welch PSD, 엔트로피, 중심주파수 등) */
-    public static Map<String, double[][]> calculateSpectralFeatures(double[][] magnitude, String prefix) {
+    /**
+     * 주파수 특징 계산 - float 기반으로 최적화
+     */
+    public static Map<String, float[][]> calculateSpectralFeatures(float[][] magnitude, String prefix) {
         int rows = magnitude.length;
         int fs = 100;
-        Map<String, double[][]> result = new HashMap<>();
+        Map<String, float[][]> result = new HashMap<>(5);
 
-        double[][] maxPSD = new double[rows][1];
-        double[][] entropy = new double[rows][1];
-        double[][] frequencyCenter = new double[rows][1];
-        double[][] kurtosis = new double[rows][1];
-        double[][] skewness = new double[rows][1];
+        float[][] maxPSD = new float[rows][1];
+        float[][] entropy = new float[rows][1];
+        float[][] freqCenter = new float[rows][1];
+        float[][] kurtosis = new float[rows][1];
+        float[][] skewness = new float[rows][1];
 
         for (int i = 0; i < rows; i++) {
-            double[] data = magnitude[i];
+            float[] data = magnitude[i];
+            float[] psd = computeWelchPSD(data, fs, data.length);
 
-            // Compute Welch PSD
-            double[] psd = computeWelchPSD(data, fs, data.length);
-
-            // Calculate features
-            maxPSD[i][0] = Arrays.stream(psd).max().orElse(0);  // Max PSD value
-            entropy[i][0] = calculateEntropy(psd);              // Frequency entropy
-            frequencyCenter[i][0] = calculateFrequencyCenter(psd, fs, data.length); // Frequency center
-            kurtosis[i][0] = calculateKurtosis(psd);            // Kurtosis
-            skewness[i][0] = calculateSkewness(psd);            // Skewness
+            maxPSD[i][0] = findMax(psd);
+            entropy[i][0] = computeEntropy(psd);
+            freqCenter[i][0] = computeFrequencyCenter(psd, fs, data.length);
+            float[] moments = computeMoments(psd);
+            kurtosis[i][0] = moments[0];
+            skewness[i][0] = moments[1];
         }
 
-        // Store results in the map with appropriate keys
         result.put(prefix + "_max.psd", maxPSD);
         result.put(prefix + "_entropy", entropy);
-        result.put(prefix + "_fc", frequencyCenter);
+        result.put(prefix + "_fc", freqCenter);
         result.put(prefix + "_kurt", kurtosis);
         result.put(prefix + "_skew", skewness);
 
         return result;
     }
 
-    public static double[] computeWelchPSD(double[] data, int fs, int nperseg) {
+    /** Welch PSD 계산 - float 기반 */
+    private static float[] computeWelchPSD(float[] data, int fs, int nperseg) {
         int n = data.length;
-        int step = nperseg / 2;  // 50% 오버랩 적용
+        int step = nperseg / 2;
         int numSegments = (n - nperseg) / step + 1;
-
-        // 패딩된 데이터 길이 계산 (2의 거듭제곱)
         int paddedLength = getNextPowerOfTwo(nperseg);
-        double[] psd = new double[paddedLength / 2];
+        float[] psd = new float[paddedLength / 2];
+
+        FastFourierTransformer fft = new FastFourierTransformer(DftNormalization.STANDARD);
 
         for (int i = 0; i < numSegments; i++) {
             int start = i * step;
-            double[] segment = Arrays.copyOfRange(data, start, start + nperseg);
+            float[] segment = Arrays.copyOfRange(data, start, start + nperseg);
 
             // Hanning Window 적용
             for (int j = 0; j < segment.length; j++) {
-                segment[j] *= 0.5 * (1 - Math.cos(2 * Math.PI * j / (segment.length - 1)));
+                segment[j] *= (float) (0.5 * (1 - Math.cos(2 * Math.PI * j / (segment.length - 1))));
             }
 
-            // 패딩 추가
             double[] paddedSegment = new double[paddedLength];
-            System.arraycopy(segment, 0, paddedSegment, 0, segment.length);
-
-            // FFT 수행 using Apache Commons Math
-            FastFourierTransformer fft = new FastFourierTransformer(DftNormalization.STANDARD);
+            for (int j = 0; j < segment.length; j++) paddedSegment[j] = segment[j];
             Complex[] fftResult = fft.transform(paddedSegment, TransformType.FORWARD);
 
-            // PSD 계산 (실수부² + 허수부²)
             for (int j = 0; j < psd.length; j++) {
                 double real = fftResult[j].getReal();
                 double imag = fftResult[j].getImaginary();
-                psd[j] += (real * real + imag * imag) / numSegments;  // 평균을 내서 Welch PSD 완성
+                psd[j] += (float) ((real * real + imag * imag) / numSegments);
             }
         }
 
-        // Scale the PSD by the sampling frequency and segment length
+        float scale = 2.0f / (fs * nperseg);
         for (int i = 0; i < psd.length; i++) {
-            psd[i] *= 2.0 / (fs * nperseg);
+            psd[i] *= scale;
         }
-
         return psd;
     }
 
+    /** 다음 2의 거듭제곱 계산 */
     private static int getNextPowerOfTwo(int num) {
-        int power = 1;
-        while (power < num) {
-            power *= 2;
+        return Integer.highestOneBit(num - 1) << 1;
+    }
+
+    /** 최대 PSD 값 계산 */
+    private static float findMax(float[] psd) {
+        float max = psd[0];
+        for (int i = 1; i < psd.length; i++) {
+            if (psd[i] > max) max = psd[i];
         }
-        return power;
+        return max;
     }
 
     /** 주파수 엔트로피 계산 */
-    public static double calculateEntropy(double[] psd) {
-        double sum = Arrays.stream(psd).sum();
+    private static float computeEntropy(float[] psd) {
+        float sum = 0;
+        for (float p : psd) sum += p;
         if (sum == 0) return 0;
 
-        return Arrays.stream(psd)
-                .map(p -> p / sum)
-                .filter(p -> p > 0)
-                .map(p -> -p * Math.log(p))
-                .sum();
-    }
-
-    /** 주파수 중심(Frequency Center) 계산 */
-    public static double calculateFrequencyCenter(double[] psd, int fs, int nperseg) {
-        double sumPsd = Arrays.stream(psd).sum();
-        if (sumPsd == 0) return 0;
-
-        double weightedSum = 0;
-        for (int i = 0; i < psd.length; i++) {
-            double freq = i * (fs / (double) nperseg);
-            weightedSum += freq * psd[i];
+        float entropy = 0;
+        float invSum = 1.0f / sum;
+        for (float p : psd) {
+            if (p > 0) {
+                float pNorm = p * invSum;
+                entropy -= pNorm * (float) Math.log(pNorm);
+            }
         }
-        return weightedSum / sumPsd;
+        return entropy;
     }
 
-    /** 첨도(Kurtosis) 계산 */
-    public static double calculateKurtosis(double[] psd) {
-        double mean = Arrays.stream(psd).average().orElse(0);
-        double std = Math.sqrt(Arrays.stream(psd).map(d -> Math.pow(d - mean, 2)).average().orElse(0));
-        return Arrays.stream(psd)
-                .map(d -> Math.pow((d - mean) / std, 4))
-                .average()
-                .orElse(0);
+    /** 주파수 중심 계산 */
+    private static float computeFrequencyCenter(float[] psd, int fs, int nperseg) {
+        float sumPsd = 0, weightedSum = 0;
+        float freqStep = (float) fs / nperseg;
+        for (int i = 0; i < psd.length; i++) {
+            sumPsd += psd[i];
+            weightedSum += i * freqStep * psd[i];
+        }
+        return sumPsd == 0 ? 0 : weightedSum / sumPsd;
     }
 
-    /** 왜도(Skewness) 계산 */
-    public static double calculateSkewness(double[] psd) {
-        double mean = Arrays.stream(psd).average().orElse(0);
-        double std = Math.sqrt(Arrays.stream(psd).map(d -> Math.pow(d - mean, 2)).average().orElse(0));
-        return Arrays.stream(psd)
-                .map(d -> Math.pow((d - mean) / std, 3))
-                .average()
-                .orElse(0);
+    /** 첨도와 왜도 계산 */
+    private static float[] computeMoments(float[] psd) {
+        float mean = 0, m2 = 0, m3 = 0, m4 = 0;
+        int n = psd.length;
+
+        for (float p : psd) mean += p;
+        mean /= n;
+
+        for (float p : psd) {
+            float diff = p - mean;
+            float diff2 = diff * diff;
+            m2 += diff2;
+            m3 += diff2 * diff;
+            m4 += diff2 * diff2;
+        }
+
+        m2 /= n;
+        m3 /= n;
+        m4 /= n;
+
+        float std = (float) Math.sqrt(m2);
+        float invStd = std == 0 ? 1e-10f : 1 / std;
+        float kurtosis = m4 * invStd * invStd * invStd * invStd;
+        float skewness = m3 * invStd * invStd * invStd;
+
+        return new float[]{kurtosis, skewness};
     }
 }

@@ -272,11 +272,4 @@ public class PyTorchHelper {
         helper.setPredictedResult("BUS");
         helper.showResult();
     }
-
-    //사용 방법
-//    PyTorchHelper helper = new PyTorchHelper(this);
-//    float[] data = new float[20400]; // 실제 데이터로 채움
-//    Tensor tensor = Tensor.fromBlob(data, new long[]{1, 340, 60});
-//    helper.predictMovingMode(tensor);
-//    String result = helper.getPredictedResult();
 }
