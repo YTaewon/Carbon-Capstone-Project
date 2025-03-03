@@ -8,9 +8,9 @@
 
 
     <item
-        android:id="@+id/navigation_stepper"
+        android:id="@+id/navigation_pedometer"
         android:icon="@drawable/ic_stepper2_24dp"
-        android:title="@string/title_stepper" />
+        android:title="@string/title_pedometer" />
 
     <item
         android:id="@+id/navigation_camera"

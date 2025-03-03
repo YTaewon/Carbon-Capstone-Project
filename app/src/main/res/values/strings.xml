@@ -6,7 +6,7 @@
     <string name="title_dashboard">Camera</string>
     <string name="title_rankingboard">Ranking</string>
     <string name="title_calendar">Calendar</string>
-    <string name="title_stepper">Stepper</string>
+    <string name="title_pedometer">Pedometer</string>
     <string name="title_ai">AI</string>
     <string name="date_format">%s년 %s월</string>
     <string name="welcom">환영합니다.</string>

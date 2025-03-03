@@ -49,7 +49,7 @@ class MainActivity : AppCompatActivity() {
         bottomNav.setOnItemSelectedListener { item ->
             when (item.itemId) {
                 R.id.navigation_home -> viewPager.currentItem = 0
-                R.id.navigation_stepper -> viewPager.currentItem = 1
+                R.id.navigation_pedometer -> viewPager.currentItem = 1
                 R.id.navigation_camera -> viewPager.currentItem = 2
                 R.id.navigation_ranking -> viewPager.currentItem = 3
                 R.id.navigation_calendar -> viewPager.currentItem = 4
