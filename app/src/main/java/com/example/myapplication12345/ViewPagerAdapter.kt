@@ -8,7 +8,7 @@ import com.example.myapplication12345.ui.home.HomeFragment
 import com.example.myapplication12345.ui.camera.CameraFragment
 import com.example.myapplication12345.ui.ranking.RankingFragment
 import com.example.myapplication12345.ui.calendar.CalendarFragment
-import com.example.myapplication12345.ui.stepper.StepperFragment
+import com.example.myapplication12345.ui.pedometer.PedometerFragment
 
 
 class ViewPagerAdapter(activity: FragmentActivity) : FragmentStateAdapter(activity) {
@@ -19,7 +19,7 @@ class ViewPagerAdapter(activity: FragmentActivity) : FragmentStateAdapter(activi
     override fun createFragment(position: Int): Fragment {
         return when (position) {
             0 -> HomeFragment()
-            1 -> StepperFragment()
+            1 -> PedometerFragment()
             2 -> CameraFragment()
             3 -> RankingFragment()
             4 -> CalendarFragment()

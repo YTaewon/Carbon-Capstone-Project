@@ -130,7 +130,7 @@ class SplashActivity : AppCompatActivity() {
             if (allGranted) {
                 Timber.tag(TAG).d("모든 권한 허용됨")
                 //ai 작동
-//                startSensorService()
+                startSensorService()
 
                 navigateToMain()
             } else {
