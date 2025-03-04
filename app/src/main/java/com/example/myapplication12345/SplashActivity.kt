@@ -22,7 +22,6 @@ import android.content.pm.PackageManager
 import android.os.Build
 import com.example.myapplication12345.AI.SensorDataProcessor
 import com.example.myapplication12345.AI.SensorDataService
-
 import java.util.ArrayList
 
 class SplashActivity : AppCompatActivity() {
@@ -44,6 +43,17 @@ class SplashActivity : AppCompatActivity() {
             insets
         }
 
+        // Immediately check and request permissions instead of delaying
+        if (!hasPermissions()) {
+            Timber.tag(TAG).d("권한 확인 실패, 요청 시작")
+            requestPermissions()
+        } else {
+            Timber.tag(TAG).d("모든 권한 확인됨, 인증 상태 확인으로 진행")
+            delayAndCheckUser()
+        }
+    }
+
+    private fun delayAndCheckUser() {
         // 2초 딜레이 후 인증 상태 확인 및 다음 단계로 이동
         Handler(Looper.getMainLooper()).postDelayed({
             checkUserAndProceed()
@@ -57,15 +67,9 @@ class SplashActivity : AppCompatActivity() {
             finish()
         } else {
             Timber.tag(TAG).d("User is not null")
-            // 로그인된 경우 권한 확인
-            if (!hasPermissions()) {
-                Timber.tag(TAG).d("권한 확인 실패, 요청 시작")
-                requestPermissions()
-            } else {
-                Timber.tag(TAG).d("모든 권한 확인됨, 서비스 시작")
-                //startSensorService()
-                navigateToMain()
-            }
+            Timber.tag(TAG).d("모든 권한 확인됨, 서비스 시작")
+            startSensorService()
+            navigateToMain()
         }
     }
 
@@ -129,10 +133,7 @@ class SplashActivity : AppCompatActivity() {
             val allGranted = grantResults.all { it == PackageManager.PERMISSION_GRANTED }
             if (allGranted) {
                 Timber.tag(TAG).d("모든 권한 허용됨")
-                //ai 작동
-                startSensorService()
-
-                navigateToMain()
+                delayAndCheckUser() // Permissions granted, now delay and check user
             } else {
                 Timber.tag(TAG).w("일부 권한 거부됨")
                 grantResults.forEachIndexed { index, result ->

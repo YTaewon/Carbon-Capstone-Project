@@ -282,7 +282,7 @@ public class SensorDataService extends Service {
                     if (imuDataBuffer.isEmpty()) {
                         Log.w(TAG, "IMU 데이터 버퍼가 비어 있음");
                     } else {
-                        Log.d(TAG, "IMU 데이터 저장: " + imuDataBuffer.size() + "개");
+//                       Log.d(TAG, "IMU 데이터 저장: " + imuDataBuffer.size() + "개");
                         for (Map<String, Object> data : imuDataBuffer) {
                             saveToCSV("IMU", data, !isFirstLogged[0]);
                             isFirstLogged[0] = true;

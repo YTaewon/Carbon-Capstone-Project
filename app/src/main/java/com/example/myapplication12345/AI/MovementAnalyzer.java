@@ -97,7 +97,7 @@ public class MovementAnalyzer {
         else if (speed < 15f) return "BUS";
         else if (speed < 30f) return "CAR";
         else if (speed < 50f) return "SUBWAY";
-        else return "ETC";
+        else return "None";
     }
 
     // 분석 메서드
