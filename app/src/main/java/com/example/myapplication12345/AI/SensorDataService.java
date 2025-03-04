@@ -30,6 +30,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -43,6 +44,7 @@ public class SensorDataService extends Service {
     private static final int IMU_INTERVAL_MS = 10; // 10ms 간격
     private static final int MAX_IMU_PER_SECOND = 100; // 1초에 최대 100개
     private static final int INITIAL_DELAY_MS = 3000; // 최초 3초 지연
+    private static final int BUFFER_FLUSH_INTERVAL = 5000; // 5초마다 버퍼 플러시
     private static final String TAG = "SensorDataService";
 
     private WifiManager wifiManager;
@@ -54,6 +56,22 @@ public class SensorDataService extends Service {
 
     private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd", Locale.getDefault());
     private String currentDate;
+
+    // 센서별 고정된 키 배열
+    private static final String[] GPS_KEYS = {"timestamp", "latitude", "longitude", "accuracy"};
+    private static final String[] AP_KEYS = {"timestamp", "bssid", "ssid", "level", "frequency", "capabilities"};
+    private static final String[] BTS_KEYS = {"timestamp", "ci", "pci"};
+    private static final String[] IMU_KEYS = {
+            "timestamp", "accel.x", "accel.y", "accel.z", "gyro.x", "gyro.y", "gyro.z",
+            "mag.x", "mag.y", "mag.z", "rot.w", "rot.x", "rot.y", "rot.z", "pressure",
+            "gravity.x", "gravity.y", "gravity.z", "linear_accel.x", "linear_accel.y", "linear_accel.z"
+    };
+
+    // 센서별 데이터 버퍼
+    private final List<Map<String, Object>> gpsBuffer = new ArrayList<>();
+    private final List<Map<String, Object>> apBuffer = new ArrayList<>();
+    private final List<Map<String, Object>> btsBuffer = new ArrayList<>();
+    private final List<Map<String, Object>> imuBuffer = new ArrayList<>();
 
     @Override
     public void onCreate() {
@@ -72,17 +90,13 @@ public class SensorDataService extends Service {
         }
 
         handler.postDelayed(this::startDataCollection, INITIAL_DELAY_MS);
+        startBufferFlush(); // 버퍼 플러시 스케줄링
     }
 
     private boolean checkPermissions() {
-        boolean hasWifiPermission = ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_WIFI_STATE)
-                == PackageManager.PERMISSION_GRANTED;
-        boolean hasLocationPermission = ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION)
-                == PackageManager.PERMISSION_GRANTED;
-        boolean hasPhoneStatePermission = ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_PHONE_STATE)
-                == PackageManager.PERMISSION_GRANTED;
-
-        return hasWifiPermission && hasLocationPermission && hasPhoneStatePermission;
+        return ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_WIFI_STATE) == PackageManager.PERMISSION_GRANTED &&
+                ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED &&
+                ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED;
     }
 
     @Override
@@ -110,28 +124,39 @@ public class SensorDataService extends Service {
         handler.post(dataCollectionRunnable);
     }
 
+    private void startBufferFlush() {
+        Runnable flushRunnable = new Runnable() {
+            @Override
+            public void run() {
+                flushBuffers();
+                handler.postDelayed(this, BUFFER_FLUSH_INTERVAL);
+            }
+        };
+        handler.postDelayed(flushRunnable, BUFFER_FLUSH_INTERVAL);
+    }
+
     private void collectAPData(long timestamp) {
-        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_WIFI_STATE)
-                == PackageManager.PERMISSION_GRANTED) {
+        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_WIFI_STATE) == PackageManager.PERMISSION_GRANTED) {
             try {
                 if (wifiManager != null) {
                     List<ScanResult> scanResults = wifiManager.getScanResults();
                     if (!scanResults.isEmpty()) {
                         ScanResult scanResult = scanResults.get(0);
                         String ssid = "UNKNOWN_SSID";
-                        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION)
-                                == PackageManager.PERMISSION_GRANTED) {
+                        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
                             WifiInfo wifiInfo = wifiManager.getConnectionInfo();
                             ssid = wifiInfo.getSSID();
                         }
-                        Map<String, Object> data = new LinkedHashMap<>(6);
+                        Map<String, Object> data = new LinkedHashMap<>();
                         data.put("timestamp", timestamp);
-                        data.put("bssid", scanResult.BSSID); // String 타입 보장
-                        data.put("ssid", ssid); // String 타입 보장
-                        data.put("level", (float) scanResult.level); // 명시적 Float
-                        data.put("frequency", (float) scanResult.frequency); // 명시적 Float
-                        data.put("capabilities", scanResult.capabilities); // String 타입 보장
-                        saveToCSV("AP", data);
+                        data.put("bssid", scanResult.BSSID);
+                        data.put("ssid", ssid);
+                        data.put("level", (float) scanResult.level);
+                        data.put("frequency", (float) scanResult.frequency);
+                        data.put("capabilities", scanResult.capabilities);
+                        synchronized (apBuffer) {
+                            apBuffer.add(data);
+                        }
                     }
                 }
             } catch (SecurityException e) {
@@ -139,20 +164,22 @@ public class SensorDataService extends Service {
             }
         }
     }
+
     private void collectBTSData(long timestamp) {
-        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_PHONE_STATE)
-                == PackageManager.PERMISSION_GRANTED) {
+        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED) {
             try {
                 if (telephonyManager != null) {
                     List<CellInfo> cellInfoList = telephonyManager.getAllCellInfo();
                     for (CellInfo cellInfo : cellInfoList) {
                         if (cellInfo instanceof CellInfoLte) {
                             CellIdentityLte cellIdentity = ((CellInfoLte) cellInfo).getCellIdentity();
-                            Map<String, Object> data = new LinkedHashMap<>(3);
+                            Map<String, Object> data = new LinkedHashMap<>();
                             data.put("timestamp", timestamp);
                             data.put("ci", cellIdentity.getCi());
                             data.put("pci", cellIdentity.getPci());
-                            saveToCSV("BTS", data);
+                            synchronized (btsBuffer) {
+                                btsBuffer.add(data);
+                            }
                         }
                     }
                 }
@@ -163,15 +190,17 @@ public class SensorDataService extends Service {
     }
 
     private void collectGPSData(long timestamp) {
-        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION)
-                == PackageManager.PERMISSION_GRANTED) {
+        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             fusedLocationProviderClient.getLastLocation().addOnSuccessListener(location -> {
                 if (location != null) {
-                    Map<String, Object> data = new LinkedHashMap<>(3);
+                    Map<String, Object> data = new LinkedHashMap<>();
                     data.put("timestamp", timestamp);
                     data.put("latitude", location.getLatitude());
                     data.put("longitude", location.getLongitude());
-                    saveToCSV("GPS", data);
+                    data.put("accuracy", location.getAccuracy());
+                    synchronized (gpsBuffer) {
+                        gpsBuffer.add(data);
+                    }
                 } else {
                     Log.w(TAG, "GPS 위치 데이터 없음");
                 }
@@ -200,9 +229,8 @@ public class SensorDataService extends Service {
             return;
         }
 
-        final List<Map<String, Object>> imuDataBuffer = new ArrayList<>(MAX_IMU_PER_SECOND);
+        final List<Map<String, Object>> tempImuBuffer = new ArrayList<>(MAX_IMU_PER_SECOND);
         final long startTime = timestamp;
-        final boolean[] isFirstLogged = {false};
 
         class SensorDataHolder {
             final float[] accel = new float[3];
@@ -279,22 +307,17 @@ public class SensorDataService extends Service {
             public void run() {
                 if (count >= MAX_IMU_PER_SECOND || System.currentTimeMillis() - startTime >= 1000) {
                     sensorManager.unregisterListener(listener);
-                    if (imuDataBuffer.isEmpty()) {
-                        Log.w(TAG, "IMU 데이터 버퍼가 비어 있음");
-                    } else {
-//                       Log.d(TAG, "IMU 데이터 저장: " + imuDataBuffer.size() + "개");
-                        for (Map<String, Object> data : imuDataBuffer) {
-                            saveToCSV("IMU", data, !isFirstLogged[0]);
-                            isFirstLogged[0] = true;
+                    if (!tempImuBuffer.isEmpty()) {
+                        synchronized (imuBuffer) {
+                            imuBuffer.addAll(tempImuBuffer);
                         }
                     }
-                    imuDataBuffer.clear();
                     return;
                 }
 
                 if (sensorData.isAllSet()) {
-                    Map<String, Object> data = new LinkedHashMap<>(20);
-                    data.put("timestamp", timestamp);
+                    Map<String, Object> data = new LinkedHashMap<>();
+                    data.put("timestamp", startTime);
                     data.put("accel.x", sensorData.accel[0]);
                     data.put("accel.y", sensorData.accel[1]);
                     data.put("accel.z", sensorData.accel[2]);
@@ -317,8 +340,7 @@ public class SensorDataService extends Service {
                     data.put("linear_accel.x", sensorData.linear[0]);
                     data.put("linear_accel.y", sensorData.linear[1]);
                     data.put("linear_accel.z", sensorData.linear[2]);
-
-                    imuDataBuffer.add(data);
+                    tempImuBuffer.add(data);
                     count++;
                 }
                 handler.postDelayed(this, IMU_INTERVAL_MS);
@@ -328,75 +350,57 @@ public class SensorDataService extends Service {
         handler.post(imuCollector);
     }
 
-    private void saveToCSV(String sensorType, Map<String, Object> data) {
-        saveToCSV(sensorType, data, true);
+    private void flushBuffers() {
+        flushBuffer("GPS", gpsBuffer, GPS_KEYS);
+        flushBuffer("AP", apBuffer, AP_KEYS);
+        flushBuffer("BTS", btsBuffer, BTS_KEYS);
+        flushBuffer("IMU", imuBuffer, IMU_KEYS);
     }
 
-    private void saveToCSV(String sensorType, Map<String, Object> data, boolean shouldLog) {
-        executorService.execute(() -> {
-            try {
-                File directory = new File(getExternalFilesDir(null), "SensorData");
-                if (!directory.exists()) {
-                    directory.mkdirs();
+    private void flushBuffer(String sensorType, List<Map<String, Object>> buffer, String[] keys) {
+        synchronized (buffer) {
+            if (buffer.isEmpty()) return;
+
+            // 타임스탬프 순으로 정렬
+            buffer.sort(Comparator.comparingLong(d -> (Long) d.get("timestamp")));
+
+            // CSV 저장
+            File directory = new File(getExternalFilesDir(null), "SensorData");
+            if (!directory.exists()) directory.mkdirs();
+
+            String currentDate = dateFormat.format(new Date());
+            String fileName = currentDate + "_" + sensorType + ".csv";
+            File file = new File(directory, fileName);
+            boolean needsHeader = !file.exists() || file.length() == 0;
+
+            try (FileWriter writer = new FileWriter(file, true)) {
+                if (needsHeader) {
+                    writer.append(String.join(",", keys)).append("\n");
+                    Log.d(TAG, sensorType + " CSV 헤더 기록: " + String.join(",", keys));
                 }
-
-                String currentDate = dateFormat.format(new Date());
-                String fileName = currentDate + "_" + sensorType + ".csv";
-                File file = new File(directory, fileName);
-                boolean needsHeader = !file.exists() || file.length() == 0;
-
-                if (!data.containsKey("timestamp") || data.get("timestamp") == null) {
-                    Log.e(TAG, sensorType + " 데이터에 timestamp 누락");
-                    return;
-                }
-
-                try (FileWriter writer = new FileWriter(file, true)) {
-                    if (needsHeader) {
-                        String header = String.join(",", data.keySet());
-                        writer.append(header).append("\n");
-                        Log.d(TAG, sensorType + " CSV 헤더 기록: " + header);
-                    }
-                    StringBuilder line = new StringBuilder(data.size() * 10);
-                    for (Object value : data.values()) {
-                        if (line.length() > 0) line.append(",");
-                        if (value instanceof Long) {
-                            line.append(Long.toString((Long) value));
-                        } else {
-                            line.append(value != null ? value.toString() : "null");
-                        }
+                for (Map<String, Object> data : buffer) {
+                    StringBuilder line = new StringBuilder(keys.length * 10);
+                    for (int i = 0; i < keys.length; i++) {
+                        if (i > 0) line.append(",");
+                        Object value = data.get(keys[i]);
+                        line.append(value != null ? value.toString() : "null");
                     }
                     writer.append(line.toString()).append("\n");
-
-//                    if (shouldLog) {
-//                        switch (sensorType) {
-//                            case "AP":
-//                                Log.d(TAG, "AP CSV 데이터 기록: " + line.toString());
-//                                break;
-//                            case "BTS":
-//                                Log.d(TAG, "BTS CSV 데이터 기록: " + line.toString());
-//                                break;
-//                            case "GPS":
-//                                Log.d(TAG, "GPS CSV 데이터 기록: " + line.toString());
-//                                break;
-//                            case "IMU":
-//                                Log.d(TAG, "IMU CSV 데이터 기록 (첫 번째): " + line.toString());
-//                                break;
-//                            default:
-//                                Log.w(TAG, "알 수 없는 센서 타입: " + sensorType);
-//                                break;
-//                        }
-//                    }
                 }
+                Log.d(TAG, sensorType + " 데이터 저장: " + buffer.size() + " rows");
             } catch (IOException e) {
                 Log.e(TAG, "CSV 저장 실패: " + sensorType, e);
             }
-        });
+
+            buffer.clear();
+        }
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
         handler.removeCallbacksAndMessages(null);
+        flushBuffers(); // 종료 시 남은 데이터 저장
         executorService.shutdown();
     }
 }

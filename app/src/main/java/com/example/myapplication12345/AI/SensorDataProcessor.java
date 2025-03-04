@@ -569,93 +569,81 @@ public class SensorDataProcessor {
 
     @SuppressLint("DefaultLocale")
     public void predictMovingMode(Tensor inputTensor) {
-        if (model == null) {
-            Log.e(TAG, "모델이 로드되지 않음 - 예측 불가능");
+        if (model == null || inputTensor == null) {
             predictedResult = "None";
+            Log.e(TAG, "모델 또는 입력 텐서가 null - 예측 불가능");
             return;
         }
 
         try {
-            long[] inputShape = inputTensor.shape();
-            Log.d(TAG, "✅ 입력 텐서 크기: " + Arrays.toString(inputShape));
             Tensor outputTensor = model.forward(IValue.from(inputTensor)).toTensor();
-            Log.d(TAG, "✅ 출력 텐서 크기: " + Arrays.toString(outputTensor.shape()));
-
             float[] logits = outputTensor.getDataAsFloatArray();
             float[] probabilities = softmax(logits);
-            Log.d(TAG, "전체 확률 값: " + Arrays.toString(probabilities));
 
-            int batchSize = (int) inputShape[0];
-            int numClasses = 11; // 클래스 0~10, 총 11개
-            if (probabilities.length != numClasses * batchSize) {
-                Log.e(TAG, "출력 크기 불일치: 기대 " + (numClasses * batchSize) + ", 실제 " + probabilities.length);
-                predictedResult = "None";
+            int maxIndex = 0;
+            float maxProb = probabilities[0];
+            for (int i = 1; i < probabilities.length; i++) {
+                if (probabilities[i] > maxProb) {
+                    maxProb = probabilities[i];
+                    maxIndex = i;
+                }
+            }
+
+            float threshold = 0.9f;
+            if (maxProb >= threshold && maxIndex <= 4) {
+                predictedResult = TRANSPORT_MODES[maxIndex];
+                Log.d(TAG, "예측된 이동수단: " + predictedResult + ", 확률: " + maxProb);
             } else {
-                for (float prob : probabilities) {
-                    if (Float.isNaN(prob)) {
-                        Log.e(TAG, "NaN 값 감지");
-                        predictedResult = "None";
-                        return;
-                    }
-                }
-
-                int maxIndex = 0;
-                float maxProb = probabilities[0];
-                for (int i = 1; i < numClasses; i++) {
-                    if (probabilities[i] > maxProb) {
-                        maxProb = probabilities[i];
-                        maxIndex = i;
-                    }
-                }
-
-                float threshold = 0.9f;
-                if (maxProb >= threshold && maxIndex <= 4) {
-                    predictedResult = TRANSPORT_MODES[maxIndex];
-                    Log.d(TAG, "예측된 이동수단: " + predictedResult + ", 확률: " + maxProb);
+                predictedResult = "None";
+                if (maxProb < threshold) {
+                    Log.w(TAG, "확률이 임계값 미만: " + maxProb);
                 } else {
-                    predictedResult = "None";
-                    if (maxProb < threshold) {
-                        Log.w(TAG, "확률이 임계값 미만: " + maxProb);
-                    } else {
-                        Log.w(TAG, "클래스 인덱스 " + maxIndex + "는 유효하지 않음 (5 이상), None으로 설정");
-                    }
+                    Log.w(TAG, "클래스 인덱스 " + maxIndex + "는 유효하지 않음 (5 이상), None으로 설정");
                 }
+            }
 
-                if (!clonedGpsDataList.isEmpty() && clonedGpsDataList.size() >= 2) {
-                    long startTimestamp = findEarliestTimestamp(clonedGpsDataList);
-                    Map<String, Object> startData = clonedGpsDataList.get(0);
-                    Map<String, Object> endData = clonedGpsDataList.get(clonedGpsDataList.size() - 1);
-                    double startLat = ((Number) startData.get("latitude")).doubleValue();
-                    double startLon = ((Number) startData.get("longitude")).doubleValue();
-                    double endLat = ((Number) endData.get("latitude")).doubleValue();
-                    double endLon = ((Number) endData.get("longitude")).doubleValue();
+            // GPS 데이터가 충분한 경우에만 위치 정보 처리
+            if (!clonedGpsDataList.isEmpty() && clonedGpsDataList.size() >= 2) {
+                long startTimestamp = findEarliestTimestamp(clonedGpsDataList);
+                Map<String, Object> startData = clonedGpsDataList.get(0);
+                Map<String, Object> endData = clonedGpsDataList.get(clonedGpsDataList.size() - 1);
+                double startLat = ((Number) startData.get("latitude")).doubleValue();
+                double startLon = ((Number) startData.get("longitude")).doubleValue();
+                double endLat = ((Number) endData.get("latitude")).doubleValue();
+                double endLon = ((Number) endData.get("longitude")).doubleValue();
 
+                double distance;
+                String transportModeForSave;
+
+                // 모델 예측이 None이 아닌 경우
+                if (!predictedResult.equals("None")) {
+                    transportModeForSave = predictedResult;
                     MovementAnalyzer analyzer = new MovementAnalyzer(clonedGpsDataList, clonedImuDataList);
                     analyzer.analyze();
-                    double distance = analyzer.getDistance();
-                    String analyzedTransportMode = analyzer.getTransportMode();
-
-                    if (predictedResult.equals("None")) {
-                        int analyzerIndex = Arrays.asList(TRANSPORT_MODES).indexOf(analyzedTransportMode);
-                        if (analyzerIndex >= 0 && analyzerIndex <= 4) {
-                            predictedResult = analyzedTransportMode;
-                            Log.d(TAG, "AI 예측이 None이므로 MovementAnalyzer 이동수단 사용: " + predictedResult);
-                        } else {
-                            predictedResult = "None";
-                            Log.d(TAG, "MovementAnalyzer 결과 " + analyzedTransportMode + "는 유효하지 않음, None 유지");
-                        }
-                    }
-
-                    savePredictionToCSV(predictedResult, distance, startTimestamp, startLat, startLon, endLat, endLon);
-                    Log.d(TAG, "MovementAnalyzer로 계산된 거리 사용: " + distance + "m");
+                    distance = analyzer.getDistance();
+                    Log.d(TAG, "모델 예측 사용: " + transportModeForSave + ", 거리: " + distance + "m");
                 } else {
-                    Log.w(TAG, "GPS 데이터 부족으로 위치 정보 저장 불가");
+                    // 모델 예측이 None인 경우에만 MovementAnalyzer의 transportMode 사용
+                    MovementAnalyzer analyzer = new MovementAnalyzer(clonedGpsDataList, clonedImuDataList);
+                    analyzer.analyze();
+                    distance = analyzer.getDistance();
+                    String analyzedTransportMode = analyzer.getTransportMode();
+                    if (Arrays.asList(TRANSPORT_MODES).contains(analyzedTransportMode)) {
+                        transportModeForSave = analyzedTransportMode;
+                        Log.d(TAG, "모델 예측이 None - MovementAnalyzer 결과 사용: " + transportModeForSave);
+                    } else {
+                        transportModeForSave = "None";
+                        Log.d(TAG, "MovementAnalyzer 결과도 유효하지 않음: " + analyzedTransportMode);
+                    }
                 }
+
+                savePredictionToCSV(transportModeForSave, distance, startTimestamp, startLat, startLon, endLat, endLon);
+            } else {
+                Log.w(TAG, "GPS 데이터 부족으로 위치 정보 저장 불가");
             }
         } catch (Exception e) {
             Log.e(TAG, "예측 중 오류: " + e.getMessage(), e);
             predictedResult = "None";
-            // ... (예외 처리 로직 동일)
         }
     }
 
