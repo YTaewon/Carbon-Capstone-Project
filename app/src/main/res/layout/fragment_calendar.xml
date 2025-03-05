@@ -13,14 +13,12 @@
         android:gravity="center"
         android:paddingTop="8dp">
 
-        <Button
+        <ImageButton
             android:id="@+id/btn_prev_month"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:backgroundTint="#919497"
-            android:textStyle="bold"
-            android:textSize="19sp"
-            android:text="이전 달" />
+            android:src="@drawable/ic_previous_month"
+            android:background="?attr/selectableItemBackgroundBorderless"/>
 
         <TextView
             android:id="@+id/tv_date"
@@ -30,19 +28,17 @@
             android:layout_marginRight="20dp"
             android:textSize="18sp"
             android:textStyle="bold"
-            android:text="2024년 02월"
+            android:text="2025년 03월"
             android:layout_gravity="center"
             />
 
 
-        <Button
+        <ImageButton
             android:id="@+id/btn_next_month"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:backgroundTint="#919497"
-            android:textStyle="bold"
-            android:textSize="19sp"
-            android:text="다음 달" />
+            android:src="@drawable/ic_next_month"
+            android:background="?attr/selectableItemBackgroundBorderless"/>
     </LinearLayout>
 
     <!-- 달력 그리드뷰 -->

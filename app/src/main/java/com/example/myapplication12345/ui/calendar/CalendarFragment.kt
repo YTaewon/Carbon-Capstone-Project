@@ -177,39 +177,79 @@ class CalendarFragment : Fragment() {
             holder.tvPoints.text = if (totalEmissions > 0) totalEmissions.toString() else ""
 
             val today = Calendar.getInstance()
+            holder.tvItemGridView.isSelected = false // 기본적으로 선택 해제
+            holder.tvItemGridView.isPressed = false // 기본적으로 눌림 해제
+
             if (day.date.isNotEmpty() && day.productEmissions >= 0 && day.date.all { it.isDigit() }) {
                 val tempCal = mCal.clone() as Calendar
                 tempCal.set(Calendar.DAY_OF_MONTH, day.date.toInt())
                 val dayOfWeek = tempCal.get(Calendar.DAY_OF_WEEK)
 
-                if (day.productEmissions == 0 && day.date.toInt() == today.get(Calendar.DAY_OF_MONTH) &&
-                    mCal.get(Calendar.MONTH) == today.get(Calendar.MONTH) &&
-                    mCal.get(Calendar.YEAR) == today.get(Calendar.YEAR)) {
-                    holder.tvItemGridView.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.holo_orange_light))
-                } else if (dayOfWeek == Calendar.SATURDAY) {
-                    holder.tvItemGridView.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.holo_blue_dark))
-                } else if (dayOfWeek == Calendar.SUNDAY) {
-                    holder.tvItemGridView.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.holo_red_dark))
+                // 오늘 날짜 강조
+                val isToday = day.date.toInt() == today.get(Calendar.DAY_OF_MONTH) &&
+                        mCal.get(Calendar.MONTH) == today.get(Calendar.MONTH) &&
+                        mCal.get(Calendar.YEAR) == today.get(Calendar.YEAR)
+                if (isToday) {
+                    holder.tvItemGridView.isSelected = true // 오늘 날짜: 회색 동그라미
+                }
+
+                // 선택된 날짜 강조 (클릭 시)
+                if (position == selectedPosition) {
+                    holder.tvItemGridView.isPressed = true // 선택 상태: 검정 테두리 추가
+                    holder.ivIndicator.visibility = View.VISIBLE
                 } else {
-                    holder.tvItemGridView.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.black))
+                    holder.ivIndicator.visibility = View.INVISIBLE
+                }
+
+                // 요일별 색상 (오늘 날짜나 선택된 날짜가 아닌 경우에만 적용)
+                if (!holder.tvItemGridView.isSelected && !holder.tvItemGridView.isPressed) {
+                    when (dayOfWeek) {
+                        Calendar.SATURDAY -> holder.tvItemGridView.setTextColor(
+                            ContextCompat.getColor(requireContext(), android.R.color.holo_blue_dark)
+                        )
+                        Calendar.SUNDAY -> holder.tvItemGridView.setTextColor(
+                            ContextCompat.getColor(requireContext(), android.R.color.holo_red_dark)
+                        )
+                        else -> holder.tvItemGridView.setTextColor(
+                            ContextCompat.getColor(requireContext(), android.R.color.black)
+                        )
+                    }
+                } else {
+                    holder.tvItemGridView.setTextColor(
+                        ContextCompat.getColor(requireContext(), android.R.color.black)
+                    )
                 }
             } else if (day.productEmissions == -1) {
                 when (position % 7) {
-                    0 -> holder.tvItemGridView.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.holo_red_dark))
-                    6 -> holder.tvItemGridView.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.holo_blue_dark))
-                    else -> holder.tvItemGridView.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.black))
+                    0 -> holder.tvItemGridView.setTextColor(
+                        ContextCompat.getColor(requireContext(), android.R.color.holo_red_dark)
+                    )
+                    6 -> holder.tvItemGridView.setTextColor(
+                        ContextCompat.getColor(requireContext(), android.R.color.holo_blue_dark)
+                    )
+                    else -> holder.tvItemGridView.setTextColor(
+                        ContextCompat.getColor(requireContext(), android.R.color.black)
+                    )
                 }
             }
 
             view.setOnClickListener {
                 if (day.date.isNotEmpty() && day.productEmissions >= 0 && day.date.all { it.isDigit() }) {
                     hideIndicatorAtPosition(selectedPosition)
-                    holder.ivIndicator.visibility = View.VISIBLE
                     selectedPosition = position
+                    holder.tvItemGridView.isPressed = true // 선택 상태: 검정 테두리 추가
+                    val isTodayInClick = day.date.toInt() == today.get(Calendar.DAY_OF_MONTH) &&
+                            mCal.get(Calendar.MONTH) == today.get(Calendar.MONTH) &&
+                            mCal.get(Calendar.YEAR) == today.get(Calendar.YEAR)
+                    if (isTodayInClick) {
+                        holder.tvItemGridView.isSelected = true // 오늘 날짜 선택 시 회색 배경 유지
+                    }
+                    holder.ivIndicator.visibility = View.VISIBLE
                     showPointVeiw(day)
                     val selectedDate = formatDateForFile(day.date)
                     binding.btnOpenMap.isEnabled = checkCsvFileExists(selectedDate)
                     updateTestMapButtonState()
+                    gridAdapter.notifyDataSetChanged() // UI 갱신
                 }
             }
 

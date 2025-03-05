@@ -8,10 +8,12 @@
 
     <TextView
         android:id="@+id/tv_item_gridview"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
         android:textSize="16sp"
-        android:gravity="center" />
+        android:textStyle="bold"
+        android:gravity="center"
+        android:background="@drawable/selected_day_background"/>
 
     <ImageView
         android:id="@+id/iv_indicator"
@@ -25,9 +27,9 @@
         android:id="@+id/tv_points"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
         android:textSize="12sp"
-        android:textColor="@color/Green"
-        android:gravity="center" />
+        android:textColor="@android:color/darker_gray" />
 
 
 
