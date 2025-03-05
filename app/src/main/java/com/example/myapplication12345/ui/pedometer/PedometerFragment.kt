@@ -84,11 +84,6 @@ class PedometerFragment : Fragment(), SensorEventListener {
         startStepCounter()
     }
 
-    override fun onPause() {
-        super.onPause()
-        sensorManager.unregisterListener(this)
-    }
-
     override fun onSensorChanged(event: SensorEvent?) {
         event?.let {
             val totalSteps = it.values[0].toInt()

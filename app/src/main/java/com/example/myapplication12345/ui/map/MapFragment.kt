@@ -44,38 +44,41 @@ class MapFragment : Fragment() {
             if (!file.exists()) {
                 try {
                     FileWriter(file).use { writer ->
-                        writer.append("transport_mode,distance_meters,start_timestamp,latitude,longitude\n")
+                        writer.append("start_timestamp,transport_mode,distance_meters,start_latitude,start_longitude,end_latitude,end_longitude\n")
 
-                        // 중심점과 반지름 설정
+                        // 이동수단별 시작점과 끝점 설정
                         val modes = listOf("WALK", "BIKE", "BUS", "CAR", "SUBWAY", "ETC")
                         val centerPoints = listOf(
-                            Pair(37.5665, 126.9780), // WALK
-                            Pair(37.5700, 126.9750), // BIKE
-                            Pair(37.5750, 126.9700), // BUS
-                            Pair(37.5800, 126.9650), // CAR
-                            Pair(37.5850, 126.9600), // SUBWAY
-                            Pair(37.5900, 126.9550)  // ETC
+                            Pair(35.177306, 128.567773), // WALK 시작점
+                            Pair(35.182838, 128.564494), // BIKE 시작점
+                            Pair(35.186558, 128.563180), // BUS 시작점
+                            Pair(35.191691, 128.567251), // CAR 시작점
+                            Pair(35.194362, 128.569659), // SUBWAY 시작점
+                            Pair(35.198268, 128.570484)  // ETC 시작점
                         )
-                        val radius = 0.005 // 반지름 (위도/경도 단위, 약 500m)
-                        val innerRadius = radius / 2
+                        val endPoints = listOf(
+                            Pair(35.182838, 128.564494), // WALK 끝점
+                            Pair(35.186558, 128.563180), // BIKE 끝점
+                            Pair(35.191691, 128.567251), // BUS 끝점
+                            Pair(35.194362, 128.569659), // CAR 끝점
+                            Pair(35.198268, 128.570484), // SUBWAY 끝점
+                            Pair(35.202949, 128.572035)  // ETC 끝점
+                        )
 
                         modes.forEachIndexed { index, mode ->
-                            val centerLat = centerPoints[index].first
-                            val centerLon = centerPoints[index].second
-                            val timestampBase = System.currentTimeMillis() + index * 1000L
+                            val startLat = centerPoints[index].first
+                            val startLon = centerPoints[index].second
+                            val endLat = endPoints[index].first
+                            val endLon = endPoints[index].second
+                            val timestamp = System.currentTimeMillis() + index * 1000L
 
-                            // 별 모양의 10개 점 (5개 외곽 + 5개 내측)
-                            for (i in 0 until 10) {
-                                val isOuter = i % 2 == 0 // 짝수 인덱스는 외곽, 홀수는 내측
-                                val angle = Math.toRadians((i * 36.0)) // 360° / 10 = 36° 간격
-                                val currentRadius = if (isOuter) radius else innerRadius
-                                val lat = centerLat + currentRadius * kotlin.math.cos(angle)
-                                val lon = centerLon + currentRadius * kotlin.math.sin(angle)
-                                val distance = if (isOuter) 200.0 else 100.0 // 외곽과 내측 거리 다르게 설정
-                                val timestamp = timestampBase + i * 500L
+                            // 시작점과 끝점 사이의 거리 계산 (근사값, 실제 거리 계산 필요 시 Haversine 공식 사용 가능)
+                            val distance = 500.0 // 임의의 거리 (미터), 필요 시 실제 계산으로 대체 가능
 
-                                writer.append("$mode,$distance,$timestamp,$lat,$lon\n")
-                            }
+                            writer.append(String.format(
+                                "%d,%s,%.2f,%.6f,%.6f,%.6f,%.6f\n",
+                                timestamp, mode, distance, startLat, startLon, endLat, endLon
+                            ))
                         }
                     }
                 } catch (e: IOException) {
@@ -249,27 +252,53 @@ class MapFragment : Fragment() {
             distanceInfo.append("데이터 없음")
         } else {
             groupedData.forEach { (transportMode, dataList) ->
-                val points = mutableListOf<GeoPoint>()
                 var totalDistance = 0.0
 
                 dataList.sortedBy { it["start_timestamp"]!!.toLong() }.forEach { data ->
                     val distance = data["distance_meters"]!!.toDouble()
-                    val latitude = data["latitude"]?.toDoubleOrNull()
-                    val longitude = data["longitude"]?.toDoubleOrNull()
+                    val startLat = data["start_latitude"]?.toDoubleOrNull()
+                    val startLon = data["start_longitude"]?.toDoubleOrNull()
+                    val endLat = data["end_latitude"]?.toDoubleOrNull()
+                    val endLon = data["end_longitude"]?.toDoubleOrNull()
 
-                    if (latitude != null && longitude != null) {
-                        val geoPoint = GeoPoint(latitude, longitude)
-                        points.add(geoPoint)
+                    if (startLat != null && startLon != null && endLat != null && endLon != null) {
+                        val startPoint = GeoPoint(startLat, startLon)
+                        val endPoint = GeoPoint(endLat, endLon)
+                        val points = listOf(startPoint, endPoint)
+
                         totalDistance += distance
 
                         if (firstPoint == null) {
-                            firstPoint = geoPoint
+                            firstPoint = startPoint
                         }
                         hasData = true
+
+                        val koreanTransportMode = transportModeNames[transportMode] ?: transportMode
+                        val polyline = Polyline().apply {
+                            setPoints(points)
+                            setTitle("$koreanTransportMode - 거리: ${String.format("%.2f m", distance)}")
+                            val borderPaint = Paint().apply {
+                                color = Color.BLACK // 테두리 색상
+                                strokeWidth = 10.0f // 테두리 두께
+                                style = Paint.Style.STROKE
+                                strokeCap = Paint.Cap.ROUND
+                                isAntiAlias = true
+                            }
+                            outlinePaintLists.add(MonochromaticPaintList(borderPaint))
+                            val innerPaint = Paint().apply {
+                                color = getTransportColor(transportMode) // 이동수단별 색상
+                                strokeWidth = 5.0f // 내부 선 두께
+                                style = Paint.Style.STROKE
+                                strokeCap = Paint.Cap.ROUND
+                                isAntiAlias = true
+                            }
+                            outlinePaintLists.add(MonochromaticPaintList(innerPaint))
+                        }
+                        mapView.overlays.add(polyline)
                     }
                 }
 
-                if (points.isNotEmpty()) {
+                if (totalDistance > 0) {
                     val koreanTransportMode = transportModeNames[transportMode] ?: transportMode
                     distanceInfo.append(
                         String.format(
@@ -277,28 +306,6 @@ class MapFragment : Fragment() {
                             koreanTransportMode, totalDistance
                         )
                     )
-
-                    val polyline = Polyline().apply {
-                        setPoints(points)
-                        setTitle("$koreanTransportMode - 총 거리: ${String.format("%.2f m", totalDistance)}")
-                        val borderPaint = Paint().apply {
-                            color = Color.BLACK // 테두리 색상
-                            strokeWidth = 10.0f // 테두리 두께
-                            style = Paint.Style.STROKE
-                            strokeCap = Paint.Cap.ROUND
-                            isAntiAlias = true
-                        }
-                        outlinePaintLists.add(MonochromaticPaintList(borderPaint))
-                        val innerPaint = Paint().apply {
-                            color = getTransportColor(transportMode) // 이동수단별 색상
-                            strokeWidth = 5.0f // 내부 선 두께
-                            style = Paint.Style.STROKE
-                            strokeCap = Paint.Cap.ROUND
-                            isAntiAlias = true
-                        }
-                        outlinePaintLists.add(MonochromaticPaintList(innerPaint))
-                    }
-                    mapView.overlays.add(polyline)
                 }
             }
 
@@ -315,7 +322,6 @@ class MapFragment : Fragment() {
         mapView.invalidate()
         textDistanceInfo.text = distanceInfo.toString()
     }
-
     private fun getTransportColor(transportMode: String): Int {
         return when (transportMode) {
             "WALK" -> Color.GREEN
@@ -370,6 +376,4 @@ class MapFragment : Fragment() {
 
         displayPredictionOnMap(predictionData)
     }
-
-
 }
