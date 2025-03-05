@@ -8,7 +8,7 @@ class HomeViewModel : ViewModel() {
 
     // 기존 인사말 텍스트용 LiveData
     private val _text = MutableLiveData<String>().apply {
-        value = "메인화면(홈화면)"
+        value = "메인화면"
     }
     val text: LiveData<String> = _text
 
