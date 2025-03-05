@@ -53,7 +53,7 @@ class NowFragment : Fragment() {
                     }
                 }
 
-                Toast.makeText(requireContext(), "로드된 데이터: ${profileList.size}개", Toast.LENGTH_SHORT).show()
+//                Toast.makeText(requireContext(), "로드된 데이터: ${profileList.size}개", Toast.LENGTH_SHORT).show()
 
                 profileList.sortByDescending { it.score }
                 updateTopThree(profileList)
@@ -65,12 +65,12 @@ class NowFragment : Fragment() {
                 }
 
                 // remainingProfiles 크기 확인
-                Toast.makeText(requireContext(), "RecyclerView 데이터: ${remainingProfiles.size}개", Toast.LENGTH_SHORT).show()
+//                Toast.makeText(requireContext(), "RecyclerView 데이터: ${remainingProfiles.size}개", Toast.LENGTH_SHORT).show()
 
                 rankingAdapter.updateData(remainingProfiles)
             }
             .addOnFailureListener {
-                Toast.makeText(requireContext(), "데이터 로드 실패: ${it.message}", Toast.LENGTH_SHORT).show()
+//                Toast.makeText(requireContext(), "데이터 로드 실패: ${it.message}", Toast.LENGTH_SHORT).show()
             }
     }
 

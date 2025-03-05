@@ -38,15 +38,7 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent">
 
-            <TextView
-                android:id="@+id/scanText"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="전기 고지서를 스캔해주세요"
-                android:textColor="#AAAAAA"
-                android:textSize="16sp"
-                android:paddingBottom="16dp"
-                android:gravity="center" />
+
 
             <Button
                 android:id="@+id/captureButton"
