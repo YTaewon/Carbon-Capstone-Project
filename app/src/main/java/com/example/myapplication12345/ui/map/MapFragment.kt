@@ -46,7 +46,6 @@ class MapFragment : Fragment() {
                     FileWriter(file).use { writer ->
                         writer.append("start_timestamp,transport_mode,distance_meters,start_latitude,start_longitude,end_latitude,end_longitude\n")
 
-                        // 이동수단별 시작점과 끝점 설정
                         val modes = listOf("WALK", "BIKE", "BUS", "CAR", "SUBWAY", "ETC")
                         val centerPoints = listOf(
                             Pair(35.177306, 128.567773), // WALK 시작점
@@ -71,9 +70,7 @@ class MapFragment : Fragment() {
                             val endLat = endPoints[index].first
                             val endLon = endPoints[index].second
                             val timestamp = System.currentTimeMillis() + index * 1000L
-
-                            // 시작점과 끝점 사이의 거리 계산 (근사값, 실제 거리 계산 필요 시 Haversine 공식 사용 가능)
-                            val distance = 500.0 // 임의의 거리 (미터), 필요 시 실제 계산으로 대체 가능
+                            val distance = 500.0 // 임의의 거리
 
                             writer.append(String.format(
                                 "%d,%s,%.2f,%.6f,%.6f,%.6f,%.6f\n",
@@ -87,15 +84,18 @@ class MapFragment : Fragment() {
             }
         }
     }
+
     private lateinit var mapView: MapView
     private lateinit var textDistanceInfo: TextView
     private lateinit var dateText: TextView
     private lateinit var loadButton: ImageView
     private lateinit var selectTransportButton: ImageView
     private lateinit var backButton: ImageView
+    private lateinit var toggleDistanceButton: ImageView
 
     private val transportModes = listOf("WALK", "BIKE", "BUS", "CAR", "SUBWAY", "ETC")
-    private val selectedModes = mutableSetOf<String>().apply { addAll(transportModes) } // 기본적으로 모두 선택
+    private val selectedModes = mutableSetOf<String>().apply { addAll(transportModes) }
+    private var isDistanceInfoVisible = true
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -114,10 +114,13 @@ class MapFragment : Fragment() {
         loadButton = view.findViewById(R.id.load_button)
         selectTransportButton = view.findViewById(R.id.select_transport_button)
         backButton = view.findViewById(R.id.back_button)
+        toggleDistanceButton = view.findViewById(R.id.toggle_distance_button)
 
+        // MapView 초기화
         mapView.setTileSource(TileSourceFactory.MAPNIK)
         mapView.setMultiTouchControls(true)
-        mapView.controller.setZoom(15.0)
+        mapView.controller.setZoom(18.0) // 줌 레벨 증가 (15 -> 18)
+        mapView.setTilesScaledToDpi(true) // DPI에 맞게 타일 스케일링
 
         val selectedDate = arguments?.getString("selectedDate") ?: dateFormat.format(System.currentTimeMillis())
         val year = selectedDate.substring(0, 4)
@@ -128,7 +131,6 @@ class MapFragment : Fragment() {
 
         loadButton.setOnClickListener {
             val selectedDateStr = dateText.text.toString()
-            // "yyyy년 MM월 dd일" → "yyyyMMdd"로 변환
             val parsedDate = try {
                 val parts = selectedDateStr.split("년 ", "월 ", "일")
                 val yearPart = parts[0]
@@ -137,7 +139,7 @@ class MapFragment : Fragment() {
                 "$yearPart$monthPart$dayPart"
             } catch (e: Exception) {
                 Log.e(TAG, "날짜 파싱 실패: $selectedDateStr", e)
-                dateFormat.format(System.currentTimeMillis()) // 기본값
+                dateFormat.format(System.currentTimeMillis())
             }
             loadAndDisplayPredictionData(parsedDate)
         }
@@ -146,12 +148,27 @@ class MapFragment : Fragment() {
             showTransportSelectionDialog()
         }
 
-        // 뒤로가기 버튼 클릭 리스너
         backButton.setOnClickListener {
             requireActivity().finish()
         }
 
+        toggleDistanceButton.setOnClickListener {
+            toggleDistanceInfoVisibility()
+        }
+
         return view
+    }
+
+    private fun toggleDistanceInfoVisibility() {
+        if (isDistanceInfoVisible) {
+            textDistanceInfo.visibility = View.GONE
+            toggleDistanceButton.setImageResource(R.drawable.ic_drop_down) // 숨김 상태 아이콘
+            isDistanceInfoVisible = false
+        } else {
+            textDistanceInfo.visibility = View.VISIBLE
+            toggleDistanceButton.setImageResource(R.drawable.ic_drop_up) // 표시 상태 아이콘
+            isDistanceInfoVisible = true
+        }
     }
 
     private fun showTransportSelectionDialog() {
@@ -166,7 +183,6 @@ class MapFragment : Fragment() {
             dialogView.findViewById<CheckBox>(R.id.checkbox_all)
         )
 
-        // 초기 체크 상태 설정
         checkBoxes.forEachIndexed { index, checkBox ->
             if (index < transportModes.size) {
                 checkBox.isChecked = selectedModes.contains(transportModes[index])
@@ -174,18 +190,15 @@ class MapFragment : Fragment() {
         }
         checkBoxes.last().isChecked = selectedModes.size == transportModes.size
 
-        // "All" 체크박스 동작
         checkBoxes.last().setOnCheckedChangeListener { _, isChecked ->
             if (isChecked) {
                 checkBoxes.dropLast(1).forEach { it.isChecked = true }
             }
         }
 
-        // 개별 체크박스 동작
         checkBoxes.dropLast(1).forEachIndexed { _, checkBox ->
             checkBox.setOnCheckedChangeListener { _, isChecked ->
                 val allChecked = checkBoxes.dropLast(1).all { it.isChecked }
-                // "All"이 체크되어 있던 상태에서 개별 체크박스가 해제되면 "All"만 풀림
                 if (!isChecked && checkBoxes.last().isChecked) {
                     checkBoxes.last().isChecked = false
                 } else {
@@ -205,7 +218,6 @@ class MapFragment : Fragment() {
                     }
                 }
                 val selectedDateStr = dateText.text.toString()
-                // "yyyy년 MM월 dd일" → "yyyyMMdd"로 변환
                 val parsedDate = try {
                     val parts = selectedDateStr.split("년 ", "월 ", "일")
                     val yearPart = parts[0]
@@ -278,16 +290,16 @@ class MapFragment : Fragment() {
                             setPoints(points)
                             setTitle("$koreanTransportMode - 거리: ${String.format("%.2f m", distance)}")
                             val borderPaint = Paint().apply {
-                                color = Color.BLACK // 테두리 색상
-                                strokeWidth = 10.0f // 테두리 두께
+                                color = Color.BLACK
+                                strokeWidth = 10.0f
                                 style = Paint.Style.STROKE
                                 strokeCap = Paint.Cap.ROUND
                                 isAntiAlias = true
                             }
                             outlinePaintLists.add(MonochromaticPaintList(borderPaint))
                             val innerPaint = Paint().apply {
-                                color = getTransportColor(transportMode) // 이동수단별 색상
-                                strokeWidth = 5.0f // 내부 선 두께
+                                color = getTransportColor(transportMode)
+                                strokeWidth = 5.0f
                                 style = Paint.Style.STROKE
                                 strokeCap = Paint.Cap.ROUND
                                 isAntiAlias = true
@@ -322,6 +334,7 @@ class MapFragment : Fragment() {
         mapView.invalidate()
         textDistanceInfo.text = distanceInfo.toString()
     }
+
     private fun getTransportColor(transportMode: String): Int {
         return when (transportMode) {
             "WALK" -> Color.GREEN
@@ -375,5 +388,15 @@ class MapFragment : Fragment() {
         }
 
         displayPredictionOnMap(predictionData)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        mapView.onResume()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        mapView.onPause()
     }
 }
