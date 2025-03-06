@@ -2,8 +2,6 @@ package com.example.myapplication12345
 
 import android.content.Intent
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -20,7 +18,6 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import android.os.Build
-import com.example.myapplication12345.AI.SensorDataProcessor
 import com.example.myapplication12345.AI.SensorDataService
 import java.util.ArrayList
 
@@ -43,21 +40,14 @@ class SplashActivity : AppCompatActivity() {
             insets
         }
 
-        // Immediately check and request permissions instead of delaying
+        // 권한 확인 및 즉시 진행
         if (!hasPermissions()) {
             Timber.tag(TAG).d("권한 확인 실패, 요청 시작")
             requestPermissions()
         } else {
             Timber.tag(TAG).d("모든 권한 확인됨, 인증 상태 확인으로 진행")
-            delayAndCheckUser()
-        }
-    }
-
-    private fun delayAndCheckUser() {
-        // 2초 딜레이 후 인증 상태 확인 및 다음 단계로 이동
-        Handler(Looper.getMainLooper()).postDelayed({
             checkUserAndProceed()
-        }, 2000)
+        }
     }
 
     private fun checkUserAndProceed() {
@@ -78,12 +68,11 @@ class SplashActivity : AppCompatActivity() {
             add(Manifest.permission.ACCESS_WIFI_STATE)
             add(Manifest.permission.ACCESS_FINE_LOCATION)
             add(Manifest.permission.READ_PHONE_STATE)
-
-            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.S_V2) { // API 32 이하
+            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.S_V2) {
                 add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
                 add(Manifest.permission.READ_EXTERNAL_STORAGE)
             }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) { // API 33 이상
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 add(Manifest.permission.READ_MEDIA_IMAGES)
             }
         }
@@ -106,7 +95,6 @@ class SplashActivity : AppCompatActivity() {
             add(Manifest.permission.ACCESS_WIFI_STATE)
             add(Manifest.permission.ACCESS_FINE_LOCATION)
             add(Manifest.permission.READ_PHONE_STATE)
-
             if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.S_V2) {
                 add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
                 add(Manifest.permission.READ_EXTERNAL_STORAGE)
@@ -133,7 +121,7 @@ class SplashActivity : AppCompatActivity() {
             val allGranted = grantResults.all { it == PackageManager.PERMISSION_GRANTED }
             if (allGranted) {
                 Timber.tag(TAG).d("모든 권한 허용됨")
-                delayAndCheckUser() // Permissions granted, now delay and check user
+                checkUserAndProceed()
             } else {
                 Timber.tag(TAG).w("일부 권한 거부됨")
                 grantResults.forEachIndexed { index, result ->
@@ -178,9 +166,7 @@ class SplashActivity : AppCompatActivity() {
     private fun startSensorService() {
         val serviceIntent = Intent(this, SensorDataService::class.java)
         startService(serviceIntent)
-        SensorDataProcessor.scheduleBackgroundPrediction(this)
-        Timber.tag(TAG).d("SensorDataService 시작")
-        Timber.tag(TAG).d("SensorDataProcessor 시작")
+        Timber.tag(TAG).d("SensorDataService 시작 요청")
     }
 
     private fun navigateToMain() {

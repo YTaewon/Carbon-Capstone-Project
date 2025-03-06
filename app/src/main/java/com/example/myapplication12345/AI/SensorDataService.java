@@ -25,17 +25,12 @@ import androidx.core.content.ContextCompat;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.Date;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -44,7 +39,7 @@ public class SensorDataService extends Service {
     private static final int IMU_INTERVAL_MS = 10; // 10ms 간격
     private static final int MAX_IMU_PER_SECOND = 100; // 1초에 최대 100개
     private static final int INITIAL_DELAY_MS = 3000; // 최초 3초 지연
-    private static final int BUFFER_FLUSH_INTERVAL = 5000; // 5초마다 버퍼 플러시
+    private static final int MIN_TIMESTAMP_COUNT = 60; // 60초(60개의 고유 타임스탬프)
     private static final String TAG = "SensorDataService";
 
     private WifiManager wifiManager;
@@ -54,30 +49,20 @@ public class SensorDataService extends Service {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final ExecutorService executorService = Executors.newSingleThreadExecutor();
 
-    private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd", Locale.getDefault());
-    private String currentDate;
-
-    // 센서별 고정된 키 배열
-    private static final String[] GPS_KEYS = {"timestamp", "latitude", "longitude", "accuracy"};
-    private static final String[] AP_KEYS = {"timestamp", "bssid", "ssid", "level", "frequency", "capabilities"};
-    private static final String[] BTS_KEYS = {"timestamp", "ci", "pci"};
-    private static final String[] IMU_KEYS = {
-            "timestamp", "accel.x", "accel.y", "accel.z", "gyro.x", "gyro.y", "gyro.z",
-            "mag.x", "mag.y", "mag.z", "rot.w", "rot.x", "rot.y", "rot.z", "pressure",
-            "gravity.x", "gravity.y", "gravity.z", "linear_accel.x", "linear_accel.y", "linear_accel.z"
-    };
-
-    // 센서별 데이터 버퍼
+    // 센서 데이터 버퍼
     private final List<Map<String, Object>> gpsBuffer = new ArrayList<>();
     private final List<Map<String, Object>> apBuffer = new ArrayList<>();
     private final List<Map<String, Object>> btsBuffer = new ArrayList<>();
     private final List<Map<String, Object>> imuBuffer = new ArrayList<>();
 
+    // 고유 타임스탬프 추적
+    private final Set<Long> uniqueTimestamps = new HashSet<>();
+
+    private SensorDataProcessor dataProcessor;
+
     @Override
     public void onCreate() {
         super.onCreate();
-        currentDate = dateFormat.format(new Date());
-
         wifiManager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
         telephonyManager = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
@@ -89,8 +74,13 @@ public class SensorDataService extends Service {
             return;
         }
 
+        // 비동기로 SensorDataProcessor 초기화
+        executorService.execute(() -> {
+            dataProcessor = SensorDataProcessor.getInstance(this);
+            Log.d(TAG, "SensorDataProcessor 초기화 완료 (비동기)");
+        });
+
         handler.postDelayed(this::startDataCollection, INITIAL_DELAY_MS);
-        startBufferFlush(); // 버퍼 플러시 스케줄링
     }
 
     private boolean checkPermissions() {
@@ -118,21 +108,20 @@ public class SensorDataService extends Service {
                 collectAPData(timestamp);
                 collectBTSData(timestamp);
                 collectGPSData(timestamp);
+
+                // 고유 타임스탬프 업데이트 및 처리
+                synchronized (uniqueTimestamps) {
+                    uniqueTimestamps.add(timestamp);
+//                    Log.d(TAG, "현재 고유 타임 스탬프 개수: " + uniqueTimestamps.size());
+                    if (uniqueTimestamps.size() >= MIN_TIMESTAMP_COUNT) {
+                        processBuffers();
+                    }
+                }
+
                 handler.postDelayed(this, PROCESS_INTERVAL_01);
             }
         };
         handler.post(dataCollectionRunnable);
-    }
-
-    private void startBufferFlush() {
-        Runnable flushRunnable = new Runnable() {
-            @Override
-            public void run() {
-                flushBuffers();
-                handler.postDelayed(this, BUFFER_FLUSH_INTERVAL);
-            }
-        };
-        handler.postDelayed(flushRunnable, BUFFER_FLUSH_INTERVAL);
     }
 
     private void collectAPData(long timestamp) {
@@ -350,57 +339,61 @@ public class SensorDataService extends Service {
         handler.post(imuCollector);
     }
 
-    private void flushBuffers() {
-        flushBuffer("GPS", gpsBuffer, GPS_KEYS);
-        flushBuffer("AP", apBuffer, AP_KEYS);
-        flushBuffer("BTS", btsBuffer, BTS_KEYS);
-        flushBuffer("IMU", imuBuffer, IMU_KEYS);
+    private void processBuffers() {
+        synchronized (gpsBuffer) {
+            synchronized (apBuffer) {
+                synchronized (btsBuffer) {
+                    synchronized (imuBuffer) {
+                        synchronized (uniqueTimestamps) {
+                            if (uniqueTimestamps.size() >= MIN_TIMESTAMP_COUNT) {
+                                Log.d(TAG, "60초 데이터 수집 완료 - GPS: " + gpsBuffer.size() +
+                                        ", AP: " + apBuffer.size() + ", BTS: " + btsBuffer.size() +
+                                        ", IMU: " + imuBuffer.size());
+
+                                // 데이터 복제
+                                List<Map<String, Object>> gpsDataCopy = cloneData(gpsBuffer);
+                                List<Map<String, Object>> apDataCopy = cloneData(apBuffer);
+                                List<Map<String, Object>> btsDataCopy = cloneData(btsBuffer);
+                                List<Map<String, Object>> imuDataCopy = cloneData(imuBuffer);
+
+                                // SensorDataProcessor로 전달
+                                if (dataProcessor != null) {
+                                    executorService.execute(() -> {
+                                        dataProcessor.processSensorData(gpsDataCopy, apDataCopy, btsDataCopy, imuDataCopy);
+                                        Log.d(TAG, "SensorDataProcessor 처리 완료");
+                                    });
+                                } else {
+                                    Log.w(TAG, "SensorDataProcessor가 초기화되지 않음");
+                                }
+
+                                // 버퍼 및 타임스탬프 초기화
+                                gpsBuffer.clear();
+                                apBuffer.clear();
+                                btsBuffer.clear();
+                                imuBuffer.clear();
+                                uniqueTimestamps.clear();
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
-    private void flushBuffer(String sensorType, List<Map<String, Object>> buffer, String[] keys) {
-        synchronized (buffer) {
-            if (buffer.isEmpty()) return;
-
-            // 타임스탬프 순으로 정렬
-            buffer.sort(Comparator.comparingLong(d -> (Long) d.get("timestamp")));
-
-            // CSV 저장
-            File directory = new File(getExternalFilesDir(null), "SensorData");
-            if (!directory.exists()) directory.mkdirs();
-
-            String currentDate = dateFormat.format(new Date());
-            String fileName = currentDate + "_" + sensorType + ".csv";
-            File file = new File(directory, fileName);
-            boolean needsHeader = !file.exists() || file.length() == 0;
-
-            try (FileWriter writer = new FileWriter(file, true)) {
-                if (needsHeader) {
-                    writer.append(String.join(",", keys)).append("\n");
-                    Log.d(TAG, sensorType + " CSV 헤더 기록: " + String.join(",", keys));
-                }
-                for (Map<String, Object> data : buffer) {
-                    StringBuilder line = new StringBuilder(keys.length * 10);
-                    for (int i = 0; i < keys.length; i++) {
-                        if (i > 0) line.append(",");
-                        Object value = data.get(keys[i]);
-                        line.append(value != null ? value.toString() : "null");
-                    }
-                    writer.append(line.toString()).append("\n");
-                }
-                Log.d(TAG, sensorType + " 데이터 저장: " + buffer.size() + " rows");
-            } catch (IOException e) {
-                Log.e(TAG, "CSV 저장 실패: " + sensorType, e);
-            }
-
-            buffer.clear();
+    private List<Map<String, Object>> cloneData(List<Map<String, Object>> originalList) {
+        List<Map<String, Object>> clonedList = new ArrayList<>();
+        for (Map<String, Object> originalMap : originalList) {
+            Map<String, Object> clonedMap = new LinkedHashMap<>(originalMap);
+            clonedList.add(clonedMap);
         }
+        return clonedList;
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
         handler.removeCallbacksAndMessages(null);
-        flushBuffers(); // 종료 시 남은 데이터 저장
+        processBuffers(); // 종료 시 남은 데이터 처리
         executorService.shutdown();
     }
 }
