@@ -1,34 +1,51 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- 사용자의 신체 활동(걷기, 달리기 등) 인식을 위한 퍼미션 (Android 10 이상에서 필요, 런타임 요청 필요) -->
     <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
 
-    <!-- WiFi 관련 권한 -->
+    <!-- WiFi 및 위치 관련 권한 -->
+    <!-- 정확한 위치 정보(GPS, Wi-Fi 기반 위치) 접근을 위한 퍼미션 (런타임 요청 필요) -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <!-- 대략적인 위치 정보(셀 타워 기반) 접근을 위한 퍼미션 (런타임 요청 필요) -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <!-- 백그라운드에서 위치 데이터 수집을 위한 퍼미션 (Android 10 이상, 런타임 요청 필요) -->
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
 
+    <!-- Wi-Fi 상태 확인을 위한 퍼미션 -->
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
+    <!-- Wi-Fi 상태 변경(예: 스캔 트리거)을 위한 퍼미션 -->
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE"/>
+    <!-- 셀룰러 네트워크 정보(기지국 ID 등) 읽기를 위한 퍼미션 (런타임 요청 필요) -->
     <uses-permission android:name="android.permission.READ_PHONE_STATE"/>
 
+    <!-- 카메라 하드웨어 접근을 위한 퍼미션 (런타임 요청 필요) -->
     <uses-permission android:name="android.permission.CAMERA"/>
+    <!-- 앱이 카메라 하드웨어를 요구함을 명시 (선택적 기능으로 설정하려면 android:required="false" 추가 가능) -->
     <uses-feature android:name="android.hardware.camera" />
+
+    <!-- 인터넷 연결을 위한 퍼미션 (네트워크 위치 보정, 서버 통신 등에 사용) -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- 네트워크 연결 상태 확인을 위한 퍼미션 -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
 
+    <!-- 포그라운드 서비스 실행을 위한 퍼미션 (Android 9 이상에서 필요) -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <!-- 디바이스가 슬립 상태일 때 CPU를 깨우기 위한 퍼미션 (선택적, 백그라운드 센서 데이터 수집에 유용) -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
 
-    <!-- API 32 이하에서 필요 -->
+    <!-- 외부 저장소 쓰기 퍼미션 (Android 12 이하에서 필요, Scoped Storage로 대체 가능) -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="32"
         tools:ignore="ScopedStorage" />
+    <!-- 외부 저장소 읽기 퍼미션 (Android 12 이하에서 필요, Scoped Storage로 대체 가능) -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
 
+    <!-- 미디어 이미지 접근을 위한 퍼미션 (Android 13 이상에서 특정 미디어 파일 접근 시 사용) -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"
         tools:ignore="SelectedPhotoAccess" />
-
 
     <application
         android:allowBackup="true"
@@ -68,7 +85,10 @@
 
         <activity android:name=".ui.map.MapViewModel" />
 
-        <service android:name=".AI.SensorDataService" />
+        <!-- 위치 기반 포그라운드 서비스로 실행되는 SensorDataService -->
+        <service android:name=".AI.SensorDataService"
+            android:foregroundServiceType="location"
+            tools:ignore="ForegroundServicePermission" />
     </application>
 
 </manifest>

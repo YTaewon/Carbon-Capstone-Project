@@ -80,11 +80,7 @@ public class SensorDataService extends Service {
             Log.d(TAG, "SensorDataProcessor 초기화 완료 (비동기)");
         });
 
-        // 3초 후 데이터 수집 시작 및 초기 데이터 삭제
-        handler.postDelayed(() -> {
-            clearInitialBuffers(); // 초기 데이터 삭제
-            startDataCollection(); // 데이터 수집 시작
-        }, INITIAL_DELAY_MS);
+        handler.postDelayed(this::startDataCollection, INITIAL_DELAY_MS);
     }
 
     private boolean checkPermissions() {
@@ -103,26 +99,6 @@ public class SensorDataService extends Service {
         return null;
     }
 
-    // 초기 버퍼 클리어 메서드
-    private void clearInitialBuffers() {
-        synchronized (gpsBuffer) {
-            gpsBuffer.clear();
-        }
-        synchronized (apBuffer) {
-            apBuffer.clear();
-        }
-        synchronized (btsBuffer) {
-            btsBuffer.clear();
-        }
-        synchronized (imuBuffer) {
-            imuBuffer.clear();
-        }
-        synchronized (uniqueTimestamps) {
-            uniqueTimestamps.clear();
-        }
-        Log.d(TAG, "초기 3초 동안 수집된 데이터 삭제 완료");
-    }
-
     private void startDataCollection() {
         Runnable dataCollectionRunnable = new Runnable() {
             @Override
@@ -136,6 +112,7 @@ public class SensorDataService extends Service {
                 // 고유 타임스탬프 업데이트 및 처리
                 synchronized (uniqueTimestamps) {
                     uniqueTimestamps.add(timestamp);
+//                    Log.d(TAG, "현재 고유 타임 스탬프 개수: " + uniqueTimestamps.size());
                     if (uniqueTimestamps.size() >= MIN_TIMESTAMP_COUNT) {
                         processBuffers();
                     }
