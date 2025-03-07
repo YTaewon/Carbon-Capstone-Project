@@ -71,6 +71,7 @@
             android:enabled="false"
             android:textStyle="bold"
             android:textSize="16sp"
+            android:textColor="@color/white"
             android:text="지도" />
 
         <androidx.appcompat.widget.AppCompatButton
@@ -84,6 +85,7 @@
             android:background="@drawable/green_background"
             android:textStyle="bold"
             android:textSize="16sp"
+            android:textColor="@color/white"
             android:text="임시 지도 생성" />
 
         <TextView
