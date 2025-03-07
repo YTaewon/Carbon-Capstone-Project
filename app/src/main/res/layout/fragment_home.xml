@@ -53,7 +53,7 @@
                 <!-- 사용자 프로필 섹션 -->
                 <androidx.constraintlayout.widget.ConstraintLayout
                     android:layout_width="match_parent"
-                    android:layout_height="160dp"
+                    android:layout_height="150dp"
                     android:layout_margin="16dp"
                     android:elevation="4dp"
                     android:padding="16dp"
@@ -203,12 +203,12 @@
 
                         <ImageButton
                             android:id="@+id/next_tip_button"
-                            android:layout_width="20dp"
-                            android:layout_height="20dp"
-                            android:importantForAccessibility="no"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
                             android:src="@drawable/ic_refresh"
-                            android:background="@null"
-                            app:tint="#16A34A" />
+                            android:background="?attr/selectableItemBackgroundBorderless"
+                            android:contentDescription="새로고침"
+                            app:tint="@color/default_green" />
 
                     </LinearLayout>
                     <TextView
