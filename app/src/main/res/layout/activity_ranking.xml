@@ -21,22 +21,21 @@
     <LinearLayout
         android:id="@+id/tabLayout"
         android:layout_width="0dp"
-        android:layout_height="wrap_content"
+        android:layout_height="55dp"
         android:orientation="horizontal"
-        app:layout_constraintTop_toBottomOf="@+id/header"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
+        app:layout_constraintTop_toBottomOf="@+id/header">
 
         <androidx.appcompat.widget.AppCompatButton
             android:id="@+id/btn_now"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_weight="0.333"
-            android:layout_marginTop="4dp"
             android:layout_marginStart="24dp"
-            android:elevation="4dp"
+            android:layout_marginTop="4dp"
+            android:layout_weight="0.333"
             android:background="@drawable/green_background"
-
+            android:elevation="4dp"
             android:text="전체"
             android:textColor="@android:color/white" />
 
@@ -44,11 +43,11 @@
             android:id="@+id/btn_daily"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_weight="0.333"
-            android:layout_marginTop="4dp"
             android:layout_marginStart="24dp"
-            android:elevation="4dp"
+            android:layout_marginTop="4dp"
+            android:layout_weight="0.333"
             android:background="@drawable/green_background"
+            android:elevation="4dp"
             android:text="일간"
             android:textColor="@android:color/white" />
 
@@ -56,11 +55,11 @@
             android:id="@+id/btn_weekly"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_weight="0.333"
-            android:layout_marginTop="4dp"
             android:layout_marginStart="24dp"
-            android:elevation="4dp"
+            android:layout_marginTop="4dp"
+            android:layout_weight="0.333"
             android:background="@drawable/green_background"
+            android:elevation="4dp"
             android:text="주간"
             android:textColor="@android:color/white" />
 
@@ -68,11 +67,11 @@
             android:id="@+id/btn_monthly"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_weight="0.333"
-            android:layout_marginTop="4dp"
             android:layout_marginStart="24dp"
-            android:elevation="4dp"
+            android:layout_marginTop="4dp"
+            android:layout_weight="0.333"
             android:background="@drawable/green_background"
+            android:elevation="4dp"
             android:text="월간"
             android:textColor="@android:color/white" />
     </LinearLayout>
