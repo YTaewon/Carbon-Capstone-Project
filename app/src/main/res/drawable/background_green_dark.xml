@@ -1,6 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<shape xmlns:android="http://schemas.android.com/apk/res/android"
-    android:shape="rectangle">
-    <corners android:radius="16dp" />
-    <solid android:color="#4BA44E" />
-</shape>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 비활성화 상태 -->
+    <item android:state_enabled="false">
+        <shape android:shape="rectangle">
+            <corners android:radius="16dp" />
+            <solid android:color="#B0BEC5" /> <!-- 비활성화 시 회색 -->
+        </shape>
+    </item>
+    <!-- 활성화 상태 (제공된 shape 사용) -->
+    <item android:state_enabled="true">
+        <shape android:shape="rectangle">
+            <corners android:radius="16dp" />
+            <solid android:color="#4BA44E" /> <!-- 활성화 시 초록색 -->
+        </shape>
+    </item>
+</selector>
