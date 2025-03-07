@@ -1,5 +1,8 @@
 package com.example.myapplication12345.AI;
 
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
@@ -11,6 +14,7 @@ import android.hardware.SensorManager;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
+import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
@@ -20,8 +24,10 @@ import android.telephony.CellInfoLte;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 
+import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
 
+import com.example.myapplication12345.R;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 
@@ -41,6 +47,8 @@ public class SensorDataService extends Service {
     private static final int INITIAL_DELAY_MS = 3000; // 최초 3초 지연
     private static final int MIN_TIMESTAMP_COUNT = 60; // 60초(60개의 고유 타임스탬프)
     private static final String TAG = "SensorDataService";
+    private static final String NOTIFICATION_CHANNEL_ID = "sensor_service_channel";
+    private static final int NOTIFICATION_ID = 1;
 
     private WifiManager wifiManager;
     private TelephonyManager telephonyManager;
@@ -63,6 +71,10 @@ public class SensorDataService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
+
+        // 포어그라운드 서비스로 전환 및 알림 표시
+        startForeground(NOTIFICATION_ID, createForegroundNotification());
+
         wifiManager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
         telephonyManager = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
@@ -81,6 +93,31 @@ public class SensorDataService extends Service {
         });
 
         handler.postDelayed(this::startDataCollection, INITIAL_DELAY_MS);
+    }
+
+    // 포어그라운드 서비스 알림 생성
+    private Notification createForegroundNotification() {
+        // 알림 채널 생성 (Android 8.0 이상)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(
+                    NOTIFICATION_CHANNEL_ID,
+                    "Sensor Service Channel",
+                    NotificationManager.IMPORTANCE_DEFAULT
+            );
+            channel.setDescription("센서 데이터 수집 서비스 알림");
+            NotificationManager notificationManager = getSystemService(NotificationManager.class);
+            notificationManager.createNotificationChannel(channel);
+        }
+
+        // 알림 빌더 설정 및 Notification 객체 반환
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_launcher_foreground) // 앱 아이콘
+                .setContentTitle("센서 데이터 수집 서비스")
+                .setContentText("백그라운드에서 센서 데이터를 수집 중입니다.")
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setOngoing(true); // 사용자가 알림을 제거하지 못하도록 설정
+
+        return builder.build(); // Builder에서 Notification 객체 생성
     }
 
     private boolean checkPermissions() {
@@ -112,7 +149,6 @@ public class SensorDataService extends Service {
                 // 고유 타임스탬프 업데이트 및 처리
                 synchronized (uniqueTimestamps) {
                     uniqueTimestamps.add(timestamp);
-//                    Log.d(TAG, "현재 고유 타임 스탬프 개수: " + uniqueTimestamps.size());
                     if (uniqueTimestamps.size() >= MIN_TIMESTAMP_COUNT) {
                         processBuffers();
                     }
@@ -395,5 +431,6 @@ public class SensorDataService extends Service {
         handler.removeCallbacksAndMessages(null);
         processBuffers(); // 종료 시 남은 데이터 처리
         executorService.shutdown();
+        stopForeground(true); // 포어그라운드 서비스 종료 및 알림 제거
     }
 }
