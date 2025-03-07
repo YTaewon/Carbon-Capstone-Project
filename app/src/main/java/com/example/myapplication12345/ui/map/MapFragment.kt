@@ -119,8 +119,8 @@ class MapFragment : Fragment() {
         // MapView 초기화
         mapView.setTileSource(TileSourceFactory.MAPNIK)
         mapView.setMultiTouchControls(true)
-        mapView.controller.setZoom(18.0) // 줌 레벨 증가 (15 -> 18)
-        mapView.setTilesScaledToDpi(true) // DPI에 맞게 타일 스케일링
+        mapView.controller.setZoom(18.0)
+        mapView.setTilesScaledToDpi(true)
 
         val selectedDate = arguments?.getString("selectedDate") ?: dateFormat.format(System.currentTimeMillis())
         val year = selectedDate.substring(0, 4)
@@ -162,11 +162,11 @@ class MapFragment : Fragment() {
     private fun toggleDistanceInfoVisibility() {
         if (isDistanceInfoVisible) {
             textDistanceInfo.visibility = View.GONE
-            toggleDistanceButton.setImageResource(R.drawable.ic_drop_down) // 숨김 상태 아이콘
+            toggleDistanceButton.setImageResource(R.drawable.ic_drop_down)
             isDistanceInfoVisible = false
         } else {
             textDistanceInfo.visibility = View.VISIBLE
-            toggleDistanceButton.setImageResource(R.drawable.ic_drop_up) // 표시 상태 아이콘
+            toggleDistanceButton.setImageResource(R.drawable.ic_drop_up)
             isDistanceInfoVisible = true
         }
     }
@@ -246,16 +246,18 @@ class MapFragment : Fragment() {
         var hasData = false
 
         val selectedModes = getSelectedTransportModes()
+        val validModes = setOf("WALK", "BIKE", "BUS", "CAR", "SUBWAY") // 유효한 이동 수단
         val transportModeNames = mapOf(
-            "WALK" to "걷기",
-            "BIKE" to "자전거",
-            "BUS" to "버스",
-            "CAR" to "자동차",
-            "SUBWAY" to "지하철",
-            "ETC" to "나머지"
+            "WALK" to "걷기", "BIKE" to "자전거", "BUS" to "버스",
+            "CAR" to "자동차", "SUBWAY" to "지하철", "ETC" to "나머지"
         )
 
         val groupedData = predictionData
+            .map { data ->
+                val mode = data["transport_mode"] ?: "ETC"
+                if (validModes.contains(mode)) data // 유효한 경우 그대로 유지
+                else data.toMutableMap().apply { this["transport_mode"] = "ETC" } // 유효하지 않으면 ETC로 인식
+            }
             .filter { selectedModes.contains(it["transport_mode"]) }
             .groupBy { it["transport_mode"]!! }
 
@@ -313,10 +315,7 @@ class MapFragment : Fragment() {
                 if (totalDistance > 0) {
                     val koreanTransportMode = transportModeNames[transportMode] ?: transportMode
                     distanceInfo.append(
-                        String.format(
-                            "%s: %.2f m\n",
-                            koreanTransportMode, totalDistance
-                        )
+                        String.format("%s: %.2f m\n", koreanTransportMode, totalDistance)
                     )
                 }
             }
