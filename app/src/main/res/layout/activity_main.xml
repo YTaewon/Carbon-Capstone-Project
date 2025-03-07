@@ -46,7 +46,10 @@
             android:id="@+id/bottomNavigation"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:elevation="4dp"
+            android:background="@color/white"
             app:menu="@menu/bottom_nav_menu"
+            app:itemActiveIndicatorStyle="@style/Theme.OneThree.Indicator"
             app:itemTextColor="@color/default_green"
             app:itemIconTint="@color/default_green"/>
 

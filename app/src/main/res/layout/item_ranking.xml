@@ -5,9 +5,9 @@
     android:layout_width="match_parent"
     android:layout_height="70dp"
     android:layout_margin="8dp"
-    android:background="@color/white"
+    android:background="@drawable/background_radius_white"
     android:gravity="center"
-    android:elevation="3dp">
+    android:elevation="4dp">
 
     <TextView
         android:id="@+id/tv_ranking"

@@ -32,9 +32,11 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="0.333"
-            android:layout_marginTop="24dp"
+            android:layout_marginTop="4dp"
             android:layout_marginStart="24dp"
+            android:elevation="4dp"
             android:background="@drawable/green_background"
+
             android:text="전체"
             android:textColor="@android:color/white" />
 
@@ -43,8 +45,9 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="0.333"
-            android:layout_marginTop="24dp"
+            android:layout_marginTop="4dp"
             android:layout_marginStart="24dp"
+            android:elevation="4dp"
             android:background="@drawable/green_background"
             android:text="일간"
             android:textColor="@android:color/white" />
@@ -54,8 +57,9 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="0.333"
-            android:layout_marginTop="24dp"
+            android:layout_marginTop="4dp"
             android:layout_marginStart="24dp"
+            android:elevation="4dp"
             android:background="@drawable/green_background"
             android:text="주간"
             android:textColor="@android:color/white" />
@@ -65,8 +69,9 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="0.333"
-            android:layout_marginTop="24dp"
+            android:layout_marginTop="4dp"
             android:layout_marginStart="24dp"
+            android:elevation="4dp"
             android:background="@drawable/green_background"
             android:text="월간"
             android:textColor="@android:color/white" />
@@ -90,7 +95,7 @@
 
             <androidx.constraintlayout.widget.ConstraintLayout
                 android:layout_width="match_parent"
-                android:layout_height="240dp">
+                android:layout_height="200dp">
 
                 <com.google.android.material.imageview.ShapeableImageView
                     android:id="@+id/iv_profile3"
@@ -167,13 +172,14 @@
 
             <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
-            android:layout_height="240dp">
+            android:layout_height="200dp">
 
             <com.google.android.material.imageview.ShapeableImageView
                 android:id="@+id/iv_profile1"
-                android:layout_width="137dp"
-                android:layout_height="137dp"
+                android:layout_width="130dp"
+                android:layout_height="130dp"
                 android:padding="2dp"
+                android:layout_marginTop="30dp"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
@@ -252,7 +258,7 @@
 
             <androidx.constraintlayout.widget.ConstraintLayout
                 android:layout_width="match_parent"
-                android:layout_height="240dp">
+                android:layout_height="200dp">
 
                 <com.google.android.material.imageview.ShapeableImageView
                     android:id="@+id/iv_profile2"

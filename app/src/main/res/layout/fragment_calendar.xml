@@ -1,76 +1,77 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="16dp">
+    android:layout_height="match_parent">
 
-    <!-- 이전/다음 달 이동 버튼 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center"
-        android:paddingTop="8dp">
+        android:orientation="vertical"
+        android:padding="16dp">
 
-        <ImageButton
-            android:id="@+id/btn_prev_month"
-            android:layout_width="wrap_content"
+        <!-- 이전/다음 달 이동 버튼 -->
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:src="@drawable/ic_previous_month"
-            android:background="?attr/selectableItemBackgroundBorderless"/>
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:paddingTop="8dp">
+
+            <ImageButton
+                android:id="@+id/btn_prev_month"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:src="@drawable/ic_previous_month"
+                android:background="?attr/selectableItemBackgroundBorderless"/>
+
+            <TextView
+                android:id="@+id/tv_date"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="20dp"
+                android:layout_marginRight="20dp"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:text="2025년 03월"
+                android:layout_gravity="center" />
+
+            <ImageButton
+                android:id="@+id/btn_next_month"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:src="@drawable/ic_next_month"
+                android:background="?attr/selectableItemBackgroundBorderless"/>
+        </LinearLayout>
+
+        <!-- 달력 그리드뷰 -->
+        <GridView
+            android:id="@+id/gridview"
+            android:layout_width="match_parent"
+            android:layout_height="480dp"
+            android:gravity="center"
+            android:horizontalSpacing="4dp"
+            android:numColumns="7"
+            android:stretchMode="columnWidth"
+            android:verticalSpacing="4dp" />
+
+        <Button
+            android:id="@+id/btn_open_map"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
+            android:enabled="false"
+            android:text="지도" />
+
+        <Button
+            android:id="@+id/btn_test_map"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="임시 지도 생성" />
 
         <TextView
-            android:id="@+id/tv_date"
-            android:layout_width="wrap_content"
+            android:id="@+id/tv_day_result"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginLeft="20dp"
-            android:layout_marginRight="20dp"
-            android:textSize="18sp"
-            android:textStyle="bold"
-            android:text="2025년 03월"
-            android:layout_gravity="center"
-            />
-
-
-        <ImageButton
-            android:id="@+id/btn_next_month"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:src="@drawable/ic_next_month"
-            android:background="?attr/selectableItemBackgroundBorderless"/>
+            android:textSize="16sp" />
     </LinearLayout>
-
-    <!-- 달력 그리드뷰 -->
-    <GridView
-        android:id="@+id/gridview"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="center"
-        android:horizontalSpacing="4dp"
-        android:numColumns="7"
-        android:stretchMode="columnWidth"
-        android:verticalSpacing="4dp" />
-
-    <Button
-        android:id="@+id/btn_open_map"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:minHeight="48dp"
-        android:enabled="false"
-        android:text="지도" />
-
-    <Button
-        android:id="@+id/btn_test_map"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="임시 지도 생성" />
-
-    <TextView
-        android:id="@+id/tv_day_result"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:textSize="16sp"
-        />
-
-</LinearLayout>
+</ScrollView>

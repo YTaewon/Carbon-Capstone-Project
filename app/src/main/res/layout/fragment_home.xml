@@ -65,7 +65,6 @@
                         android:layout_width="64dp"
                         android:layout_height="64dp"
                         android:src="@drawable/user"
-
                         app:layout_constraintTop_toTopOf="parent"
                         app:layout_constraintStart_toStartOf="parent" />
 
@@ -92,28 +91,31 @@
                         android:textColor="@color/white"
                         android:textSize="14sp"
                         android:textStyle="bold"
+                        android:text="닉네임"
                         app:layout_constraintStart_toStartOf="@id/greetingText"
                         app:layout_constraintTop_toBottomOf="@id/greetingText"
                         android:layout_marginTop="4dp" />
 
-                    <!-- 레벨 -->
+                    <!-- 포인트 -->
                     <TextView
                         android:id="@+id/pointText"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:textColor="@color/white"
                         android:textSize="14sp"
+                        android:text="포인트"
                         app:layout_constraintStart_toStartOf="@id/nicknameText"
                         app:layout_constraintTop_toBottomOf="@id/nicknameText"
                         android:layout_marginTop="4dp" />
 
-                    <!-- 포인트 -->
+                    <!-- 점수 -->
                     <TextView
                         android:id="@+id/scoreText"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:textColor="@color/white"
                         android:textSize="14sp"
+                        android:text="점수"
                         app:layout_constraintStart_toStartOf="@id/pointText"
                         app:layout_constraintTop_toBottomOf="@id/pointText"
                         android:layout_marginTop="4dp" />
@@ -123,7 +125,7 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:background="@drawable/background_green"
+                    android:background="@drawable/background_white"
                     android:padding="16dp"
                     android:layout_marginLeft="16dp"
                     android:layout_marginRight="16dp"
@@ -166,7 +168,7 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:background="@drawable/background_green"
+                    android:background="@drawable/background_white"
                     android:padding="16dp"
                     android:layout_marginLeft="16dp"
                     android:layout_marginRight="16dp"
@@ -195,7 +197,7 @@
                                 android:text="오늘의 탄소 절약 팁"
                                 android:textSize="16sp"
                                 android:textStyle="bold"
-                                android:textColor="#166534"
+                                android:textColor="@color/black"
                                 android:layout_marginStart="8dp" />
                         </LinearLayout>
                         <ImageButton
@@ -212,7 +214,7 @@
                         android:layout_height="wrap_content"
                         android:text="환경 팁이 여기에 표시됩니다."
                         android:textSize="14sp"
-                        android:textColor="#166534" />
+                        android:textColor="@color/black" />
                 </LinearLayout>
 
                 <LinearLayout
@@ -229,7 +231,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:background="@drawable/background_green"
+                        android:background="@drawable/background_white"
                         android:padding="12dp"
                         android:elevation="4dp"
                         android:gravity="center"
@@ -247,20 +249,20 @@
                             android:text="0km"
                             android:textSize="14sp"
                             android:textStyle="bold"
-                            android:textColor="#166534" />
+                            android:textColor="@color/black" />
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="이동 거리"
                             android:textSize="12sp"
-                            android:textColor="#16A34A" />
+                            android:textColor="@color/black" />
                     </LinearLayout>
 
                     <LinearLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:background="@drawable/background_green"
+                        android:background="@drawable/background_white"
                         android:padding="12dp"
                         android:elevation="4dp"
                         android:gravity="center"
@@ -278,20 +280,20 @@
                             android:text="0kg"
                             android:textSize="14sp"
                             android:textStyle="bold"
-                            android:textColor="#166534" />
+                            android:textColor="@color/black" />
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="탄소 절감"
                             android:textSize="12sp"
-                            android:textColor="#16A34A" />
+                            android:textColor="@color/black" />
                     </LinearLayout>
 
                     <LinearLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:background="@drawable/background_green"
+                        android:background="@drawable/background_white"
                         android:padding="12dp"
                         android:elevation="4dp"
                         android:gravity="center"
@@ -308,20 +310,20 @@
                             android:text="0"
                             android:textSize="14sp"
                             android:textStyle="bold"
-                            android:textColor="#166534" />
+                            android:textColor="@color/black" />
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="완료 챌린지"
                             android:textSize="12sp"
-                            android:textColor="#16A34A" />
+                            android:textColor="@color/black" />
                     </LinearLayout>
                 </LinearLayout>
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:background="@drawable/background_green"
+                    android:background="@drawable/background_white"
                     android:padding="16dp"
                     android:layout_marginLeft="16dp"
                     android:layout_marginRight="16dp"
@@ -355,7 +357,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="환경 뉴스"
-                            android:textColor="#166534"
+                            android:textColor="@color/black"
                             android:textSize="18sp"
                             android:textStyle="bold" />
                     </LinearLayout>
@@ -382,7 +384,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="뉴스 제목"
-                        android:textColor="#15803d"
+                        android:textColor="@color/black"
                         android:textSize="16sp"
                         android:textStyle="bold" />
 
@@ -392,7 +394,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="뉴스 요약"
-                        android:textColor="#16a34a"
+                        android:textColor="@color/black"
                         android:textSize="12sp"
                         android:layout_marginTop="4dp" />
 
@@ -409,7 +411,7 @@
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:text="출처"
-                            android:textColor="#16a34a"
+                            android:textColor="@color/black"
                             android:textSize="14sp" />
 
                         <TextView
@@ -417,7 +419,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="날짜"
-                            android:textColor="#16a34a"
+                            android:textColor="@color/black"
                             android:textSize="14sp" />
                     </LinearLayout>
                 </LinearLayout>

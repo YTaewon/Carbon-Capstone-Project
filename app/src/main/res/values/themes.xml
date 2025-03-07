@@ -10,7 +10,10 @@
         <item name="android:background">@android:color/transparent</item>
         <item name="android:textSize">20sp</item>
         <item name="android:layout_margin">10dp</item>
+    </style>
 
+    <style name="Theme.OneThree.Indicator" parent="Widget.Material3.BottomNavigationView.ActiveIndicator">
+        <item name="android:color">#A5D6A7</item>
     </style>
 
     <style name="circleImageview">
