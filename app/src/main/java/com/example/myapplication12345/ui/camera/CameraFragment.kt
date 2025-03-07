@@ -7,7 +7,6 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -29,20 +28,27 @@ class CameraFragment : Fragment() {
     private val binding get() = _binding!!
 
     private var imageCapture: ImageCapture? = null
+    private var cameraProvider: ProcessCameraProvider? = null
     private val EMISSION_FACTOR = 0.4567
+    private var isPermissionRequested = false
 
-    // 갤러리에서 이미지 선택
     private val getContent = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         uri?.let { processImageUri(it) }
     }
 
-    // 권한 요청 런처
     private val requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
         if (isGranted) {
-            startCamera()
+            binding.startCameraButton.isEnabled = true
+            Timber.d("Camera permission granted")
         } else {
-            Toast.makeText(requireContext(), "카메라 권한이 필요합니다.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(
+                requireContext(),
+                "카메라 권한이 필요합니다. 설정에서 권한을 허용해주세요.",
+                Toast.LENGTH_LONG
+            ).show()
+            binding.startCameraButton.isEnabled = false
         }
+        isPermissionRequested = true
     }
 
     override fun onCreateView(
@@ -57,29 +63,57 @@ class CameraFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // 카메라 권한 확인
         if (allPermissionsGranted()) {
-            startCamera()
-        } else {
+            binding.startCameraButton.isEnabled = true
+            binding.startCameraButton.visibility = View.VISIBLE // 초기 상태에서 버튼 보이게
+        } else if (!isPermissionRequested) {
             requestPermissionLauncher.launch(Manifest.permission.CAMERA)
+        } else {
+            binding.startCameraButton.isEnabled = false
         }
 
-        // 카메라 캡처 버튼 클릭 시 현재 프리뷰 이미지를 캡처
+        binding.startCameraButton.setOnClickListener {
+            if (allPermissionsGranted()) {
+                startCamera()
+                binding.startCameraButton.visibility = View.GONE
+            } else {
+                Toast.makeText(requireContext(), "카메라 권한이 필요합니다.", Toast.LENGTH_SHORT).show()
+            }
+        }
+
         binding.captureButton.setOnClickListener {
             capturePhoto()
         }
 
-        // 갤러리에서 이미지 선택 버튼
         binding.galleryButton.setOnClickListener {
             getContent.launch("image/*")
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        if (allPermissionsGranted() && cameraProvider == null) {
+            binding.startCameraButton.visibility = View.VISIBLE // 네비게이션으로 돌아올 때 버튼 표시
+            Timber.d("Fragment started, showing startCameraButton")
+        }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        cameraProvider?.unbindAll() // 카메라 리소스 해제
+        cameraProvider = null
+        if (allPermissionsGranted()) {
+            binding.startCameraButton.visibility = View.VISIBLE // 네비게이션 이동 시 버튼 다시 표시
+        }
+        Timber.d("Fragment stopped, camera unbound, button visible")
+    }
+
     private fun startCamera() {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(requireContext())
         cameraProviderFuture.addListener({
-            _binding?.let { binding ->  // Null 체크 추가
+            _binding?.let { binding ->
                 val cameraProvider = cameraProviderFuture.get()
+                this.cameraProvider = cameraProvider
                 val preview = Preview.Builder().build().also {
                     it.setSurfaceProvider(binding.cameraPreview.surfaceProvider)
                 }
@@ -94,13 +128,13 @@ class CameraFragment : Fragment() {
                         preview,
                         imageCapture
                     )
+                    Timber.d("Camera successfully bound")
                 } catch (exc: Exception) {
-                    Timber.e(exc, "카메라 바인딩 실패")
-                    Toast.makeText(requireContext(), "카메라 시작에 실패했습니다.", Toast.LENGTH_SHORT).show()
+                    Timber.e(exc, "Camera binding failed")
+                    Toast.makeText(requireContext(), "카메라 시작에 실패했습니다: ${exc.message}", Toast.LENGTH_LONG).show()
+                    binding.startCameraButton.visibility = View.VISIBLE
                 }
-            } ?: run {
-                Timber.w("Binding is null, camera setup skipped")
-            }
+            } ?: Timber.w("Binding is null, camera setup skipped")
         }, ContextCompat.getMainExecutor(requireContext()))
     }
 
@@ -118,7 +152,7 @@ class CameraFragment : Fragment() {
                 }
 
                 override fun onError(exception: ImageCaptureException) {
-                    Timber.e(exception, "캡처 실패: ${exception.message}")
+                    Timber.e(exception, "Capture failed: ${exception.message}")
                     Toast.makeText(requireContext(), "사진 캡처에 실패했습니다.", Toast.LENGTH_SHORT).show()
                 }
             }
@@ -141,7 +175,7 @@ class CameraFragment : Fragment() {
                 recognizeText(image)
             }
         } catch (e: Exception) {
-            Timber.e(e, "이미지 처리 오류")
+            Timber.e(e, "Image processing error")
             Toast.makeText(requireContext(), "이미지 처리 중 오류가 발생했습니다.", Toast.LENGTH_SHORT).show()
         }
     }
@@ -165,7 +199,7 @@ class CameraFragment : Fragment() {
                 }
             }
             .addOnFailureListener { e ->
-                Timber.e(e, "텍스트 인식 실패")
+                Timber.e(e, "Text recognition failed")
                 Toast.makeText(requireContext(), "텍스트 인식에 실패했습니다.", Toast.LENGTH_SHORT).show()
             }
     }
@@ -173,7 +207,6 @@ class CameraFragment : Fragment() {
     private fun extractUsage(text: String): Double? {
         Timber.d("분석할 텍스트: $text")
 
-        // 계량기 지침 비교에서 당월/전월 지침 찾기
         val meterPattern = "당월지침\\s*(\\d+\\.?\\d*)".toRegex()
         val prevPattern = "전월지침\\s*(\\d+\\.?\\d*)".toRegex()
 
@@ -186,7 +219,6 @@ class CameraFragment : Fragment() {
             return usage
         }
 
-        // 일반적인 kWh 패턴 찾기
         val kwhPattern = "(\\d+)\\s*kWh".toRegex()
         val kwhMatch = text.lines()
             .filter { it.contains("당월", ignoreCase = true) }
@@ -201,7 +233,6 @@ class CameraFragment : Fragment() {
 
         if (kwhMatch != null) return kwhMatch
 
-        // 숫자만 찾기 (마지막 시도)
         val numberPattern = "\\b(\\d+)\\b".toRegex()
         val numberMatch = text.lines()
             .filter { it.contains("당월", ignoreCase = true) }
@@ -232,6 +263,8 @@ class CameraFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
+        cameraProvider?.unbindAll()
+        cameraProvider = null
         _binding = null
     }
 

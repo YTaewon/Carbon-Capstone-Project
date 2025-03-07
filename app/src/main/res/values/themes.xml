@@ -6,7 +6,6 @@
     </style>
 
     <style name="AuthEditText" parent="android:Widget.EditText">
-
         <item name="android:background">@android:color/transparent</item>
         <item name="android:textSize">20sp</item>
         <item name="android:layout_margin">10dp</item>
@@ -20,5 +19,7 @@
         <item name="cornerFamily">rounded</item>
         <item name="cornerSize">50%</item>
     </style>
-    <style name="Theme.MyApplication12345" parent="Base.Theme.MyApplication12345" />
+    <style name="Theme.MyApplication12345" parent="Base.Theme.MyApplication12345">
+        <item name="android:statusBarColor" >@color/headerBackground</item>
+    </style>
 </resources>

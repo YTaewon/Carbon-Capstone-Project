@@ -12,6 +12,8 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -32,15 +34,21 @@ class PedometerFragment : Fragment(), SensorEventListener {
 
     private lateinit var sensorManager: SensorManager
     private var stepSensor: Sensor? = null
-    private var steps by mutableStateOf(0)
+    private val stepsState = mutableStateOf(0)
     private var initialSteps = -1
     private var totalGoal = 10000
     private var startTime by mutableStateOf(0L)
     private val caloriesPerStep = 0.03
     private val distancePerStep = 0.64
 
-    companion object {
-        private const val REQUEST_ACTIVITY_RECOGNITION = 100
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            startStepCounter()
+        } else {
+            android.util.Log.w("PedometerFragment", "Activity recognition permission denied")
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -48,12 +56,24 @@ class PedometerFragment : Fragment(), SensorEventListener {
         sensorManager = requireActivity().getSystemService(Context.SENSOR_SERVICE) as SensorManager
         stepSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER)
 
+        if (stepSensor == null) {
+            android.util.Log.e("PedometerFragment", "Step counter sensor not available")
+            return
+        }
+
         val prefs = requireActivity().getSharedPreferences("stepper", Context.MODE_PRIVATE)
         initialSteps = prefs.getInt("initial_steps", -1)
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
-            ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACTIVITY_RECOGNITION) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(arrayOf(Manifest.permission.ACTIVITY_RECOGNITION), REQUEST_ACTIVITY_RECOGNITION)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            if (ContextCompat.checkSelfPermission(
+                    requireContext(),
+                    Manifest.permission.ACTIVITY_RECOGNITION
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                requestPermissionLauncher.launch(Manifest.permission.ACTIVITY_RECOGNITION)
+            } else {
+                startStepCounter()
+            }
         } else {
             startStepCounter()
         }
@@ -66,7 +86,7 @@ class PedometerFragment : Fragment(), SensorEventListener {
         return ComposeView(requireContext()).apply {
             setContent {
                 MaterialTheme {
-                    StepCounterScreen(steps = steps, goal = totalGoal)
+                    StepCounterScreen(steps = stepsState.value, goal = totalGoal)
                 }
             }
         }
@@ -74,45 +94,45 @@ class PedometerFragment : Fragment(), SensorEventListener {
 
     private fun startStepCounter() {
         stepSensor?.let {
-            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_NORMAL)
+            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_UI)
             if (startTime == 0L) startTime = System.currentTimeMillis()
         }
     }
 
     override fun onResume() {
         super.onResume()
-        startStepCounter()
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q ||
+            ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACTIVITY_RECOGNITION) == PackageManager.PERMISSION_GRANTED) {
+            startStepCounter()
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        sensorManager.unregisterListener(this)
     }
 
     override fun onSensorChanged(event: SensorEvent?) {
         event?.let {
             val totalSteps = it.values[0].toInt()
-            if (initialSteps == -1) {
+            val prefs = requireActivity().getSharedPreferences("stepper", Context.MODE_PRIVATE)
+            if (initialSteps == -1 || totalSteps < initialSteps) {
                 initialSteps = totalSteps
-                requireActivity().getSharedPreferences("stepper", Context.MODE_PRIVATE)
-                    .edit()
-                    .putInt("initial_steps", initialSteps)
-                    .apply()
+                prefs.edit().putInt("initial_steps", initialSteps).apply()
             }
-            steps = totalSteps - initialSteps
+            stepsState.value = totalSteps - initialSteps
+            android.util.Log.d("PedometerFragment", "Steps updated: ${stepsState.value}")
         }
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
 
-    override fun onRequestPermissionsResult(
-        requestCode: Int, permissions: Array<out String>, grantResults: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == REQUEST_ACTIVITY_RECOGNITION && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            startStepCounter()
-        }
-    }
-
     @Composable
     fun StepCounterScreen(steps: Int, goal: Int) {
         var mainStat by remember { mutableStateOf("steps") }
-        var clickCount by remember { mutableStateOf(0) } // 클릭 횟수 추적
+        var subTimeStat by remember { mutableStateOf("time") }
+        var subCaloriesStat by remember { mutableStateOf("calories") }
+        var subDistanceStat by remember { mutableStateOf("distance") }
 
         val progress = (steps.toFloat() / goal.toFloat()).coerceIn(0f, 1.5f)
         val progressColor = Color(0xFF4CAF50)
@@ -129,6 +149,7 @@ class PedometerFragment : Fragment(), SensorEventListener {
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .background(Color(0xFFF5F5F5)) // 백그라운드 색상 설정
                 .padding(16.dp),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
@@ -155,19 +176,8 @@ class PedometerFragment : Fragment(), SensorEventListener {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 메인 정보 표시 및 클릭 처리
             Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null
-                ) {
-                    clickCount++
-                    if (clickCount >= 2) { // 두 번 클릭 시 steps로 복원
-                        mainStat = "steps"
-                        clickCount = 0 // 카운트 리셋
-                    }
-                }
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 when (mainStat) {
                     "steps" -> {
@@ -256,19 +266,54 @@ class PedometerFragment : Fragment(), SensorEventListener {
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
                             onClick = {
-                                mainStat = "time"
-                                clickCount = 0 // 하위 정보 클릭 시 카운트 리셋
+                                val temp = mainStat
+                                mainStat = subTimeStat
+                                subTimeStat = temp
                             }
                         )
                 ) {
-                    Text(
-                        text = if (mainStat == "time") "$steps 걸음" else "$activityDurationMinutes / 60 분",
-                        style = MaterialTheme.typography.bodySmall.copy(color = Color.Gray)
-                    )
-                    Text(
-                        text = if (mainStat == "time") "걸음 수" else "활동 시간",
-                        style = MaterialTheme.typography.labelSmall.copy(color = Color.Gray)
-                    )
+                    when (subTimeStat) {
+                        "steps" -> {
+                            Text(
+                                text = "$steps 걸음",
+                                style = MaterialTheme.typography.bodySmall.copy(color = Color.Gray)
+                            )
+                            Text(
+                                text = "걸음 수",
+                                style = MaterialTheme.typography.labelSmall.copy(color = Color.Gray)
+                            )
+                        }
+                        "time" -> {
+                            Text(
+                                text = "$activityDurationMinutes / 60 분",
+                                style = MaterialTheme.typography.bodySmall.copy(color = Color.Gray)
+                            )
+                            Text(
+                                text = "활동 시간",
+                                style = MaterialTheme.typography.labelSmall.copy(color = Color.Gray)
+                            )
+                        }
+                        "calories" -> {
+                            Text(
+                                text = "${decimalFormat.format(calories)} kcal",
+                                style = MaterialTheme.typography.bodySmall.copy(color = Color.Gray)
+                            )
+                            Text(
+                                text = "칼로리",
+                                style = MaterialTheme.typography.labelSmall.copy(color = Color.Gray)
+                            )
+                        }
+                        "distance" -> {
+                            Text(
+                                text = "${decimalFormat.format(distanceKm)} km",
+                                style = MaterialTheme.typography.bodySmall.copy(color = Color.Gray)
+                            )
+                            Text(
+                                text = "거리",
+                                style = MaterialTheme.typography.labelSmall.copy(color = Color.Gray)
+                            )
+                        }
+                    }
                 }
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -277,19 +322,54 @@ class PedometerFragment : Fragment(), SensorEventListener {
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
                             onClick = {
-                                mainStat = "calories"
-                                clickCount = 0 // 하위 정보 클릭 시 카운트 리셋
+                                val temp = mainStat
+                                mainStat = subCaloriesStat
+                                subCaloriesStat = temp
                             }
                         )
                 ) {
-                    Text(
-                        text = if (mainStat == "calories") "$steps 걸음" else "${decimalFormat.format(calories)} kcal",
-                        style = MaterialTheme.typography.bodySmall.copy(color = Color.Gray)
-                    )
-                    Text(
-                        text = if (mainStat == "calories") "걸음 수" else "칼로리",
-                        style = MaterialTheme.typography.labelSmall.copy(color = Color.Gray)
-                    )
+                    when (subCaloriesStat) {
+                        "steps" -> {
+                            Text(
+                                text = "$steps 걸음",
+                                style = MaterialTheme.typography.bodySmall.copy(color = Color.Gray)
+                            )
+                            Text(
+                                text = "걸음 수",
+                                style = MaterialTheme.typography.labelSmall.copy(color = Color.Gray)
+                            )
+                        }
+                        "time" -> {
+                            Text(
+                                text = "$activityDurationMinutes / 60 분",
+                                style = MaterialTheme.typography.bodySmall.copy(color = Color.Gray)
+                            )
+                            Text(
+                                text = "활동 시간",
+                                style = MaterialTheme.typography.labelSmall.copy(color = Color.Gray)
+                            )
+                        }
+                        "calories" -> {
+                            Text(
+                                text = "${decimalFormat.format(calories)} kcal",
+                                style = MaterialTheme.typography.bodySmall.copy(color = Color.Gray)
+                            )
+                            Text(
+                                text = "칼로리",
+                                style = MaterialTheme.typography.labelSmall.copy(color = Color.Gray)
+                            )
+                        }
+                        "distance" -> {
+                            Text(
+                                text = "${decimalFormat.format(distanceKm)} km",
+                                style = MaterialTheme.typography.bodySmall.copy(color = Color.Gray)
+                            )
+                            Text(
+                                text = "거리",
+                                style = MaterialTheme.typography.labelSmall.copy(color = Color.Gray)
+                            )
+                        }
+                    }
                 }
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -298,19 +378,54 @@ class PedometerFragment : Fragment(), SensorEventListener {
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
                             onClick = {
-                                mainStat = "distance"
-                                clickCount = 0 // 하위 정보 클릭 시 카운트 리셋
+                                val temp = mainStat
+                                mainStat = subDistanceStat
+                                subDistanceStat = temp
                             }
                         )
                 ) {
-                    Text(
-                        text = if (mainStat == "distance") "$steps 걸음" else "${decimalFormat.format(distanceKm)} km",
-                        style = MaterialTheme.typography.bodySmall.copy(color = Color.Gray)
-                    )
-                    Text(
-                        text = if (mainStat == "distance") "걸음 수" else "거리",
-                        style = MaterialTheme.typography.labelSmall.copy(color = Color.Gray)
-                    )
+                    when (subDistanceStat) {
+                        "steps" -> {
+                            Text(
+                                text = "$steps 걸음",
+                                style = MaterialTheme.typography.bodySmall.copy(color = Color.Gray)
+                            )
+                            Text(
+                                text = "걸음 수",
+                                style = MaterialTheme.typography.labelSmall.copy(color = Color.Gray)
+                            )
+                        }
+                        "time" -> {
+                            Text(
+                                text = "$activityDurationMinutes / 60 분",
+                                style = MaterialTheme.typography.bodySmall.copy(color = Color.Gray)
+                            )
+                            Text(
+                                text = "활동 시간",
+                                style = MaterialTheme.typography.labelSmall.copy(color = Color.Gray)
+                            )
+                        }
+                        "calories" -> {
+                            Text(
+                                text = "${decimalFormat.format(calories)} kcal",
+                                style = MaterialTheme.typography.bodySmall.copy(color = Color.Gray)
+                            )
+                            Text(
+                                text = "칼로리",
+                                style = MaterialTheme.typography.labelSmall.copy(color = Color.Gray)
+                            )
+                        }
+                        "distance" -> {
+                            Text(
+                                text = "${decimalFormat.format(distanceKm)} km",
+                                style = MaterialTheme.typography.bodySmall.copy(color = Color.Gray)
+                            )
+                            Text(
+                                text = "거리",
+                                style = MaterialTheme.typography.labelSmall.copy(color = Color.Gray)
+                            )
+                        }
+                    }
                 }
             }
         }
