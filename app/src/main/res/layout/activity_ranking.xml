@@ -23,16 +23,16 @@
         android:layout_width="0dp"
         android:layout_height="55dp"
         android:orientation="horizontal"
+        android:gravity="center"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/header">
 
         <androidx.appcompat.widget.AppCompatButton
             android:id="@+id/btn_now"
-            android:layout_width="0dp"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="24dp"
-            android:layout_marginTop="4dp"
+            android:layout_margin="4dp"
             android:layout_weight="0.333"
             android:background="@drawable/green_background"
             android:elevation="4dp"
@@ -41,10 +41,9 @@
 
         <androidx.appcompat.widget.AppCompatButton
             android:id="@+id/btn_daily"
-            android:layout_width="0dp"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="24dp"
-            android:layout_marginTop="4dp"
+            android:layout_margin="4dp"
             android:layout_weight="0.333"
             android:background="@drawable/green_background"
             android:elevation="4dp"
@@ -53,10 +52,9 @@
 
         <androidx.appcompat.widget.AppCompatButton
             android:id="@+id/btn_weekly"
-            android:layout_width="0dp"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="24dp"
-            android:layout_marginTop="4dp"
+            android:layout_margin="4dp"
             android:layout_weight="0.333"
             android:background="@drawable/green_background"
             android:elevation="4dp"
@@ -65,10 +63,9 @@
 
         <androidx.appcompat.widget.AppCompatButton
             android:id="@+id/btn_monthly"
-            android:layout_width="0dp"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="24dp"
-            android:layout_marginTop="4dp"
+            android:layout_margin="4dp"
             android:layout_weight="0.333"
             android:background="@drawable/green_background"
             android:elevation="4dp"
@@ -138,9 +135,9 @@
 
             <LinearLayout
                 android:layout_width="wrap_content"
-                android:layout_height="30dp"
+                android:layout_height="36dp"
+                android:layout_margin="4dp"
                 android:layout_gravity="center_horizontal"
-                android:layout_marginTop="7dp"
                 android:background="@drawable/score_top_3"
                 android:gravity="center"
                 android:orientation="horizontal">
@@ -149,7 +146,7 @@
                     android:id="@+id/Img3"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="4dp"
+                    android:layout_marginStart="3dp"
                     app:srcCompat="@drawable/garnet" />
 
                 <TextView
@@ -224,9 +221,9 @@
 
     <LinearLayout
         android:layout_width="wrap_content"
-        android:layout_height="30dp"
+        android:layout_height="36dp"
+        android:layout_margin="4dp"
         android:layout_gravity="center_horizontal"
-        android:layout_marginTop="7dp"
         android:background="@drawable/score_top_1"
         android:gravity="center"
         android:orientation="horizontal">
@@ -235,7 +232,7 @@
             android:id="@+id/imageView22"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="4dp"
+            android:layout_marginStart="3dp"
             app:srcCompat="@drawable/garnet" />
 
         <TextView
@@ -298,9 +295,9 @@
                 android:textStyle="bold" />
             <LinearLayout
                 android:layout_width="wrap_content"
-                android:layout_height="30dp"
+                android:layout_height="36dp"
+                android:layout_margin="4dp"
                 android:layout_gravity="center_horizontal"
-                android:layout_marginTop="7dp"
                 android:background="@drawable/score_top_2"
                 android:gravity="center"
                 android:orientation="horizontal">
@@ -309,7 +306,7 @@
                     android:id="@+id/imageView2"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="4dp"
+                    android:layout_marginStart="3dp"
                     app:srcCompat="@drawable/garnet" />
 
                 <TextView
@@ -333,21 +330,23 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <Button
+    <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/logoutBtn"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="LOGOUT"
+        android:background="@drawable/green_background"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         android:layout_marginStart="16dp"
         android:layout_marginBottom="16dp" />
 
-    <Button
+    <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/plusBtn"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="PLUS"
+        android:background="@drawable/green_background"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toEndOf="@+id/logoutBtn"
         android:layout_marginStart="16dp"

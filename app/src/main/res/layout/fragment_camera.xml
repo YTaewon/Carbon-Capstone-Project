@@ -38,24 +38,22 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent">
 
-
-
-            <Button
+            <androidx.appcompat.widget.AppCompatButton
                 android:id="@+id/captureButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="카메라 스캔"
                 android:layout_marginBottom="8dp"
-                android:backgroundTint="#6200EE"
+                android:background="@drawable/green_background"
                 android:textColor="#FFFFFF" />
 
-            <Button
+            <androidx.appcompat.widget.AppCompatButton
                 android:id="@+id/galleryButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="갤러리에서 선택"
                 android:layout_marginBottom="16dp"
-                android:backgroundTint="#6200EE"
+                android:background="@drawable/green_background"
                 android:textColor="#FFFFFF" />
 
             <TextView

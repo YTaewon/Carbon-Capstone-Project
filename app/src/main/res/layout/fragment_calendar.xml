@@ -6,8 +6,7 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="16dp">
+        android:orientation="vertical">
 
         <!-- 이전/다음 달 이동 버튼 -->
         <LinearLayout
@@ -49,29 +48,53 @@
             android:layout_width="match_parent"
             android:layout_height="480dp"
             android:gravity="center"
+            android:layout_marginTop="8dp"
+            android:layout_marginRight="16dp"
+            android:layout_marginLeft="16dp"
+            android:background="@drawable/background_white"
+            android:elevation="4dp"
             android:horizontalSpacing="4dp"
             android:numColumns="7"
             android:stretchMode="columnWidth"
             android:verticalSpacing="4dp" />
 
-        <Button
+        <androidx.appcompat.widget.AppCompatButton
             android:id="@+id/btn_open_map"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:layout_marginRight="16dp"
+            android:layout_marginLeft="16dp"
+            android:elevation="4dp"
+            android:background="@drawable/green_background"
             android:minHeight="48dp"
             android:enabled="false"
+            android:textStyle="bold"
+            android:textSize="16sp"
             android:text="지도" />
 
-        <Button
+        <androidx.appcompat.widget.AppCompatButton
             android:id="@+id/btn_test_map"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:layout_marginRight="16dp"
+            android:layout_marginLeft="16dp"
+            android:elevation="4dp"
+            android:background="@drawable/green_background"
+            android:textStyle="bold"
+            android:textSize="16sp"
             android:text="임시 지도 생성" />
 
         <TextView
             android:id="@+id/tv_day_result"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_margin="16dp"
+            android:padding="16dp"
+            android:elevation="4dp"
+            android:background="@drawable/background_white"
             android:textSize="16sp" />
+
     </LinearLayout>
 </ScrollView>
