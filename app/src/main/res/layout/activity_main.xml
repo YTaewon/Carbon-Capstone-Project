@@ -12,14 +12,14 @@
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="60dp"
-            android:background="@color/default_green"
+            android:background="@color/headerBackground"
             android:padding="8dp">
 
             <ImageView
                 android:id="@+id/logo"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
-                android:src="@drawable/img" />
+                android:src="@drawable/img_logo" />
 
             <TextView
                 android:id="@+id/slogan"
@@ -50,8 +50,8 @@
             android:background="@color/white"
             app:menu="@menu/bottom_nav_menu"
             app:itemActiveIndicatorStyle="@style/Theme.OneThree.Indicator"
-            app:itemTextColor="@color/default_green"
-            app:itemIconTint="@color/default_green"/>
+            app:itemTextColor="@color/headerBackground"
+            app:itemIconTint="@color/headerBackground"/>
 
     </LinearLayout>
 </layout>

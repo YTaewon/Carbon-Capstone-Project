@@ -208,7 +208,7 @@
                             android:src="@drawable/ic_refresh"
                             android:background="?attr/selectableItemBackgroundBorderless"
                             android:contentDescription="새로고침"
-                            app:tint="@color/default_green" />
+                            app:tint="@color/headerBackground" />
 
                     </LinearLayout>
                     <TextView
@@ -354,7 +354,7 @@
                             android:layout_height="24dp"
                             android:src="@drawable/ic_global"
                             android:layout_marginEnd="8dp"
-                            app:tint="@color/default_green" />
+                            app:tint="@color/headerBackground" />
 
                         <TextView
                             android:layout_width="wrap_content"
@@ -372,7 +372,7 @@
                         android:src="@drawable/ic_refresh"
                         android:background="?attr/selectableItemBackgroundBorderless"
                         android:contentDescription="새로고침"
-                        app:tint="@color/default_green" />
+                        app:tint="@color/headerBackground" />
                 </LinearLayout>
 
                     <LinearLayout

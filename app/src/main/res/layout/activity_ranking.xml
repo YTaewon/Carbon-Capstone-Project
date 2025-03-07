@@ -34,7 +34,7 @@
             android:layout_height="wrap_content"
             android:layout_margin="4dp"
             android:layout_weight="0.333"
-            android:background="@drawable/green_background"
+            android:background="@drawable/background_green_dark"
             android:elevation="4dp"
             android:text="전체"
             android:textColor="@android:color/white" />
@@ -45,7 +45,7 @@
             android:layout_height="wrap_content"
             android:layout_margin="4dp"
             android:layout_weight="0.333"
-            android:background="@drawable/green_background"
+            android:background="@drawable/background_green_dark"
             android:elevation="4dp"
             android:text="일간"
             android:textColor="@android:color/white" />
@@ -56,7 +56,7 @@
             android:layout_height="wrap_content"
             android:layout_margin="4dp"
             android:layout_weight="0.333"
-            android:background="@drawable/green_background"
+            android:background="@drawable/background_green_dark"
             android:elevation="4dp"
             android:text="주간"
             android:textColor="@android:color/white" />
@@ -67,7 +67,7 @@
             android:layout_height="wrap_content"
             android:layout_margin="4dp"
             android:layout_weight="0.333"
-            android:background="@drawable/green_background"
+            android:background="@drawable/background_green_dark"
             android:elevation="4dp"
             android:text="월간"
             android:textColor="@android:color/white" />
@@ -336,7 +336,7 @@
         android:layout_height="wrap_content"
         android:text="LOGOUT"
         android:textColor="@color/white"
-        android:background="@drawable/green_background"
+        android:background="@drawable/background_green_dark"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         android:layout_marginStart="16dp"
@@ -348,7 +348,7 @@
         android:layout_height="wrap_content"
         android:text="PLUS"
         android:textColor="@color/white"
-        android:background="@drawable/green_background"
+        android:background="@drawable/background_green_dark"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toEndOf="@+id/logoutBtn"
         android:layout_marginStart="16dp"

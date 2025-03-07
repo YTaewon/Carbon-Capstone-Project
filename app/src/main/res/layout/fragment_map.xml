@@ -39,7 +39,7 @@
             android:layout_height="40dp"
             android:padding="5dp"
             android:layout_gravity="end"
-            android:src="@drawable/baseline_filter" />
+            android:src="@drawable/ic_filter" />
 
         <ImageView
             android:id="@+id/load_button"
@@ -47,7 +47,7 @@
             android:layout_height="40dp"
             android:padding="5dp"
             android:layout_gravity="end"
-            android:src="@drawable/baseline_reload_24" />
+            android:src="@drawable/ic_reload" />
     </androidx.appcompat.widget.Toolbar>
 
     <RelativeLayout

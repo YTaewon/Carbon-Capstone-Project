@@ -44,7 +44,7 @@
                 android:layout_height="wrap_content"
                 android:text="카메라 스캔"
                 android:layout_marginBottom="8dp"
-                android:background="@drawable/green_background"
+                android:background="@drawable/background_green_dark"
                 android:textColor="@color/white" />
 
             <androidx.appcompat.widget.AppCompatButton
@@ -53,7 +53,7 @@
                 android:layout_height="wrap_content"
                 android:text="갤러리에서 선택"
                 android:layout_marginBottom="16dp"
-                android:background="@drawable/green_background"
+                android:background="@drawable/background_green_dark"
                 android:textColor="@color/white" />
 
             <TextView
