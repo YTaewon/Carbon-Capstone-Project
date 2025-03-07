@@ -640,9 +640,7 @@
                     android:orientation="vertical"
                     android:background="@drawable/background_white"
                     android:elevation="4dp"
-                    android:layout_marginLeft="16dp"
-                    android:layout_marginRight="16dp"
-                    android:layout_marginTop="16dp"
+                    android:layout_margin="16dp"
                     android:padding="16dp">
 
                     <TextView
