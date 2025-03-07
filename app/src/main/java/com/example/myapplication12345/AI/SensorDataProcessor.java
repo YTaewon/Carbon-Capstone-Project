@@ -33,6 +33,7 @@ public class SensorDataProcessor {
     private static final String MODEL_FILENAME = "model.pt";
     private static final String[] TRANSPORT_MODES = {"WALK", "BIKE", "BUS", "CAR", "SUBWAY"};
     private static final int MIN_TIMESTAMP_COUNT = 60;
+    private static final int SEGMENT_SIZE = 15;
     private static final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd", Locale.getDefault());
 
     private static SensorDataProcessor instance;
@@ -191,7 +192,6 @@ public class SensorDataProcessor {
         String date = dateFormat.format(startTimestamp);
         String fileName = date + "_predictions.csv";
 
-        // SensorData 디렉토리 생성
         File directory = new File(context.getExternalFilesDir(null), "SensorData");
         if (!directory.exists()) {
             if (directory.mkdirs()) {
@@ -247,22 +247,37 @@ public class SensorDataProcessor {
                 Log.w(TAG, "확률이 임계값 미만 또는 유효하지 않은 인덱스: " + maxProb + ", " + maxIndex);
             }
 
-            if (!gpsData.isEmpty() && gpsData.size() >= 2) {
-                long startTimestamp = findEarliestTimestamp(gpsData);
-                Map<String, Object> startData = gpsData.get(0);
-                Map<String, Object> endData = gpsData.get(gpsData.size() - 1);
-                double startLat = ((Number) startData.get("latitude")).doubleValue();
-                double startLon = ((Number) startData.get("longitude")).doubleValue();
-                double endLat = ((Number) endData.get("latitude")).doubleValue();
-                double endLon = ((Number) endData.get("longitude")).doubleValue();
+            if (!gpsData.isEmpty() && gpsData.size() >= MIN_TIMESTAMP_COUNT) {
+                // GPS 데이터를 15개 단위로 나누기
+                int totalSegments = gpsData.size() / SEGMENT_SIZE; // 60 / 15 = 4 구간
+                for (int segment = 0; segment < totalSegments; segment++) {
+                    int startIndex = segment * SEGMENT_SIZE;
+                    int endIndex = Math.min(startIndex + SEGMENT_SIZE - 1, gpsData.size() - 1);
 
-                MovementAnalyzer analyzer = new MovementAnalyzer(gpsData, imuData);
-                analyzer.analyze();
-                double distance = analyzer.getDistance();
-                String transportMode = predictedResult.equals("None") ? analyzer.getTransportMode() : predictedResult;
+                    Map<String, Object> startData = gpsData.get(startIndex);
+                    Map<String, Object> endData = gpsData.get(endIndex);
 
-                Log.d(TAG, "최종 이동수단: " + transportMode + ", 거리: " + distance + "m, 시작: (" + startLat + ", " + startLon + "), 끝: (" + endLat + ", " + endLon + ")");
-                savePredictionToCSV(transportMode, distance, startTimestamp, startLat, startLon, endLat, endLon);
+                    long startTimestamp = ((Number) startData.get("timestamp")).longValue();
+                    double startLat = ((Number) startData.get("latitude")).doubleValue();
+                    double startLon = ((Number) startData.get("longitude")).doubleValue();
+                    double endLat = ((Number) endData.get("latitude")).doubleValue();
+                    double endLon = ((Number) endData.get("longitude")).doubleValue();
+
+                    // 구간별 이동 분석
+                    List<Map<String, Object>> segmentGpsData = gpsData.subList(startIndex, endIndex + 1);
+                    List<Map<String, Object>> segmentImuData = imuData.subList(startIndex, endIndex + 1);
+                    MovementAnalyzer analyzer = new MovementAnalyzer(segmentGpsData, segmentImuData);
+                    analyzer.analyze();
+                    double distance = analyzer.getDistance();
+                    String transportMode = predictedResult;
+                    //String transportMode = predictedResult.equals("None") ? analyzer.getTransportMode() : predictedResult;
+                    if(distance <= 0.05){
+                        transportMode = "None";
+                    }
+                    Log.d(TAG, "구간 " + segment + " 최종 이동수단: " + transportMode + ", 거리: " + distance + "m, " +
+                            "시작: (" + startLat + ", " + startLon + "), 끝: (" + endLat + ", " + endLon + ")");
+                    savePredictionToCSV(transportMode, distance, startTimestamp, startLat, startLon, endLat, endLon);
+                }
             } else {
                 Log.w(TAG, "GPS 데이터 부족으로 CSV 저장 불가");
             }
