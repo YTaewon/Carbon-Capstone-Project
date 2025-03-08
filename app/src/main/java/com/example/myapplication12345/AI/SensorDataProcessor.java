@@ -30,7 +30,7 @@ import java.util.Map;
 
 public class SensorDataProcessor {
     private static final String TAG = "SensorDataProcessor";
-    private static final String MODEL_FILENAME = "model.pt";
+    private static final String MODEL_FILENAME = "model.ptl";
     // TRANSPORT_MODES 확장: 11개 요소로 정의
     private static final String[] TRANSPORT_MODES = {
             "WALK", "BIKE", "BUS", "CAR", "SUBWAY",
