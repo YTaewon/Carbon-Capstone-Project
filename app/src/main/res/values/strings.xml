@@ -12,4 +12,5 @@
     <string name="welcom">환영합니다.</string>
     <string name="password">password</string>
     <string name="email">email</string>
+    <string name="map">Map</string>
 </resources>

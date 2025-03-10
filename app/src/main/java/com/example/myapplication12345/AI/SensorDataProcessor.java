@@ -33,8 +33,8 @@ public class SensorDataProcessor {
     private static final String MODEL_FILENAME = "model.ptl";
     // TRANSPORT_MODES 확장: 11개 요소로 정의
     private static final String[] TRANSPORT_MODES = {
-            "WALK", "BIKE", "BUS", "CAR", "SUBWAY",
-            "None1", "None2", "None3", "None4", "None5", "None6"
+            "WALK", "WALK", "BIKE", "CAR", "BUS",
+            "SUBWAY", "ETC", "BIKE", "ETC", "CAR", "ETC"
     };
     private static final int MIN_TIMESTAMP_COUNT = 60;
     private static final int SEGMENT_SIZE = 15;

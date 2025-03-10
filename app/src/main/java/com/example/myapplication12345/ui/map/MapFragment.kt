@@ -2,6 +2,7 @@ package com.example.myapplication12345.ui.map
 
 import android.annotation.SuppressLint
 import android.app.AlertDialog
+import android.app.DatePickerDialog
 import android.content.Context
 import android.graphics.Color
 import android.graphics.Paint
@@ -92,6 +93,7 @@ class MapFragment : Fragment() {
     private lateinit var selectTransportButton: ImageView
     private lateinit var backButton: ImageView
     private lateinit var toggleDistanceButton: ImageView
+    private lateinit var calendarButton: ImageView // 달력 버튼 추가
 
     private val transportModes = listOf("WALK", "BIKE", "BUS", "CAR", "SUBWAY", "ETC")
     private val selectedModes = mutableSetOf<String>().apply { addAll(transportModes) }
@@ -113,8 +115,8 @@ class MapFragment : Fragment() {
         dateText = view.findViewById(R.id.date_text)
         loadButton = view.findViewById(R.id.load_button)
         selectTransportButton = view.findViewById(R.id.select_transport_button)
-        backButton = view.findViewById(R.id.back_button)
         toggleDistanceButton = view.findViewById(R.id.toggle_distance_button)
+        calendarButton = view.findViewById(R.id.calendar_button) // 레이아웃에 추가 필요
 
         // MapView 초기화
         mapView.setTileSource(TileSourceFactory.MAPNIK)
@@ -122,25 +124,15 @@ class MapFragment : Fragment() {
         mapView.controller.setZoom(18.0)
         mapView.setTilesScaledToDpi(true)
 
-        val selectedDate = arguments?.getString("selectedDate") ?: dateFormat.format(System.currentTimeMillis())
-        val year = selectedDate.substring(0, 4)
-        val month = selectedDate.substring(4, 6)
-        val day = selectedDate.substring(6, 8)
-        dateText.text = "${year}년 ${month}월 ${day}일"
+        // 인자로 날짜가 제공되지 않으면 오늘 날짜를 기본값으로 사용
+        val todayDate = dateFormat.format(System.currentTimeMillis())
+        val selectedDate = arguments?.getString("selectedDate") ?: todayDate
+        updateDateText(selectedDate)
         loadAndDisplayPredictionData(selectedDate)
 
         loadButton.setOnClickListener {
             val selectedDateStr = dateText.text.toString()
-            val parsedDate = try {
-                val parts = selectedDateStr.split("년 ", "월 ", "일")
-                val yearPart = parts[0]
-                val monthPart = parts[1].padStart(2, '0')
-                val dayPart = parts[2].padStart(2, '0')
-                "$yearPart$monthPart$dayPart"
-            } catch (e: Exception) {
-                Log.e(TAG, "날짜 파싱 실패: $selectedDateStr", e)
-                dateFormat.format(System.currentTimeMillis())
-            }
+            val parsedDate = parseDateFromText(selectedDateStr)
             loadAndDisplayPredictionData(parsedDate)
         }
 
@@ -148,15 +140,49 @@ class MapFragment : Fragment() {
             showTransportSelectionDialog()
         }
 
-        backButton.setOnClickListener {
-            requireActivity().finish()
-        }
-
         toggleDistanceButton.setOnClickListener {
             toggleDistanceInfoVisibility()
         }
 
+        // 달력 버튼 클릭 시 DatePickerDialog 표시
+        calendarButton.setOnClickListener {
+            showDatePickerDialog()
+        }
+
         return view
+    }
+
+    private fun showDatePickerDialog() {
+        val calendar = Calendar.getInstance()
+        val year = calendar.get(Calendar.YEAR)
+        val month = calendar.get(Calendar.MONTH)
+        val day = calendar.get(Calendar.DAY_OF_MONTH)
+
+        DatePickerDialog(requireContext(), { _, selectedYear, selectedMonth, selectedDay ->
+            val selectedDate = String.format("%04d%02d%02d", selectedYear, selectedMonth + 1, selectedDay)
+            updateDateText(selectedDate)
+            loadAndDisplayPredictionData(selectedDate)
+        }, year, month, day).show()
+    }
+
+    private fun updateDateText(date: String) {
+        val year = date.substring(0, 4)
+        val month = date.substring(4, 6)
+        val day = date.substring(6, 8)
+        dateText.text = "${year}년 ${month}월 ${day}일"
+    }
+
+    private fun parseDateFromText(dateText: String): String {
+        return try {
+            val parts = dateText.split("년 ", "월 ", "일")
+            val yearPart = parts[0]
+            val monthPart = parts[1].padStart(2, '0')
+            val dayPart = parts[2].padStart(2, '0')
+            "$yearPart$monthPart$dayPart"
+        } catch (e: Exception) {
+            Log.e(TAG, "날짜 파싱 실패: $dateText", e)
+            dateFormat.format(System.currentTimeMillis())
+        }
     }
 
     private fun toggleDistanceInfoVisibility() {
@@ -217,17 +243,7 @@ class MapFragment : Fragment() {
                         selectedModes.add(transportModes[index])
                     }
                 }
-                val selectedDateStr = dateText.text.toString()
-                val parsedDate = try {
-                    val parts = selectedDateStr.split("년 ", "월 ", "일")
-                    val yearPart = parts[0]
-                    val monthPart = parts[1].padStart(2, '0')
-                    val dayPart = parts[2].padStart(2, '0')
-                    "$yearPart$monthPart$dayPart"
-                } catch (e: Exception) {
-                    Log.e(TAG, "날짜 파싱 실패: $selectedDateStr", e)
-                    dateFormat.format(System.currentTimeMillis())
-                }
+                val parsedDate = parseDateFromText(dateText.text.toString())
                 loadAndDisplayPredictionData(parsedDate)
             }
             .setNegativeButton("취소", null)
@@ -255,8 +271,8 @@ class MapFragment : Fragment() {
         val groupedData = predictionData
             .map { data ->
                 val mode = data["transport_mode"] ?: "ETC"
-                if (validModes.contains(mode)) data // 유효한 경우 그대로 유지
-                else data.toMutableMap().apply { this["transport_mode"] = "ETC" } // 유효하지 않으면 ETC로 인식
+                if (validModes.contains(mode)) data
+                else data.toMutableMap().apply { this["transport_mode"] = "ETC" }
             }
             .filter { selectedModes.contains(it["transport_mode"]) }
             .groupBy { it["transport_mode"]!! }

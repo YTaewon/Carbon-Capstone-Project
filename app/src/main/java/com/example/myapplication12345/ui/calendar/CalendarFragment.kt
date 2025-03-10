@@ -55,7 +55,6 @@ class CalendarFragment : Fragment() {
             selectedPosition = -1
             mCal.add(Calendar.MONTH, -1)
             updateCalendar()
-            updateTestMapButtonState()
         }
 
         binding.btnNextMonth.setOnClickListener {
@@ -63,34 +62,7 @@ class CalendarFragment : Fragment() {
             selectedPosition = -1
             mCal.add(Calendar.MONTH, 1)
             updateCalendar()
-            updateTestMapButtonState()
         }
-
-        binding.btnOpenMap.setOnClickListener {
-            if (selectedPosition != -1) {
-                val selectedDay = dayList[selectedPosition]
-                val selectedDate = formatDateForFile(selectedDay.date)
-                val intent = Intent(requireContext(), MapViewModel::class.java).apply {
-                    putExtra("selectedDate", selectedDate)
-                }
-                startActivity(intent)
-            }
-        }
-
-        binding.btnTestMap.setOnClickListener {
-            if (selectedPosition != -1) {
-                val selectedDay = dayList[selectedPosition]
-                val selectedDateStr = formatDateForFile(selectedDay.date)
-                val selectedDate = SimpleDateFormat("yyyyMMdd", Locale.getDefault()).parse(selectedDateStr)
-                if (selectedDate != null) {
-                    MapFragment.createTestCsvFile(requireContext(), selectedDate)
-                    updateTestMapButtonState()
-                    binding.btnOpenMap.isEnabled = true
-                }
-            }
-        }
-
-        updateTestMapButtonState()
         return root
     }
 
@@ -246,9 +218,6 @@ class CalendarFragment : Fragment() {
                     }
                     holder.ivIndicator.visibility = View.VISIBLE
                     showPointVeiw(day)
-                    val selectedDate = formatDateForFile(day.date)
-                    binding.btnOpenMap.isEnabled = checkCsvFileExists(selectedDate)
-                    updateTestMapButtonState()
                     gridAdapter.notifyDataSetChanged() // UI 갱신
                 }
             }
@@ -262,19 +231,6 @@ class CalendarFragment : Fragment() {
 
             return view
         }
-    }
-
-    private fun formatDateForFile(day: String): String {
-        val year = mCal.get(Calendar.YEAR)
-        val month = String.format("%02d", mCal.get(Calendar.MONTH) + 1)
-        val dayFormatted = String.format("%02d", day.toInt())
-        return "$year$month$dayFormatted"
-    }
-
-    private fun checkCsvFileExists(date: String): Boolean {
-        val fileName = "${date}_predictions.csv"
-        val file = File(requireContext().getExternalFilesDir(null), "SensorData/$fileName")
-        return file.exists()
     }
 
     private fun hideIndicatorAtPosition(position: Int) {
@@ -322,16 +278,6 @@ class CalendarFragment : Fragment() {
 
         builder.setNegativeButton("취소") { dialog, _ -> dialog.dismiss() }
         builder.show()
-    }
-
-    private fun updateTestMapButtonState() {
-        if (selectedPosition != -1) {
-            val selectedDay = dayList[selectedPosition]
-            val selectedDate = formatDateForFile(selectedDay.date)
-            binding.btnTestMap.isEnabled = !checkCsvFileExists(selectedDate)
-        } else {
-            binding.btnTestMap.isEnabled = false
-        }
     }
 
     override fun onDestroyView() {

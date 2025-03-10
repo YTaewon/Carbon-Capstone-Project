@@ -6,11 +6,10 @@
         android:icon="@drawable/ic_home"
         android:title="@string/title_home" />
 
-
     <item
-        android:id="@+id/navigation_pedometer"
-        android:icon="@drawable/ic_stepper2_24dp"
-        android:title="@string/title_pedometer" />
+        android:id="@+id/navigation_ranking"
+        android:icon="@drawable/ic_ranking_24dp"
+        android:title="@string/title_rankingboard" />
 
     <item
         android:id="@+id/navigation_camera"
@@ -18,9 +17,14 @@
         android:title="@string/title_dashboard" />
 
     <item
-        android:id="@+id/navigation_ranking"
-        android:icon="@drawable/ic_ranking_24dp"
-        android:title="@string/title_rankingboard" />
+        android:id="@+id/navigation_map"
+        android:icon="@drawable/ic_global_green"
+        android:title="@string/map" />
+
+<!--    <item-->
+<!--        android:id="@+id/navigation_pedometer"-->
+<!--        android:icon="@drawable/ic_stepper2_24dp"-->
+<!--        android:title="@string/title_pedometer" />-->
 
     <item
         android:id="@+id/navigation_calendar"
