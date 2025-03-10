@@ -45,7 +45,7 @@ class RankingFragment : Fragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        val view = inflater.inflate(R.layout.activity_ranking, container, false)
+        val view = inflater.inflate(R.layout.fragment_ranking, container, false)
         auth = Firebase.auth
         scoreManager = ScoreManager(requireContext())
 

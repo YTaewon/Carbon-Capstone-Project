@@ -91,9 +91,8 @@ class MapFragment : Fragment() {
     private lateinit var dateText: TextView
     private lateinit var loadButton: ImageView
     private lateinit var selectTransportButton: ImageView
-    private lateinit var backButton: ImageView
     private lateinit var toggleDistanceButton: ImageView
-    private lateinit var calendarButton: ImageView // 달력 버튼 추가
+    private lateinit var calendarButton: ImageView
 
     private val transportModes = listOf("WALK", "BIKE", "BUS", "CAR", "SUBWAY", "ETC")
     private val selectedModes = mutableSetOf<String>().apply { addAll(transportModes) }
@@ -116,7 +115,7 @@ class MapFragment : Fragment() {
         loadButton = view.findViewById(R.id.load_button)
         selectTransportButton = view.findViewById(R.id.select_transport_button)
         toggleDistanceButton = view.findViewById(R.id.toggle_distance_button)
-        calendarButton = view.findViewById(R.id.calendar_button) // 레이아웃에 추가 필요
+        calendarButton = view.findViewById(R.id.calendar_button)
 
         // MapView 초기화
         mapView.setTileSource(TileSourceFactory.MAPNIK)
@@ -144,7 +143,6 @@ class MapFragment : Fragment() {
             toggleDistanceInfoVisibility()
         }
 
-        // 달력 버튼 클릭 시 DatePickerDialog 표시
         calendarButton.setOnClickListener {
             showDatePickerDialog()
         }

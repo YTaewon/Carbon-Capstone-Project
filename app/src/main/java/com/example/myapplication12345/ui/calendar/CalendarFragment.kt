@@ -17,9 +17,6 @@ import androidx.lifecycle.ViewModelProvider
 import com.example.myapplication12345.R
 import com.example.myapplication12345.ScoreManager
 import com.example.myapplication12345.databinding.FragmentCalendarBinding
-import com.example.myapplication12345.ui.map.MapViewModel
-import com.example.myapplication12345.ui.map.MapFragment
-import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 
