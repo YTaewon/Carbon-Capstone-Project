@@ -93,6 +93,7 @@ class MapFragment : Fragment() {
     private lateinit var selectTransportButton: ImageView
     private lateinit var toggleDistanceButton: ImageView
     private lateinit var calendarButton: ImageView
+    private lateinit var testMapButton: Button
 
     private val transportModes = listOf("WALK", "BIKE", "BUS", "CAR", "SUBWAY", "ETC")
     private val selectedModes = mutableSetOf<String>().apply { addAll(transportModes) }
@@ -116,6 +117,7 @@ class MapFragment : Fragment() {
         selectTransportButton = view.findViewById(R.id.select_transport_button)
         toggleDistanceButton = view.findViewById(R.id.toggle_distance_button)
         calendarButton = view.findViewById(R.id.calendar_button)
+        testMapButton = view.findViewById(R.id.test_map)
 
         // MapView 초기화
         mapView.setTileSource(TileSourceFactory.MAPNIK)
@@ -128,11 +130,13 @@ class MapFragment : Fragment() {
         val selectedDate = arguments?.getString("selectedDate") ?: todayDate
         updateDateText(selectedDate)
         loadAndDisplayPredictionData(selectedDate)
+        updateTestMapButtonState(selectedDate) // 초기 버튼 상태 설정
 
         loadButton.setOnClickListener {
             val selectedDateStr = dateText.text.toString()
             val parsedDate = parseDateFromText(selectedDateStr)
             loadAndDisplayPredictionData(parsedDate)
+            updateTestMapButtonState(parsedDate) // 버튼 상태 업데이트
         }
 
         selectTransportButton.setOnClickListener {
@@ -147,6 +151,21 @@ class MapFragment : Fragment() {
             showDatePickerDialog()
         }
 
+        testMapButton.setOnClickListener {
+            val selectedDateStr = dateText.text.toString()
+            val parsedDateStr = parseDateFromText(selectedDateStr)
+            val selectedDate = dateFormat.parse(parsedDateStr)
+            if (selectedDate != null) {
+                createTestCsvFile(requireContext(), selectedDate)
+                updateDateText(parsedDateStr)
+                loadAndDisplayPredictionData(parsedDateStr)
+                updateTestMapButtonState(parsedDateStr) // CSV 생성 후 버튼 상태 업데이트
+                Toast.makeText(requireContext(), "$parsedDateStr 테스트 CSV 생성 완료", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(requireContext(), "유효하지 않은 날짜입니다.", Toast.LENGTH_SHORT).show()
+            }
+        }
+
         return view
     }
 
@@ -155,12 +174,14 @@ class MapFragment : Fragment() {
         val year = calendar.get(Calendar.YEAR)
         val month = calendar.get(Calendar.MONTH)
         val day = calendar.get(Calendar.DAY_OF_MONTH)
-
-        DatePickerDialog(requireContext(), { _, selectedYear, selectedMonth, selectedDay ->
-            val selectedDate = String.format("%04d%02d%02d", selectedYear, selectedMonth + 1, selectedDay)
-            updateDateText(selectedDate)
-            loadAndDisplayPredictionData(selectedDate)
-        }, year, month, day).show()
+        DatePickerDialog(
+            requireContext(), R.style.DatePickerTheme, { _, selectedYear, selectedMonth, selectedDay ->
+                val selectedDate = String.format("%04d%02d%02d", selectedYear, selectedMonth + 1, selectedDay)
+                updateDateText(selectedDate)
+                loadAndDisplayPredictionData(selectedDate)
+                updateTestMapButtonState(selectedDate) // 날짜 선택 후 버튼 상태 업데이트
+            }, year, month, day
+        ).show()
     }
 
     private fun updateDateText(date: String) {
@@ -254,13 +275,13 @@ class MapFragment : Fragment() {
 
     @SuppressLint("DefaultLocale")
     private fun displayPredictionOnMap(predictionData: List<Map<String, String>>) {
-        mapView.overlays.clear()
+        mapView.overlays.clear() // 기존 오버레이 제거
         val distanceInfo = StringBuilder("이동 거리 합계:\n")
         var firstPoint: GeoPoint? = null
         var hasData = false
 
         val selectedModes = getSelectedTransportModes()
-        val validModes = setOf("WALK", "BIKE", "BUS", "CAR", "SUBWAY") // 유효한 이동 수단
+        val validModes = setOf("WALK", "BIKE", "BUS", "CAR", "SUBWAY")
         val transportModeNames = mapOf(
             "WALK" to "걷기", "BIKE" to "자전거", "BUS" to "버스",
             "CAR" to "자동차", "SUBWAY" to "지하철", "ETC" to "나머지"
@@ -344,7 +365,7 @@ class MapFragment : Fragment() {
             mapView.controller.setCenter(it)
         }
 
-        mapView.invalidate()
+        mapView.invalidate() // 지도 갱신
         textDistanceInfo.text = distanceInfo.toString()
     }
 
@@ -361,12 +382,15 @@ class MapFragment : Fragment() {
     }
 
     private fun loadAndDisplayPredictionData(date: String) {
+        mapView.overlays.clear() // 데이터 로드 전에 오버레이 초기화
+        mapView.invalidate() // 지도 갱신
+
         val fileName = "${date}_predictions.csv"
         val file = File(requireContext().getExternalFilesDir(null), "SensorData/$fileName")
 
         if (!file.exists()) {
             Log.e(TAG, "예측 데이터 CSV 파일이 존재하지 않음: $fileName")
-            textDistanceInfo.text = "데이터 없음: $fileName"
+            textDistanceInfo.text = "데이터 없음: $date"
             return
         }
 
@@ -401,6 +425,16 @@ class MapFragment : Fragment() {
         }
 
         displayPredictionOnMap(predictionData)
+    }
+
+    private fun isCsvFileExists(date: String): Boolean {
+        val fileName = "${date}_predictions.csv"
+        val file = File(requireContext().getExternalFilesDir(null), "SensorData/$fileName")
+        return file.exists()
+    }
+
+    private fun updateTestMapButtonState(date: String) {
+        testMapButton.isEnabled = !isCsvFileExists(date)
     }
 
     override fun onResume() {

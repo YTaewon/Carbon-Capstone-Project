@@ -6,6 +6,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:orientation="vertical">
 
+    <!-- Toolbar 생략 (변경 없음) -->
     <androidx.appcompat.widget.Toolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
@@ -71,7 +72,7 @@
             android:layout_height="wrap_content"
             android:layout_alignParentTop="true"
             android:background="@android:color/transparent">
-
+            <!-- NestedScrollView 내용 생략 (변경 없음) -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -80,94 +81,100 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:background="#80FFFFFF"
                     android:orientation="horizontal"
                     android:paddingTop="8dp"
-                    android:paddingBottom="8dp"
-                    android:background="#80FFFFFF">
+                    android:paddingBottom="8dp">
 
                     <LinearLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:orientation="horizontal"
-                        android:gravity="center">
+                        android:gravity="center"
+                        android:orientation="horizontal">
 
                         <View
                             android:layout_width="12dp"
                             android:layout_height="12dp"
                             android:background="#00FF00" />
+
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:textSize="16dp"
                             android:text="걷기 "
-                            android:textColor="#000000" />
+                            android:textColor="#000000"
+                            android:textSize="16dp" />
 
                         <View
                             android:layout_width="12dp"
                             android:layout_height="12dp"
                             android:background="#0000FF" />
+
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:textSize="16dp"
                             android:text="자전거 "
-                            android:textColor="#000000" />
+                            android:textColor="#000000"
+                            android:textSize="16dp" />
 
                         <View
                             android:layout_width="12dp"
                             android:layout_height="12dp"
                             android:background="#FFFF00" />
+
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:textSize="16dp"
                             android:text="버스 "
-                            android:textColor="#000000" />
+                            android:textColor="#000000"
+                            android:textSize="16dp" />
 
                         <View
                             android:layout_width="12dp"
                             android:layout_height="12dp"
                             android:background="@color/errorColor" />
+
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:textSize="16dp"
                             android:text="자동차 "
-                            android:textColor="#000000" />
+                            android:textColor="#000000"
+                            android:textSize="16dp" />
 
                         <View
                             android:layout_width="12dp"
                             android:layout_height="12dp"
                             android:background="#FF00FF" />
+
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:textSize="16dp"
                             android:text="지하철 "
-                            android:textColor="#000000" />
+                            android:textColor="#000000"
+                            android:textSize="16dp" />
 
                         <View
                             android:layout_width="12dp"
                             android:layout_height="12dp"
                             android:background="#808080" />
+
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:textSize="16dp"
                             android:text="나머지"
-                            android:textColor="#000000" />
+                            android:textColor="#000000"
+                            android:textSize="16dp" />
 
                         <ImageView
                             android:id="@+id/toggle_distance_button"
                             android:layout_width="30dp"
                             android:layout_height="30dp"
-                            android:src="@drawable/ic_drop_up"
-                            android:layout_gravity="end" />
+                            android:layout_gravity="end"
+                            android:src="@drawable/ic_drop_up" />
                     </LinearLayout>
+
                 </LinearLayout>
 
-                <!-- 거리 정보와 토글 버튼을 포함한 레이아웃 -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -185,14 +192,51 @@
                 </LinearLayout>
             </LinearLayout>
         </androidx.core.widget.NestedScrollView>
-        <Button
-            android:id="@+id/test_map"
-            android:layout_width="30dp"
-            android:layout_height="30dp"
-            />
+
+        <LinearLayout
+            android:layout_width="73dp"
+            android:layout_height="61dp"
+            android:layout_alignParentEnd="true"
+            android:layout_alignParentBottom="true"
+            android:orientation="vertical">
+            <ImageView
+                android:layout_width="50dp"
+                android:layout_height="50dp"
+                android:layout_gravity="center"
+                android:elevation="4dp"
+                android:background="@drawable/background_radius_white"/>
+        </LinearLayout>
+
+        <!-- 오른쪽 하단에 버튼 추가 -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentEnd="true"
+            android:layout_alignParentBottom="true"
+            android:orientation="vertical"
+            android:layout_marginEnd="16dp"
+            android:layout_marginBottom="16dp">
+
+            <!-- 기존 test_map 버튼 -->
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/test_map"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="TEST"
+                android:textColor="@color/white"
+                android:background="@drawable/background_green_dark"
+                android:layout_marginBottom="8dp" />
+
+            <!-- 새로운 버튼 추가 -->
+            <ImageButton
+                android:id="@+id/new_button"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_gravity="end"
+                android:textColor="@color/white"
+                android:background="@drawable/ic_location_searching"
+                />
+        </LinearLayout>
 
     </RelativeLayout>
-
-
-
 </LinearLayout>
