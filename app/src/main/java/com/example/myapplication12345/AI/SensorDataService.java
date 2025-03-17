@@ -111,7 +111,7 @@ public class SensorDataService extends Service {
 
         // 알림 빌더 설정 및 Notification 객체 반환
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
-                .setSmallIcon(R.drawable.ic_launcher_foreground) // 앱 아이콘
+                .setSmallIcon(R.drawable.img_logo) // 앱 아이콘
                 .setContentTitle("센서 데이터 수집 서비스")
                 .setContentText("백그라운드에서 센서 데이터를 수집 중입니다.")
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
