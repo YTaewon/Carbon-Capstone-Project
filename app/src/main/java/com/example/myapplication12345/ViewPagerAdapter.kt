@@ -22,9 +22,8 @@ class ViewPagerAdapter(activity: FragmentActivity) : FragmentStateAdapter(activi
             0 -> HomeFragment()
             1 -> RankingFragment()
             2 -> CameraFragment()
-            3 -> MapFragment()
-//            4 -> PedometerFragment()
-            4 -> CalendarFragment()
+            3 -> CalendarFragment()
+            4 -> MapFragment()
             else -> throw IllegalStateException("Invalid position: $position")
         }
     }

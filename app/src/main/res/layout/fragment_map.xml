@@ -62,7 +62,12 @@
         android:elevation="4dp"
         android:background="@drawable/background_white">
 
-        <org.osmdroid.views.MapView
+<!--        <org.osmdroid.views.MapView-->
+<!--            android:id="@+id/map_view"-->
+<!--            android:layout_width="match_parent"-->
+<!--            android:layout_height="match_parent" />-->
+
+        <com.google.android.gms.maps.MapView
             android:id="@+id/map_view"
             android:layout_width="match_parent"
             android:layout_height="match_parent" />

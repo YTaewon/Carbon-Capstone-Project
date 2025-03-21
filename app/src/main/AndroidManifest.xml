@@ -14,7 +14,9 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION"/>
     <!-- 백그라운드에서 위치 데이터 수집을 위한 퍼미션 (Android 10 이상, 런타임 요청 필요) -->
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
-
+    <!-- 높은 샘플링 속도 센서 사용 권한 추가 -->
+    <uses-permission android:name="android.permission.HIGH_SAMPLING_RATE_SENSORS"
+        tools:ignore="HighSamplingRate" />
     <!-- Wi-Fi 상태 확인을 위한 퍼미션 -->
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
     <!-- Wi-Fi 상태 변경(예: 스캔 트리거)을 위한 퍼미션 -->
@@ -93,6 +95,11 @@
         <service android:name=".AI.SensorDataService"
             android:foregroundServiceType="location|dataSync"
             tools:ignore="ForegroundServicePermission" />
+
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="${MAPS_API_KEY}" />
+
     </application>
 
 </manifest>

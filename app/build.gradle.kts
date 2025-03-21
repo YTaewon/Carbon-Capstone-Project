@@ -1,10 +1,9 @@
-import org.jetbrains.kotlin.storage.CacheResetOnProcessCanceled.enabled
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     id("com.google.gms.google-services")
-
 }
 
 android {
@@ -17,9 +16,10 @@ android {
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
-
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        manifestPlaceholders["MAPS_API_KEY"] = localProperty("MAPS_API_KEY", "")
     }
+
 
     buildTypes {
         release {
@@ -53,6 +53,15 @@ android {
         kotlinCompilerExtensionVersion = "1.5.14" // Kotlin 1.9.24와 호환
     }
 
+}
+
+fun localProperty(key: String, defaultValue: String): String {
+    val properties = Properties()
+    val localPropertiesFile = project.rootProject.file("local.properties")
+    if (localPropertiesFile.exists()) {
+        properties.load(localPropertiesFile.inputStream())
+    }
+    return properties.getProperty(key) ?: defaultValue
 }
 
 dependencies {
@@ -150,8 +159,10 @@ dependencies {
     implementation("org.pytorch:pytorch_android_torchvision:1.10.0")
 
     //지도
-    implementation("org.osmdroid:osmdroid-android:6.1.20")
-    implementation("com.github.MKergall:osmbonuspack:6.9.0")
+    //implementation("org.osmdroid:osmdroid-android:6.1.20")
+    //implementation("com.github.MKergall:osmbonuspack:6.9.0")
+    implementation ("com.google.android.gms:play-services-maps:18.2.0")
+    implementation ("com.google.android.gms:play-services-location:21.0.1")
 
     //런타임
     runtimeOnly("androidx.work:work-runtime:2.10.0")

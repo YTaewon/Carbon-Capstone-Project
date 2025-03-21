@@ -34,16 +34,16 @@ public class SensorDataProcessor {
     // TRANSPORT_MODES 확장: 11개 요소로 정의
     private static final String[] TRANSPORT_MODES = {
             "WALK", "WALK", "BIKE", "CAR", "BUS",
-            "SUBWAY", "ETC", "BIKE", "ETC", "CAR", "ETC"
+            "ETC", "SUBWAY", "ETC", "BIKE", "ETC", "CAR"
     };
     private static final int MIN_TIMESTAMP_COUNT = 60;
-    private static final int SEGMENT_SIZE = 15;
+    private static final int SEGMENT_SIZE = 10;
     private static final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd", Locale.getDefault());
 
     private static SensorDataProcessor instance;
     private final Context context;
     private Module model;
-    private String predictedResult = "None1"; // 기본값을 None1으로 변경
+    private String predictedResult = "None"; // 기본값을 None으로 변경
     private volatile boolean isModelLoaded = false;
 
     // 기존 생성자와 모델 로드 로직 유지
@@ -93,14 +93,18 @@ public class SensorDataProcessor {
         return file.getAbsolutePath();
     }
 
-    // processSensorData 및 기타 메서드는 크게 변경 없음, predictMovingMode만 수정
     public void processSensorData(List<Map<String, Object>> gpsData,
                                   List<Map<String, Object>> apData,
                                   List<Map<String, Object>> btsData,
                                   List<Map<String, Object>> imuData) {
+
+        MovementAnalyzer analyzer = new MovementAnalyzer(gpsData, imuData);
+        analyzer.analyze();
+        float distance = analyzer.getDistance();
+
         if (!isModelLoaded) {
             Log.w(TAG, "모델이 아직 로드되지 않음. 데이터 처리 스킵");
-            predictedResult = "None1"; // 기본값 변경
+            predictedResult = "None"; // 기본값 변경
             return;
         }
 
@@ -109,7 +113,7 @@ public class SensorDataProcessor {
 
         if (gpsData.size() < MIN_TIMESTAMP_COUNT || apData.isEmpty() || btsData.isEmpty() || imuData.size() < MIN_TIMESTAMP_COUNT) {
             Log.w(TAG, "필요한 최소 데이터 요구사항 충족되지 않음");
-            predictedResult = "None1"; // 기본값 변경
+            predictedResult = "None"; // 기본값 변경
             return;
         }
 
@@ -120,17 +124,12 @@ public class SensorDataProcessor {
 
         if (processedAP.isEmpty() || processedBTS.isEmpty() || processedGPS.isEmpty() || processedIMU.isEmpty()) {
             Log.w(TAG, "데이터 전처리 실패 - 하나 이상의 센서 데이터가 비어 있음");
-            predictedResult = "None1"; // 기본값 변경
+            predictedResult = "None"; // 기본값 변경
             return;
         }
 
         Tensor inputTensor = getProcessedFeatureVector(processedAP, processedBTS, processedGPS, processedIMU);
-        if (inputTensor != null) {
-            predictMovingMode(inputTensor, gpsData, imuData);
-        } else {
-            Log.e(TAG, "입력 텐서 생성 실패");
-            predictedResult = "None1"; // 기본값 변경
-        }
+        predictMovingMode(inputTensor, gpsData, distance);
     }
 
     private Tensor getProcessedFeatureVector(List<Map<String, Object>> apData,
@@ -221,9 +220,9 @@ public class SensorDataProcessor {
         }
     }
 
-    private void predictMovingMode(Tensor inputTensor, List<Map<String, Object>> gpsData, List<Map<String, Object>> imuData) {
+    private void predictMovingMode(Tensor inputTensor, List<Map<String, Object>> gpsData, float distance) {
         if (model == null || inputTensor == null) {
-            predictedResult = "None1"; // 기본값 변경
+            predictedResult = "None"; // 기본값 변경
             Log.e(TAG, "모델 또는 입력 텐서가 null");
             return;
         }
@@ -236,7 +235,7 @@ public class SensorDataProcessor {
             // 출력 크기 확인
             if (logits.length != 11) {
                 Log.e(TAG, "모델 출력 크기가 예상과 다름: " + logits.length + " (예상: 11)");
-                predictedResult = "None1";
+                predictedResult = "None";
                 return;
             }
 
@@ -254,7 +253,7 @@ public class SensorDataProcessor {
                 predictedResult = TRANSPORT_MODES[maxIndex];
                 Log.d(TAG, "예측된 이동수단: " + predictedResult + ", 확률: " + maxProb);
             } else {
-                predictedResult = "None1"; // 기본적으로 None1로 설정
+                predictedResult = "None"; // 기본적으로 None로 설정
                 Log.w(TAG, "확률이 임계값 미만 또는 유효하지 않은 인덱스: " + maxProb + ", " + maxIndex);
             }
 
@@ -273,14 +272,9 @@ public class SensorDataProcessor {
                     double endLat = ((Number) endData.get("latitude")).doubleValue();
                     double endLon = ((Number) endData.get("longitude")).doubleValue();
 
-                    List<Map<String, Object>> segmentGpsData = gpsData.subList(startIndex, endIndex + 1);
-                    List<Map<String, Object>> segmentImuData = imuData.subList(startIndex, endIndex + 1);
-                    MovementAnalyzer analyzer = new MovementAnalyzer(segmentGpsData, segmentImuData);
-                    analyzer.analyze();
-                    double distance = analyzer.getDistance();
                     String transportMode = predictedResult;
                     if (distance <= 0.05) {
-                        transportMode = "None1"; // 거리 임계값에 따른 기본값 변경
+                        transportMode = "None"; // 거리 임계값에 따른 기본값 변경
                     }
                     Log.d(TAG, "구간 " + segment + " 최종 이동수단: " + transportMode + ", 거리: " + distance + "m, " +
                             "시작: (" + startLat + ", " + startLon + "), 끝: (" + endLat + ", " + endLon + ")");
@@ -291,7 +285,7 @@ public class SensorDataProcessor {
             }
         } catch (Exception e) {
             Log.e(TAG, "예측 중 오류: " + e.getMessage(), e);
-            predictedResult = "None1"; // 오류 시 기본값 변경
+            predictedResult = "None"; // 오류 시 기본값 변경
         }
     }
 
@@ -319,9 +313,5 @@ public class SensorDataProcessor {
                 .map(map -> (Long) map.get("timestamp"))
                 .min(Long::compare)
                 .orElse(System.currentTimeMillis());
-    }
-
-    public String getPredictedResult() {
-        return predictedResult;
     }
 }

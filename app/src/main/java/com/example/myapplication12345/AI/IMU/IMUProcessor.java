@@ -1,6 +1,5 @@
 package com.example.myapplication12345.AI.IMU;
 
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -8,7 +7,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -31,7 +29,8 @@ public class IMUProcessor {
             channels.put(sensor, getSensorChannelCount(sensor));
         }
 
-        imu = extendIMUDataByTimestamp(imu);
+        // 타임스탬프별로 그룹화된 데이터 준비
+        Map<Long, List<Map<String, Object>>> groupedByTimestamp = groupByTimestamp(imu);
 
         Map<String, float[][][]> dfs = new HashMap<>(sensors.size());
         for (String sensor : sensors) {
@@ -44,7 +43,7 @@ public class IMUProcessor {
                 usingSensorData = sensor;
             }
             float[][] cutData = cutImu(usingSensorData, channels.get(usingSensorData), imu);
-            float[][][] reshapedData = reshapeData(cutData, cutData[0].length);
+            float[][][] reshapedData = reshapeDataByTimestamp(cutData, groupedByTimestamp);
             dfs.put(sensor, reshapedData);
         }
 
@@ -78,30 +77,36 @@ public class IMUProcessor {
     }
 
     /**
-     * 타임스탬프 기준으로 IMU 데이터 확장 (100개로 맞춤)
+     * 타임스탬프 기준으로 IMU 데이터 그룹화
      */
-    private static List<Map<String, Object>> extendIMUDataByTimestamp(List<Map<String, Object>> imuData) {
+    private static Map<Long, List<Map<String, Object>>> groupByTimestamp(List<Map<String, Object>> imuData) {
         Map<Long, List<Map<String, Object>>> groupedByTimestamp = new HashMap<>(imuData.size() / 10);
-        Random random = new Random();
-
         for (Map<String, Object> entry : imuData) {
             long timestamp = getFirstValueAsLong(entry.get("timestamp"));
             groupedByTimestamp.computeIfAbsent(timestamp, k -> new ArrayList<>()).add(entry);
         }
+        return groupedByTimestamp;
+    }
 
-        List<Map<String, Object>> extendedData = new ArrayList<>(imuData.size());
+    /**
+     * 데이터를 타임스탬프별로 3D 배열로 변환
+     */
+    private static float[][][] reshapeDataByTimestamp(float[][] data, Map<Long, List<Map<String, Object>>> groupedByTimestamp) {
+        int numTimestamps = groupedByTimestamp.size();
+        int maxSize = groupedByTimestamp.values().stream().mapToInt(List::size).max().orElse(0);
+        int cols = data[0].length;
+
+        float[][][] reshaped = new float[numTimestamps][maxSize][cols];
+        int timestampIdx = 0;
+        int dataIdx = 0;
+
         for (List<Map<String, Object>> group : groupedByTimestamp.values()) {
-            int size = group.size();
-            if (size < 100) {
-                for (int i = size; i < 100; i++) {
-                    int randomIndex = random.nextInt(size);
-                    group.add(new HashMap<>(group.get(randomIndex)));
-                }
+            for (int i = 0; i < group.size() && dataIdx < data.length; i++) {
+                System.arraycopy(data[dataIdx++], 0, reshaped[timestampIdx][i], 0, cols);
             }
-            extendedData.addAll(group);
+            timestampIdx++;
         }
-
-        return extendedData;
+        return reshaped;
     }
 
     /**
@@ -124,20 +129,7 @@ public class IMUProcessor {
             }
             resultList.add(entry);
         }
-
         return resultList;
-    }
-
-    /**
-     * 데이터를 3D 배열로 변환 (-1, 100, cols)
-     */
-    private static float[][][] reshapeData(float[][] data, int cols) {
-        int numSegments = data.length / 100;
-        float[][][] reshaped = new float[numSegments][100][cols];
-        for (int i = 0; i < numSegments; i++) {
-            System.arraycopy(data, i * 100, reshaped[i], 0, 100);
-        }
-        return reshaped;
     }
 
     /**
@@ -194,7 +186,6 @@ public class IMUProcessor {
             if (numChannels > 2 && imuEntry.containsKey(sensor + ".z")) currentRow[col++] = getFirstValue(imuEntry.get(sensor + ".z"));
             if (numChannels > 3 && imuEntry.containsKey(sensor + ".w")) currentRow[col] = getFirstValue(imuEntry.get(sensor + ".w"));
         }
-
         return data;
     }
 

@@ -17,19 +17,13 @@
         android:title="@string/title_dashboard" />
 
     <item
-        android:id="@+id/navigation_map"
-        android:icon="@drawable/ic_global_green"
-        android:title="@string/map" />
-
-<!--    <item-->
-<!--        android:id="@+id/navigation_pedometer"-->
-<!--        android:icon="@drawable/ic_stepper2_24dp"-->
-<!--        android:title="@string/title_pedometer" />-->
-
-    <item
         android:id="@+id/navigation_calendar"
         android:icon="@drawable/ic_calendar"
         android:title="@string/title_calendar" />
 
+    <item
+        android:id="@+id/navigation_map"
+        android:icon="@drawable/ic_global_green"
+        android:title="@string/map" />
 
 </menu>

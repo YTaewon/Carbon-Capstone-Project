@@ -11,6 +11,7 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.location.Location;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
@@ -29,6 +30,9 @@ import androidx.core.content.ContextCompat;
 
 import com.example.myapplication12345.R;
 import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationCallback;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 
 import java.util.ArrayList;
@@ -43,7 +47,7 @@ import java.util.concurrent.Executors;
 public class SensorDataService extends Service {
     private static final int PROCESS_INTERVAL_01 = 1000; // 1초 간격
     private static final int IMU_INTERVAL_MS = 10; // 10ms 간격
-    private static final int MAX_IMU_PER_SECOND = 100; // 1초에 최대 100개
+    private static final int MAX_IMU_PER_SECOND = 200; // 1초에 최대 200개
     private static final int INITIAL_DELAY_MS = 3000; // 최초 3초 지연
     private static final int MIN_TIMESTAMP_COUNT = 60; // 60초(60개의 고유 타임스탬프)
     private static final String TAG = "SensorDataService";
@@ -216,20 +220,29 @@ public class SensorDataService extends Service {
 
     private void collectGPSData(long timestamp) {
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            fusedLocationProviderClient.getLastLocation().addOnSuccessListener(location -> {
-                if (location != null) {
-                    Map<String, Object> data = new LinkedHashMap<>();
-                    data.put("timestamp", timestamp);
-                    data.put("latitude", location.getLatitude());
-                    data.put("longitude", location.getLongitude());
-                    data.put("accuracy", location.getAccuracy());
-                    synchronized (gpsBuffer) {
-                        gpsBuffer.add(data);
+
+
+            LocationRequest locationRequest = LocationRequest.create()
+                    .setInterval(1000) // 1초 간격
+                    .setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+
+            fusedLocationProviderClient.requestLocationUpdates(locationRequest, new LocationCallback() {
+                @Override
+                public void onLocationResult(LocationResult locationResult) {
+                    if (locationResult != null) {
+                        Location location = locationResult.getLastLocation();
+                        Map<String, Object> data = new LinkedHashMap<>();
+                        data.put("timestamp", timestamp); // 실시간 타임스탬프
+                        data.put("latitude", location.getLatitude());
+                        data.put("longitude", location.getLongitude());
+                        data.put("accuracy", location.getAccuracy());
+                        synchronized (gpsBuffer) {
+                            gpsBuffer.add(data);
+//                            Log.d(TAG, "GPS 데이터 추가: " + location.getLatitude() + ", " + location.getLongitude());
+                        }
                     }
-                } else {
-                    Log.w(TAG, "GPS 위치 데이터 없음");
                 }
-            }).addOnFailureListener(e -> Log.e(TAG, "GPS 데이터 수집 실패: " + e.getMessage()));
+            }, Looper.getMainLooper());
         }
     }
 
@@ -317,13 +330,13 @@ public class SensorDataService extends Service {
             public void onAccuracyChanged(Sensor sensor, int accuracy) {}
         };
 
-        sensorManager.registerListener(listener, accelerometer, SensorManager.SENSOR_DELAY_NORMAL);
-        sensorManager.registerListener(listener, gyroscope, SensorManager.SENSOR_DELAY_NORMAL);
-        sensorManager.registerListener(listener, magnetometer, SensorManager.SENSOR_DELAY_NORMAL);
-        sensorManager.registerListener(listener, rotationVector, SensorManager.SENSOR_DELAY_NORMAL);
-        sensorManager.registerListener(listener, pressureSensor, SensorManager.SENSOR_DELAY_NORMAL);
-        sensorManager.registerListener(listener, gravitySensor, SensorManager.SENSOR_DELAY_NORMAL);
-        sensorManager.registerListener(listener, linearAccelSensor, SensorManager.SENSOR_DELAY_NORMAL);
+        sensorManager.registerListener(listener, accelerometer, SensorManager.SENSOR_DELAY_FASTEST);
+        sensorManager.registerListener(listener, gyroscope, SensorManager.SENSOR_DELAY_FASTEST);
+        sensorManager.registerListener(listener, magnetometer, SensorManager.SENSOR_DELAY_FASTEST);
+        sensorManager.registerListener(listener, rotationVector, SensorManager.SENSOR_DELAY_FASTEST);
+        sensorManager.registerListener(listener, pressureSensor, SensorManager.SENSOR_DELAY_FASTEST);
+        sensorManager.registerListener(listener, gravitySensor, SensorManager.SENSOR_DELAY_FASTEST);
+        sensorManager.registerListener(listener, linearAccelSensor, SensorManager.SENSOR_DELAY_FASTEST);
 
         Runnable imuCollector = new Runnable() {
             int count = 0;
