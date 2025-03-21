@@ -9,7 +9,6 @@ import com.example.myapplication12345.ui.camera.CameraFragment
 import com.example.myapplication12345.ui.ranking.RankingFragment
 import com.example.myapplication12345.ui.calendar.CalendarFragment
 import com.example.myapplication12345.ui.map.MapFragment
-import com.example.myapplication12345.ui.pedometer.PedometerFragment
 
 
 class ViewPagerAdapter(activity: FragmentActivity) : FragmentStateAdapter(activity) {

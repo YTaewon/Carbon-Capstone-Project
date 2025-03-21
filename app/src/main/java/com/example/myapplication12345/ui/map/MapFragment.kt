@@ -10,11 +10,13 @@ import android.graphics.Color
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.*
 import androidx.core.app.ActivityCompat
 import androidx.fragment.app.Fragment
+import androidx.viewpager2.widget.ViewPager2
 import com.example.myapplication12345.R
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
@@ -24,17 +26,10 @@ import com.google.android.gms.maps.MapView
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.PolylineOptions
-// OSMDroid: import org.osmdroid.config.Configuration
-// OSMDroid: import org.osmdroid.tileprovider.tilesource.TileSourceFactory
-// OSMDroid: import org.osmdroid.util.GeoPoint
-// OSMDroid: import org.osmdroid.views.MapView
-// OSMDroid: import org.osmdroid.views.overlay.Polyline
-// OSMDroid: import org.osmdroid.views.overlay.advancedpolyline.MonochromaticPaintList
 import java.io.BufferedReader
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileWriter
-import java.io.IOException
 import java.io.InputStreamReader
 import java.text.SimpleDateFormat
 import java.util.*
@@ -42,101 +37,93 @@ import java.util.*
 class MapFragment : Fragment(), OnMapReadyCallback {
 
     companion object {
-        const val TAG = "MapFragment" // 로그 태그
-        val dateFormat = SimpleDateFormat("yyyyMMdd", Locale.getDefault()) // 날짜 형식
-        private const val REQUEST_LOCATION_PERMISSION = 1 // 위치 권한 요청 코드
+        private const val TAG = "MapFragment"
+        private val dateFormat = SimpleDateFormat("yyyyMMdd", Locale.getDefault())
+        private const val REQUEST_LOCATION_PERMISSION = 1
 
-        // 테스트 CSV 파일 생성 함수
         fun createTestCsvFile(context: Context, date: Date) {
-            val sensorDataDir = File(context.getExternalFilesDir(null), "SensorData")
-            if (!sensorDataDir.exists()) sensorDataDir.mkdirs() // 디렉토리 생성
+            val sensorDataDir = File(context.getExternalFilesDir(null), "SensorData").apply { mkdirs() }
+            val file = File(sensorDataDir, "${dateFormat.format(date)}_predictions.csv")
+            if (file.exists()) return
 
-            val dateString = dateFormat.format(date)
-            val file = File(sensorDataDir, "${dateString}_predictions.csv")
-
-            if (!file.exists()) {
-                try {
-                    FileWriter(file).use { writer ->
-                        // CSV 헤더 작성
-                        writer.append("start_timestamp,transport_mode,distance_meters,start_latitude,start_longitude,end_latitude,end_longitude\n")
-
-                        val modes = listOf("WALK", "BIKE", "BUS", "CAR", "SUBWAY", "ETC") // 이동 수단 목록
-                        val centerPoints = listOf( // 시작 좌표
-                            Pair(35.177306, 128.567773),
-                            Pair(35.182838, 128.564494),
-                            Pair(35.186558, 128.563180),
-                            Pair(35.191691, 128.567251),
-                            Pair(35.194362, 128.569659),
-                            Pair(35.198268, 128.570484)
-                        )
-                        val endPoints = listOf( // 종료 좌표
-                            Pair(35.182838, 128.564494),
-                            Pair(35.186558, 128.563180),
-                            Pair(35.191691, 128.567251),
-                            Pair(35.194362, 128.569659),
-                            Pair(35.198268, 128.570484),
-                            Pair(35.202949, 128.572035)
-                        )
-
-                        modes.forEachIndexed { index, mode ->
-                            val startLat = centerPoints[index].first
-                            val startLon = centerPoints[index].second
-                            val endLat = endPoints[index].first
-                            val endLon = endPoints[index].second
-                            val timestamp = System.currentTimeMillis() + index * 1000L
-                            val distance = 500.0
-
-                            // CSV 데이터 작성
-                            writer.append(String.format(
-                                "%d,%s,%.2f,%.6f,%.6f,%.6f,%.6f\n",
-                                timestamp, mode, distance, startLat, startLon, endLat, endLon
-                            ))
-                        }
+            try {
+                FileWriter(file).use { writer ->
+                    writer.append("start_timestamp,transport_mode,distance_meters,start_latitude,start_longitude,end_latitude,end_longitude\n")
+                    val modes = listOf("WALK", "BIKE", "BUS", "CAR", "SUBWAY", "ETC")
+                    val centerPoints = listOf(35.177306 to 128.567773, 35.182838 to 128.564494, 35.186558 to 128.563180, 35.191691 to 128.567251, 35.194362 to 128.569659, 35.198268 to 128.570484)
+                    val endPoints = listOf(35.182838 to 128.564494, 35.186558 to 128.563180, 35.191691 to 128.567251, 35.194362 to 128.569659, 35.198268 to 128.570484, 35.202949 to 128.572035)
+                    modes.forEachIndexed { index, mode ->
+                        writer.append(String.format("%d,%s,%.2f,%.6f,%.6f,%.6f,%.6f\n", System.currentTimeMillis() + index * 1000L, mode, 500.0, centerPoints[index].first, centerPoints[index].second, endPoints[index].first, endPoints[index].second))
                     }
-                    Log.d(TAG, "테스트 CSV 생성 완료: $file")
-                } catch (e: IOException) {
-                    Log.e(TAG, "테스트 CSV 생성 실패: ${e.message}", e)
                 }
+                Log.d(TAG, "Test CSV created: $file")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to create test CSV: ${e.message}")
             }
         }
     }
 
-    private var mapView: MapView? = null // Google Maps 뷰
-    private var googleMap: GoogleMap? = null // Google Maps 객체
-    private lateinit var textDistanceInfo: TextView // 거리 정보 텍스트 뷰
-    private lateinit var dateText: TextView // 날짜 텍스트 뷰
-    private lateinit var loadButton: ImageView // 데이터 로드 버튼
-    private lateinit var selectTransportButton: ImageView // 이동 수단 선택 버튼
-    private lateinit var toggleDistanceButton: ImageView // 거리 정보 토글 버튼
-    private lateinit var calendarButton: ImageView // 캘린더 버튼
-    private lateinit var testMapButton: Button // 테스트 맵 버튼
-    private lateinit var fusedLocationClient: FusedLocationProviderClient // 위치 클라이언트
+    private var mapView: MapView? = null
+    private var googleMap: GoogleMap? = null
+    private lateinit var textDistanceInfo: TextView
+    private lateinit var dateText: TextView
+    private lateinit var loadButton: ImageView
+    private lateinit var selectTransportButton: ImageView
+    private lateinit var toggleDistanceButton: ImageView
+    private lateinit var calendarButton: ImageView
+    private lateinit var testMapButton: Button
+    private lateinit var newButton: ImageView
+    private lateinit var fusedLocationClient: FusedLocationProviderClient
 
-    private val transportModes = listOf("WALK", "BIKE", "BUS", "CAR", "SUBWAY", "ETC") // 이동 수단 목록
-    private val selectedModes = mutableSetOf<String>().apply { addAll(transportModes) } // 선택된 이동 수단
-    private var isDistanceInfoVisible = true // 거리 정보 표시 여부
-    private var isMapInitialized = false // 맵 초기화 여부
+    private val transportModes = listOf("WALK", "BIKE", "BUS", "CAR", "SUBWAY", "ETC")
+    private val selectedModes = mutableSetOf<String>().apply { addAll(transportModes) }
+    private var isDistanceInfoVisible = true
+    private var isMapInitialized = false
+    private var isMyLocationShown = false // 현재 위치 표시 상태 추적
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // OSMDroid: osmdroid 설정 초기화 (캐시 디렉토리 설정으로 타일 유지)
-        // OSMDroid: Configuration.getInstance().apply {
-        // OSMDroid:     load(requireContext(), requireActivity().getPreferences(Context.MODE_PRIVATE))
-        // OSMDroid:     osmdroidBasePath = File(requireContext().cacheDir, "osmdroid")
-        // OSMDroid:     osmdroidTileCache = File(requireContext().cacheDir, "osmdroid/tiles")
-        // OSMDroid:     tileDownloadThreads = 2 // 타일 다운로드 스레드 수 증가
-        // OSMDroid:     tileFileSystemCacheMaxBytes = 600L * 1024 * 1024 // 600MB 캐시 용량 설정
-        // OSMDroid: }
-        fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity()) // 위치 서비스 초기화
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity())
     }
 
-    override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         val view = inflater.inflate(R.layout.fragment_map, container, false)
+        initializeViews(view)
+        setupMapView(savedInstanceState)
+        setupListeners()
 
-        // 뷰 초기화
+        val todayDate = dateFormat.format(System.currentTimeMillis())
+        val selectedDate = arguments?.getString("selectedDate") ?: todayDate
+        updateDateText(selectedDate)
+        loadAndDisplayPredictionData(selectedDate)
+        updateTestMapButtonState(selectedDate)
+
+        return view
+    }
+
+    override fun onMapReady(map: GoogleMap) {
+        googleMap = map.apply {
+            uiSettings.isZoomGesturesEnabled = true
+            uiSettings.isScrollGesturesEnabled = true
+            uiSettings.isZoomControlsEnabled = true
+            uiSettings.isMyLocationButtonEnabled = true
+        }
+
+        val viewPager = activity?.findViewById<ViewPager2>(R.id.viewPager)
+        googleMap?.setOnCameraMoveStartedListener { reason ->
+            if (reason == GoogleMap.OnCameraMoveStartedListener.REASON_GESTURE) {
+                viewPager?.isUserInputEnabled = false
+            }
+        }
+        googleMap?.setOnCameraIdleListener { viewPager?.isUserInputEnabled = true }
+
+        val selectedDate = arguments?.getString("selectedDate") ?: dateFormat.format(System.currentTimeMillis())
+        loadAndDisplayPredictionData(selectedDate)
+        googleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(35.177306, 128.567773), 18f))
+        isMapInitialized = true
+    }
+
+    private fun initializeViews(view: View) {
         mapView = view.findViewById(R.id.map_view)
         textDistanceInfo = view.findViewById(R.id.text_distance_info)
         dateText = view.findViewById(R.id.date_text)
@@ -145,244 +132,143 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         toggleDistanceButton = view.findViewById(R.id.toggle_distance_button)
         calendarButton = view.findViewById(R.id.calendar_button)
         testMapButton = view.findViewById(R.id.test_map)
+        newButton = view.findViewById(R.id.new_button)
+    }
 
-        // Google Maps 초기화
+    private fun setupMapView(savedInstanceState: Bundle?) {
         mapView?.onCreate(savedInstanceState)
         mapView?.getMapAsync(this)
+        mapView?.setOnTouchListener { v, event ->
+            v.parent?.run {
+                when (event.action) {
+                    MotionEvent.ACTION_DOWN -> requestDisallowInterceptTouchEvent(true)
+                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                        requestDisallowInterceptTouchEvent(false)
+                        if (event.action == MotionEvent.ACTION_UP) v.performClick()
+                    }
+                }
+            }
+            false
+        }
+    }
 
-        // OSMDroid: MapView 초기 설정
-        // OSMDroid: mapView?.apply {
-        // OSMDroid:     setTileSource(TileSourceFactory.MAPNIK)
-        // OSMDroid:     setMultiTouchControls(true)
-        // OSMDroid:     controller.setZoom(18.0)
-        // OSMDroid:     setTilesScaledToDpi(true)
-        // OSMDroid:     isTilesScaledToDpi = true
-        // OSMDroid:     setUseDataConnection(true)
-        // OSMDroid:     Log.d(TAG, "MapView 초기화 완료, 타일 소스: ${tileProvider.tileSource.name()}")
-        // OSMDroid:     setOnTouchListener { _, event ->
-        // OSMDroid:         val parent = parent
-        // OSMDroid:         when (event.action) {
-        // OSMDroid:             MotionEvent.ACTION_DOWN -> {
-        // OSMDroid:                 parent?.requestDisallowInterceptTouchEvent(true)
-        // OSMDroid:                 Log.d(TAG, "MapView 터치 시작: 스와이프 비활성화")
-        // OSMDroid:             }
-        // OSMDroid:             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-        // OSMDroid:                 parent?.requestDisallowInterceptTouchEvent(false)
-        // OSMDroid:                 Log.d(TAG, "MapView 터치 종료: 스와이프 활성화")
-        // OSMDroid:             }
-        // OSMDroid:         }
-        // OSMDroid:         false
-        // OSMDroid:     }
-        // OSMDroid: }
-
-        val todayDate = dateFormat.format(System.currentTimeMillis()) // 오늘 날짜
-        val selectedDate = arguments?.getString("selectedDate") ?: todayDate // 선택된 날짜
-        updateDateText(selectedDate)
-        loadAndDisplayPredictionData(selectedDate)
-        updateTestMapButtonState(selectedDate)
-
-        // 로드 버튼 클릭 리스너
+    private fun setupListeners() {
         loadButton.setOnClickListener {
-            val selectedDateStr = dateText.text.toString()
-            val parsedDate = parseDateFromText(selectedDateStr)
+            val parsedDate = parseDateFromText(dateText.text.toString())
             loadAndDisplayPredictionData(parsedDate)
             updateTestMapButtonState(parsedDate)
-            googleMap?.clear() // Google Maps 지도 초기화
-            // OSMDroid: mapView?.invalidate()
-            // OSMDroid: Log.d(TAG, "loadButton 클릭: 맵 상태 - 줌: ${mapView?.zoomLevelDouble}, 중심: ${mapView?.mapCenter}")
         }
-
-        // 이동 수단 선택 버튼 클릭 리스너
-        selectTransportButton.setOnClickListener {
-            showTransportSelectionDialog()
-        }
-
-        // 거리 정보 토글 버튼 클릭 리스너
-        toggleDistanceButton.setOnClickListener {
-            toggleDistanceInfoVisibility()
-        }
-
-        // 캘린더 버튼 클릭 리스너
-        calendarButton.setOnClickListener {
-            showDatePickerDialog()
-        }
-
-        // 테스트 맵 버튼 클릭 리스너
-        testMapButton.setOnClickListener {
-            val selectedDateStr = dateText.text.toString()
-            val parsedDateStr = parseDateFromText(selectedDateStr)
-            val selectedDate = dateFormat.parse(parsedDateStr)
-            if (selectedDate != null) {
-                createTestCsvFile(requireContext(), selectedDate)
-                updateDateText(parsedDateStr)
-                loadAndDisplayPredictionData(parsedDateStr)
-                updateTestMapButtonState(parsedDateStr)
-                Toast.makeText(requireContext(), "$parsedDateStr 테스트 CSV 생성 완료", Toast.LENGTH_SHORT).show()
+        selectTransportButton.setOnClickListener { showTransportSelectionDialog() }
+        toggleDistanceButton.setOnClickListener { toggleDistanceInfoVisibility() }
+        calendarButton.setOnClickListener { showDatePickerDialog() }
+        testMapButton.setOnClickListener { handleTestMapButtonClick() }
+        newButton.setOnClickListener {
+            if (!isMyLocationShown) {
+                // 첫 클릭: 현재 위치 표시 시작
+                enableMyLocationIfPermitted()
+                setMapToCurrentLocation()
+                isMyLocationShown = true
+                Log.d(TAG, "현재 위치 표시 시작")
             } else {
-                Toast.makeText(requireContext(), "유효하지 않은 날짜입니다.", Toast.LENGTH_SHORT).show()
+                // 두 번째 클릭: 현재 위치 표시 중단
+                googleMap?.isMyLocationEnabled = false
+                isMyLocationShown = false
+                Log.d(TAG, "현재 위치 표시 중단")
             }
         }
-
-        return view
     }
 
-    // Google Maps가 준비되었을 때 호출
-    override fun onMapReady(map: GoogleMap) {
-        googleMap = map
-        googleMap?.uiSettings?.isZoomControlsEnabled = true // 줌 컨트롤 활성화
-        googleMap?.uiSettings?.isMyLocationButtonEnabled = true // 내 위치 버튼 활성화
-
-        val todayDate = dateFormat.format(System.currentTimeMillis())
-        val selectedDate = arguments?.getString("selectedDate") ?: todayDate
-        setMapToCurrentLocation() // 현재 위치로 이동
-        loadAndDisplayPredictionData(selectedDate)
-        Log.d(TAG, "Google Map 준비 완료")
+    private fun enableMyLocationIfPermitted() {
+        if (hasLocationPermission()) {
+            googleMap?.isMyLocationEnabled = true
+            Log.d(TAG, "내 위치 레이어 활성화됨")
+        } else {
+            requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), REQUEST_LOCATION_PERMISSION)
+        }
     }
 
-    // 현재 위치로 지도 중심 설정
+    private fun hasLocationPermission(): Boolean =
+        ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+
     private fun setMapToCurrentLocation() {
-        if (ActivityCompat.checkSelfPermission(
-                requireContext(),
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            requestPermissions(
-                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
-                REQUEST_LOCATION_PERMISSION
-            )
+        if (!hasLocationPermission()) {
+            requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), REQUEST_LOCATION_PERMISSION)
             return
         }
 
         fusedLocationClient.lastLocation.addOnSuccessListener { location ->
-            if (location != null) {
-                val currentLocation = LatLng(location.latitude, location.longitude)
-                googleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(currentLocation, 18f))
-                // OSMDroid: val currentLocation = GeoPoint(location.latitude, location.longitude)
-                // OSMDroid: mapView?.controller?.setCenter(currentLocation)
-                // OSMDroid: mapView?.invalidate()
-                isMapInitialized = true
-                Log.d(TAG, "현재 위치로 중심 설정: ${location.latitude}, ${location.longitude}")
-            } else {
-                Log.w(TAG, "위치 정보를 가져올 수 없음, 기본 위치로 설정")
-                googleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(35.177306, 128.567773), 18f))
-                // OSMDroid: mapView?.controller?.setCenter(GeoPoint(35.177306, 128.567773))
-                // OSMDroid: mapView?.invalidate()
-                isMapInitialized = true
-            }
-        }.addOnFailureListener { e ->
-            Log.e(TAG, "위치 가져오기 실패: ${e.message}")
-            googleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(35.177306, 128.567773), 18f))
-            // OSMDroid: mapView?.controller?.setCenter(GeoPoint(35.177306, 128.567773))
-            // OSMDroid: mapView?.invalidate()
+            val defaultLocation = LatLng(35.177306, 128.567773)
+            val targetLocation = location?.let { LatLng(it.latitude, it.longitude) } ?: defaultLocation
+            googleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(targetLocation, 18f))
+            if (hasLocationPermission()) googleMap?.isMyLocationEnabled = true
             isMapInitialized = true
+            Log.d(TAG, "현재 위치로 이동: $targetLocation")
+        }.addOnFailureListener {
+            googleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(35.177306, 128.567773), 18f))
+            isMapInitialized = true
+            Log.e(TAG, "위치 가져오기 실패: ${it.message}")
         }
     }
 
-    // 권한 요청 결과 처리
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray
-    ) {
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == REQUEST_LOCATION_PERMISSION && grantResults.isNotEmpty() &&
-            grantResults[0] == PackageManager.PERMISSION_GRANTED
-        ) {
-            setMapToCurrentLocation()
-        } else {
-            Toast.makeText(requireContext(), "위치 권한이 필요합니다.", Toast.LENGTH_SHORT).show()
-            googleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(35.177306, 128.567773), 18f))
-            // OSMDroid: mapView?.controller?.setCenter(GeoPoint(35.177306, 128.567773))
-            // OSMDroid: mapView?.invalidate()
-            isMapInitialized = true
+        if (requestCode == REQUEST_LOCATION_PERMISSION) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                if (hasLocationPermission()) {
+                    googleMap?.isMyLocationEnabled = true
+                    setMapToCurrentLocation()
+                    isMyLocationShown = true
+                }
+            } else {
+                Toast.makeText(requireContext(), "위치 권한이 필요합니다.", Toast.LENGTH_SHORT).show()
+                googleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(35.177306, 128.567773), 18f))
+                isMapInitialized = true
+                isMyLocationShown = false
+            }
         }
     }
 
-    // 날짜 선택 다이얼로그 표시
     private fun showDatePickerDialog() {
         val calendar = Calendar.getInstance()
-        val year = calendar.get(Calendar.YEAR)
-        val month = calendar.get(Calendar.MONTH)
-        val day = calendar.get(Calendar.DAY_OF_MONTH)
-        DatePickerDialog(
-            requireContext(), R.style.DatePickerTheme, { _, selectedYear, selectedMonth, selectedDay ->
-                val selectedDate = String.format("%04d%02d%02d", selectedYear, selectedMonth + 1, selectedDay)
-                updateDateText(selectedDate)
-                loadAndDisplayPredictionData(selectedDate)
-                updateTestMapButtonState(selectedDate)
-            }, year, month, day
-        ).show()
+        DatePickerDialog(requireContext(), R.style.DatePickerTheme, { _, year, month, day ->
+            val selectedDate = String.format("%04d%02d%02d", year, month + 1, day)
+            updateDateText(selectedDate)
+            loadAndDisplayPredictionData(selectedDate)
+            updateTestMapButtonState(selectedDate)
+        }, calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH)).show()
     }
 
-    // 날짜 텍스트 업데이트
     private fun updateDateText(date: String) {
-        val year = date.substring(0, 4)
-        val month = date.substring(4, 6)
-        val day = date.substring(6, 8)
-        dateText.text = "${year}년 ${month}월 ${day}일"
+        dateText.text = "${date.substring(0, 4)}년 ${date.substring(4, 6)}월 ${date.substring(6, 8)}일"
     }
 
-    // 텍스트에서 날짜 파싱
-    private fun parseDateFromText(dateText: String): String {
-        return try {
+    private fun parseDateFromText(dateText: String): String =
+        try {
             val parts = dateText.split("년 ", "월 ", "일")
-            val yearPart = parts[0]
-            val monthPart = parts[1].padStart(2, '0')
-            val dayPart = parts[2].padStart(2, '0')
-            "$yearPart$monthPart$dayPart"
+            "${parts[0]}${parts[1].padStart(2, '0')}${parts[2].padStart(2, '0')}"
         } catch (e: Exception) {
-            Log.e(TAG, "날짜 파싱 실패: $dateText", e)
             dateFormat.format(System.currentTimeMillis())
         }
-    }
 
-    // 거리 정보 표시 토글
     private fun toggleDistanceInfoVisibility() {
-        if (isDistanceInfoVisible) {
-            textDistanceInfo.visibility = View.GONE
-            toggleDistanceButton.setImageResource(R.drawable.ic_drop_down)
-            isDistanceInfoVisible = false
-        } else {
-            textDistanceInfo.visibility = View.VISIBLE
-            toggleDistanceButton.setImageResource(R.drawable.ic_drop_up)
-            isDistanceInfoVisible = true
-        }
+        isDistanceInfoVisible = !isDistanceInfoVisible
+        textDistanceInfo.visibility = if (isDistanceInfoVisible) View.VISIBLE else View.GONE
+        toggleDistanceButton.setImageResource(if (isDistanceInfoVisible) R.drawable.ic_drop_up else R.drawable.ic_drop_down)
     }
 
-    // 이동 수단 선택 다이얼로그 표시
     private fun showTransportSelectionDialog() {
         val dialogView = LayoutInflater.from(context).inflate(R.layout.dialog_transport_selection, null)
-        val checkBoxes = listOf(
-            dialogView.findViewById<CheckBox>(R.id.checkbox_walk),
-            dialogView.findViewById<CheckBox>(R.id.checkbox_bike),
-            dialogView.findViewById<CheckBox>(R.id.checkbox_bus),
-            dialogView.findViewById<CheckBox>(R.id.checkbox_car),
-            dialogView.findViewById<CheckBox>(R.id.checkbox_subway),
-            dialogView.findViewById<CheckBox>(R.id.checkbox_etc),
-            dialogView.findViewById<CheckBox>(R.id.checkbox_all)
-        )
-
-        checkBoxes.forEachIndexed { index, checkBox ->
-            if (index < transportModes.size) {
-                checkBox.isChecked = selectedModes.contains(transportModes[index])
-            }
-        }
-        checkBoxes.last().isChecked = selectedModes.size == transportModes.size
+        val checkBoxes = transportModes.mapIndexed { index, _ ->
+            dialogView.findViewById<CheckBox>(resources.getIdentifier("checkbox_${transportModes[index].toLowerCase()}", "id", requireContext().packageName))
+                .apply { isChecked = selectedModes.contains(transportModes[index]) }
+        } + dialogView.findViewById<CheckBox>(R.id.checkbox_all).apply { isChecked = selectedModes.size == transportModes.size }
 
         checkBoxes.last().setOnCheckedChangeListener { _, isChecked ->
-            if (isChecked) {
-                checkBoxes.dropLast(1).forEach { it.isChecked = true }
-            }
+            if (isChecked) checkBoxes.dropLast(1).forEach { it.isChecked = true }
         }
-
-        checkBoxes.dropLast(1).forEachIndexed { _, checkBox ->
+        checkBoxes.dropLast(1).forEach { checkBox ->
             checkBox.setOnCheckedChangeListener { _, isChecked ->
-                val allChecked = checkBoxes.dropLast(1).all { it.isChecked }
-                if (!isChecked && checkBoxes.last().isChecked) {
-                    checkBoxes.last().isChecked = false
-                } else {
-                    checkBoxes.last().isChecked = allChecked
-                }
+                checkBoxes.last().isChecked = if (isChecked) checkBoxes.dropLast(1).all { it.isChecked } else false
             }
         }
 
@@ -392,219 +278,110 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             .setPositiveButton("확인") { _, _ ->
                 selectedModes.clear()
                 checkBoxes.dropLast(1).forEachIndexed { index, checkBox ->
-                    if (checkBox.isChecked) {
-                        selectedModes.add(transportModes[index])
-                    }
+                    if (checkBox.isChecked) selectedModes.add(transportModes[index])
                 }
-                val parsedDate = parseDateFromText(dateText.text.toString())
-                loadAndDisplayPredictionData(parsedDate)
+                loadAndDisplayPredictionData(parseDateFromText(dateText.text.toString()))
             }
             .setNegativeButton("취소", null)
             .show()
     }
 
-    // 선택된 이동 수단 반환
-    private fun getSelectedTransportModes(): List<String> {
-        return selectedModes.toList()
+    private fun handleTestMapButtonClick() {
+        val parsedDateStr = parseDateFromText(dateText.text.toString())
+        dateFormat.parse(parsedDateStr)?.let { date ->
+            createTestCsvFile(requireContext(), date)
+            updateDateText(parsedDateStr)
+            loadAndDisplayPredictionData(parsedDateStr)
+            updateTestMapButtonState(parsedDateStr)
+            Toast.makeText(requireContext(), "$parsedDateStr 테스트 CSV 생성 완료", Toast.LENGTH_SHORT).show()
+        } ?: Toast.makeText(requireContext(), "유효하지 않은 날짜입니다.", Toast.LENGTH_SHORT).show()
     }
 
-    // 예측 데이터 로드 및 표시
     private fun loadAndDisplayPredictionData(date: String) {
-        if (!isAdded || googleMap == null) {
-            Log.w(TAG, "프래그먼트가 연결되지 않았거나 GoogleMap이 null입니다. 데이터 로드 중단: $date")
-            return
-        }
+        if (!isAdded || googleMap == null) return
 
-        googleMap?.clear() // Google Maps 오버레이 초기화
-        // OSMDroid: mapView?.overlays?.clear()
-        // OSMDroid: mapView?.invalidate()
-        Log.d(TAG, "loadAndDisplayPredictionData: 데이터 로드 시작, 날짜: $date")
-
-        val fileName = "${date}_predictions.csv"
-        val file = File(requireContext().getExternalFilesDir(null), "SensorData/$fileName")
-
+        val file = File(requireContext().getExternalFilesDir(null), "SensorData/${date}_predictions.csv")
         if (!file.exists()) {
-            Log.e(TAG, "예측 데이터 CSV 파일이 존재하지 않음: $fileName")
             textDistanceInfo.text = "데이터 없음: $date"
-            setMapToCurrentLocation()
+            googleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(35.177306, 128.567773), 18f))
             return
         }
 
-        val predictionData = mutableListOf<Map<String, String>>()
-        try {
-            BufferedReader(InputStreamReader(FileInputStream(file))).use { br ->
-                val headerLine = br.readLine() ?: run {
-                    Log.e(TAG, "CSV 헤더가 없음: $fileName")
-                    textDistanceInfo.text = "CSV 헤더 없음: $fileName"
-                    return
-                }
-                val headers = headerLine.split(",")
-
-                var line: String?
-                while (br.readLine().also { line = it } != null) {
-                    val values = line!!.split(",")
-                    if (values.size != headers.size) {
-                        Log.w(TAG, "CSV 데이터 불일치: $line")
-                        continue
-                    }
-                    val data = mutableMapOf<String, String>()
-                    headers.forEachIndexed { index, header ->
-                        data[header] = values[index]
-                    }
-                    predictionData.add(data)
-                }
-            }
-            Log.d(TAG, "CSV 데이터 로드 완료, 항목 수: ${predictionData.size}")
-        } catch (e: IOException) {
-            Log.e(TAG, "CSV 로드 실패: ${e.message}", e)
-            textDistanceInfo.text = "CSV 로드 실패: ${e.message}"
-            setMapToCurrentLocation()
-            return
-        }
-
+        val predictionData = loadCsvData(file)
         displayPredictionOnMap(predictionData)
     }
 
-    // 지도에 예측 데이터 표시
+    private fun loadCsvData(file: File): List<Map<String, String>> {
+        val predictionData = mutableListOf<Map<String, String>>()
+        try {
+            BufferedReader(InputStreamReader(FileInputStream(file))).use { br ->
+                val headers = br.readLine()?.split(",") ?: return emptyList()
+                br.forEachLine { line ->
+                    val values = line.split(",")
+                    if (values.size == headers.size) predictionData.add(headers.zip(values).toMap())
+                }
+            }
+        } catch (e: Exception) {
+            textDistanceInfo.text = "CSV 로드 실패: ${e.message}"
+            googleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(35.177306, 128.567773), 18f))
+        }
+        return predictionData
+    }
+
     @SuppressLint("DefaultLocale")
     private fun displayPredictionOnMap(predictionData: List<Map<String, String>>) {
-        if (!isAdded || googleMap == null) {
-            Log.w(TAG, "프래그먼트가 연결되지 않았거나 GoogleMap이 null입니다. 맵 표시 중단")
-            return
-        }
+        if (!isAdded || googleMap == null) return
 
-        googleMap?.clear() // Google Maps 오버레이 초기화
-        // OSMDroid: mapView?.overlays?.clear()
+        googleMap?.clear()
         val distanceInfo = StringBuilder("이동 거리 합계:\n")
-        var firstPoint: LatLng? = null // Google Maps용 LatLng
-        // OSMDroid: var firstPoint: GeoPoint? = null
+        var firstPoint: LatLng? = null
         var hasData = false
 
-        val selectedModes = getSelectedTransportModes()
         val validModes = setOf("WALK", "BIKE", "BUS", "CAR", "SUBWAY")
-        val transportModeNames = mapOf(
-            "WALK" to "걷기", "BIKE" to "자전거", "BUS" to "버스",
-            "CAR" to "자동차", "SUBWAY" to "지하철", "ETC" to "나머지"
-        )
+        val modeNames = mapOf("WALK" to "걷기", "BIKE" to "자전거", "BUS" to "버스", "CAR" to "자동차", "SUBWAY" to "지하철", "ETC" to "나머지")
 
-        val groupedData = predictionData
-            .map { data ->
-                val mode = data["transport_mode"] ?: "ETC"
-                if (validModes.contains(mode)) data
-                else data.toMutableMap().apply { this["transport_mode"] = "ETC" }
-            }
-            .filter { selectedModes.contains(it["transport_mode"]) }
-            .groupBy { it["transport_mode"]!! }
-
-        if (groupedData.isEmpty()) {
-            distanceInfo.clear()
-            distanceInfo.append("데이터 없음")
-        } else {
-            groupedData.forEach { (transportMode, dataList) ->
+        predictionData.map { data ->
+            val mode = data["transport_mode"]?.takeIf { validModes.contains(it) } ?: "ETC"
+            data.toMutableMap().apply { put("transport_mode", mode) }
+        }.filter { selectedModes.contains(it["transport_mode"]) }
+            .groupBy { it["transport_mode"]!! }.forEach { (mode, dataList) ->
                 var totalDistance = 0.0
-
                 dataList.sortedBy { it["start_timestamp"]!!.toLong() }.forEach { data ->
                     val distance = data["distance_meters"]!!.toDouble()
-                    val startLat = data["start_latitude"]?.toDoubleOrNull()
-                    val startLon = data["start_longitude"]?.toDoubleOrNull()
-                    val endLat = data["end_latitude"]?.toDoubleOrNull()
-                    val endLon = data["end_longitude"]?.toDoubleOrNull()
+                    val startPoint = data["start_latitude"]?.toDoubleOrNull()?.let { lat ->
+                        data["start_longitude"]?.toDoubleOrNull()?.let { lon -> LatLng(lat, lon) }
+                    }
+                    val endPoint = data["end_latitude"]?.toDoubleOrNull()?.let { lat ->
+                        data["end_longitude"]?.toDoubleOrNull()?.let { lon -> LatLng(lat, lon) }
+                    }
 
-                    if (startLat != null && startLon != null && endLat != null && endLon != null) {
-                        val startPoint = LatLng(startLat, startLon) // Google Maps용 LatLng
-                        val endPoint = LatLng(endLat, endLon)
-                        // OSMDroid: val startPoint = GeoPoint(startLat, startLon)
-                        // OSMDroid: val endPoint = GeoPoint(endLat, endLon)
-                        // OSMDroid: val points = listOf(startPoint, endPoint)
-
+                    if (startPoint != null && endPoint != null) {
                         totalDistance += distance
-                        if (firstPoint == null) {
-                            firstPoint = startPoint
-                        }
+                        if (firstPoint == null) firstPoint = startPoint
                         hasData = true
-
-                        val koreanTransportMode = transportModeNames[transportMode] ?: transportMode
-                        // Google Maps Polyline 추가
-                        val polylineOptions = PolylineOptions()
-                            .add(startPoint, endPoint)
-                            .color(getTransportColor(transportMode))
-                            .width(5f)
-                        googleMap?.addPolyline(polylineOptions)
-
-                        // OSMDroid: val polyline = Polyline().apply {
-                        // OSMDroid:     setPoints(points)
-                        // OSMDroid:     setTitle("$koreanTransportMode - 거리: ${String.format("%.2f m", distance)}")
-                        // OSMDroid:     val borderPaint = Paint().apply {
-                        // OSMDroid:         color = Color.BLACK
-                        // OSMDroid:         strokeWidth = 10.0f
-                        // OSMDroid:         style = Paint.Style.STROKE
-                        // OSMDroid:         strokeCap = Paint.Cap.ROUND
-                        // OSMDroid:         isAntiAlias = true
-                        // OSMDroid:     }
-                        // OSMDroid:     outlinePaintLists.add(MonochromaticPaintList(borderPaint))
-                        // OSMDroid:     val innerPaint = Paint().apply {
-                        // OSMDroid:         color = getTransportColor(transportMode)
-                        // OSMDroid:         strokeWidth = 5.0f
-                        // OSMDroid:         style = Paint.Style.STROKE
-                        // OSMDroid:         strokeCap = Paint.Cap.ROUND
-                        // OSMDroid:         isAntiAlias = true
-                        // OSMDroid:     }
-                        // OSMDroid:     outlinePaintLists.add(MonochromaticPaintList(innerPaint))
-                        // OSMDroid: }
-                        // OSMDroid: mapView?.overlays?.add(polyline)
+                        googleMap?.addPolyline(PolylineOptions().add(startPoint, endPoint).color(getTransportColor(mode)).width(5f))
                     }
                 }
-
-                if (totalDistance > 0) {
-                    val koreanTransportMode = transportModeNames[transportMode] ?: transportMode
-                    distanceInfo.append(
-                        String.format("%s: %.2f m\n", koreanTransportMode, totalDistance)
-                    )
-                }
+                if (totalDistance > 0) distanceInfo.append(String.format("%s: %.2f m\n", modeNames[mode] ?: mode, totalDistance))
             }
 
-            if (!hasData) {
-                distanceInfo.clear()
-                distanceInfo.append("데이터 없음")
-            }
-        }
-        // firstPoint가 null이 아닌 경우에만 지도 중심 이동
-        firstPoint?.let { point ->
-            if (hasData) {
-                googleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(point, 18f))
-                Log.d(TAG, "맵 중심 설정: $point")
-                isMapInitialized = true
-            }
-        }
-//        if (hasData && firstPoint != null) {
-//            // OSMDroid: mapView?.controller?.setCenter(firstPoint)
-//            // OSMDroid: mapView?.invalidate()
-//            // OSMDroid: Log.d(TAG, "맵 중심 설정: $firstPoint, 오버레이 수: ${mapView?.overlays?.size}")
-//        }
-        textDistanceInfo.text = distanceInfo.toString()
+        textDistanceInfo.text = if (hasData) distanceInfo.toString() else "데이터 없음"
+        if (hasData) firstPoint?.let { googleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(it, 18f)); isMapInitialized = true }
     }
 
-    // 이동 수단별 색상 반환
-    private fun getTransportColor(transportMode: String): Int {
-        return when (transportMode) {
-            "WALK" -> Color.GREEN
-            "BIKE" -> Color.BLUE
-            "BUS" -> Color.YELLOW
-            "CAR" -> Color.RED
-            "SUBWAY" -> Color.MAGENTA
-            "ETC" -> Color.GRAY
-            else -> Color.BLACK
-        }
+    private fun getTransportColor(mode: String): Int = when (mode) {
+        "WALK" -> Color.GREEN
+        "BIKE" -> Color.BLUE
+        "BUS" -> Color.YELLOW
+        "CAR" -> Color.RED
+        "SUBWAY" -> Color.MAGENTA
+        "ETC" -> Color.GRAY
+        else -> Color.BLACK
     }
 
-    // CSV 파일 존재 여부 확인
-    private fun isCsvFileExists(date: String): Boolean {
-        val fileName = "${date}_predictions.csv"
-        val file = File(requireContext().getExternalFilesDir(null), "SensorData/$fileName")
-        return file.exists()
-    }
+    private fun isCsvFileExists(date: String): Boolean =
+        File(requireContext().getExternalFilesDir(null), "SensorData/${date}_predictions.csv").exists()
 
-    // 테스트 맵 버튼 상태 업데이트
     private fun updateTestMapButtonState(date: String) {
         testMapButton.isEnabled = !isCsvFileExists(date)
     }
@@ -612,36 +389,21 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     override fun onResume() {
         super.onResume()
         mapView?.onResume()
-        if (isMapInitialized) {
-            // OSMDroid: mapView?.invalidate() // 이미 초기화된 경우 갱신만
-            Log.d(TAG, "onResume: 맵 이미 초기화됨, 갱신만 수행")
-        } else {
-            val selectedDate = parseDateFromText(dateText.text.toString())
-            loadAndDisplayPredictionData(selectedDate)
-            Log.d(TAG, "onResume: 맵 재초기화, 데이터 로드 수행")
-        }
-        // OSMDroid: Log.d(TAG, "onResume 호출: 맵 상태 - 줌: ${mapView?.zoomLevelDouble}, 중심: ${mapView?.mapCenter}")
+        if (!isMapInitialized) loadAndDisplayPredictionData(parseDateFromText(dateText.text.toString()))
     }
 
     override fun onPause() {
         super.onPause()
         mapView?.onPause()
-        Log.d(TAG, "onPause 호출")
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
         mapView?.onDestroy()
-        // OSMDroid: mapView?.onDetach()
-        // OSMDroid: Log.d(TAG, "onDestroyView 호출: MapView 유지")
-        Log.d(TAG, "onDestroyView 호출")
     }
 
     override fun onDestroy() {
         super.onDestroy()
         mapView = null
-        // OSMDroid: mapView?.onDetach() // 최종 종료 시에만 해제
-        // OSMDroid: Log.d(TAG, "onDestroy 호출: MapView 해제")
-        Log.d(TAG, "onDestroy 호출: MapView 해제")
     }
 }

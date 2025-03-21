@@ -220,29 +220,25 @@ public class SensorDataService extends Service {
 
     private void collectGPSData(long timestamp) {
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-
-
-            LocationRequest locationRequest = LocationRequest.create()
-                    .setInterval(1000) // 1초 간격
-                    .setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-
-            fusedLocationProviderClient.requestLocationUpdates(locationRequest, new LocationCallback() {
-                @Override
-                public void onLocationResult(LocationResult locationResult) {
-                    if (locationResult != null) {
-                        Location location = locationResult.getLastLocation();
-                        Map<String, Object> data = new LinkedHashMap<>();
-                        data.put("timestamp", timestamp); // 실시간 타임스탬프
-                        data.put("latitude", location.getLatitude());
-                        data.put("longitude", location.getLongitude());
-                        data.put("accuracy", location.getAccuracy());
-                        synchronized (gpsBuffer) {
-                            gpsBuffer.add(data);
-//                            Log.d(TAG, "GPS 데이터 추가: " + location.getLatitude() + ", " + location.getLongitude());
+            fusedLocationProviderClient.getLastLocation()
+                    .addOnSuccessListener(location -> {
+                        if (location != null) {
+                            Map<String, Object> data = new LinkedHashMap<>();
+                            data.put("timestamp", timestamp);
+                            data.put("latitude", location.getLatitude());
+                            data.put("longitude", location.getLongitude());
+                            data.put("accuracy", location.getAccuracy());
+                            synchronized (gpsBuffer) {
+                                gpsBuffer.add(data);
+//                                Log.d(TAG, "GPS 데이터 추가 (getLastLocation): " + location.getLatitude() + ", " + location.getLongitude());
+                            }
+                        } else {
+                            Log.w(TAG, "마지막 위치를 가져올 수 없음");
                         }
-                    }
-                }
-            }, Looper.getMainLooper());
+                    })
+                    .addOnFailureListener(e -> {
+                        Log.e(TAG, "GPS 데이터 가져오기 실패: " + e.getMessage());
+                    });
         }
     }
 
