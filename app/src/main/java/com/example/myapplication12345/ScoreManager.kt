@@ -2,7 +2,6 @@ package com.example.myapplication12345
 
 import android.content.Context
 import android.content.SharedPreferences
-import android.util.Log
 import android.widget.Toast
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
@@ -10,6 +9,7 @@ import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ServerValue
 import com.google.firebase.database.ValueEventListener
+import timber.log.Timber
 import java.util.Calendar
 
 class ScoreManager(private val context: Context) {
@@ -27,7 +27,7 @@ class ScoreManager(private val context: Context) {
             true -> "네트워크 오류가 발생했어요. 다시 시도해주세요."
             else -> "$operation 중 문제가 발생했어요."
         }
-        Log.w("FirebaseDatabase", "$operation:onFailure", exception)
+        Timber.tag("FirebaseDatabase").w(exception, "$operation:onFailure")
         Toast.makeText(context, friendlyMessage, Toast.LENGTH_SHORT).show()
     }
 

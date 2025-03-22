@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import timber.log.Timber
 import java.text.DecimalFormat
 
 class PedometerFragment : Fragment(), SensorEventListener {
@@ -47,7 +48,7 @@ class PedometerFragment : Fragment(), SensorEventListener {
         if (isGranted) {
             startStepCounter()
         } else {
-            android.util.Log.w("PedometerFragment", "Activity recognition permission denied")
+            Timber.tag("PedometerFragment").w("Activity recognition permission denied")
         }
     }
 
@@ -57,7 +58,7 @@ class PedometerFragment : Fragment(), SensorEventListener {
         stepSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER)
 
         if (stepSensor == null) {
-            android.util.Log.e("PedometerFragment", "Step counter sensor not available")
+            Timber.tag("PedometerFragment").e("Step counter sensor not available")
             return
         }
 
@@ -121,7 +122,7 @@ class PedometerFragment : Fragment(), SensorEventListener {
                 prefs.edit().putInt("initial_steps", initialSteps).apply()
             }
             stepsState.value = totalSteps - initialSteps
-            android.util.Log.d("PedometerFragment", "Steps updated: ${stepsState.value}")
+            Timber.tag("PedometerFragment").d("Steps updated: ${stepsState.value}")
         }
     }
 

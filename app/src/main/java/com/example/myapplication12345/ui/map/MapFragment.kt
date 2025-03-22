@@ -13,7 +13,11 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
-import android.widget.*
+import android.widget.Button
+import android.widget.CheckBox
+import android.widget.ImageView
+import android.widget.TextView
+import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import androidx.fragment.app.Fragment
 import androidx.viewpager2.widget.ViewPager2
@@ -26,13 +30,16 @@ import com.google.android.gms.maps.MapView
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.PolylineOptions
+import timber.log.Timber
 import java.io.BufferedReader
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileWriter
 import java.io.InputStreamReader
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 class MapFragment : Fragment(), OnMapReadyCallback {
 
@@ -168,17 +175,17 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                 enableMyLocationIfPermitted()
                 setMapToCurrentLocation()
                 isMyLocationShown = true
-                Log.d(TAG, "현재 위치 표시 시작")
+                Timber.tag(TAG).d("현재 위치 표시 시작")
             } else {
                 // 두 번째 클릭: 현재 위치 표시 중단
                 try {
                     googleMap?.isMyLocationEnabled = false
                 }catch (e:SecurityException){
-                    Log.d(TAG,"권환 필요")
+                    Timber.tag(TAG).d("권환 필요")
                 }
 
                 isMyLocationShown = false
-                Log.d(TAG, "현재 위치 표시 중단")
+                Timber.tag(TAG).d("현재 위치 표시 중단")
             }
         }
     }
@@ -188,9 +195,9 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             try {
                 googleMap?.isMyLocationEnabled = true
             }catch (e:SecurityException){
-                Log.d(TAG,"권환 필요")
+                Timber.tag(TAG).d("권환 필요")
             }
-            Log.d(TAG, "내 위치 레이어 활성화됨")
+            Timber.tag(TAG).d("내 위치 레이어 활성화됨")
         } else {
             requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), REQUEST_LOCATION_PERMISSION)
         }
@@ -204,19 +211,23 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), REQUEST_LOCATION_PERMISSION)
             return
         }
-
-        fusedLocationClient.lastLocation.addOnSuccessListener { location ->
-            val defaultLocation = LatLng(35.177306, 128.567773)
-            val targetLocation = location?.let { LatLng(it.latitude, it.longitude) } ?: defaultLocation
-            googleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(targetLocation, 18f))
-            if (hasLocationPermission()) googleMap?.isMyLocationEnabled = true
-            isMapInitialized = true
-            Log.d(TAG, "현재 위치로 이동: $targetLocation")
-        }.addOnFailureListener {
-            googleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(35.177306, 128.567773), 18f))
-            isMapInitialized = true
-            Log.e(TAG, "위치 가져오기 실패: ${it.message}")
+        try {
+            fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+                val defaultLocation = LatLng(35.177306, 128.567773)
+                val targetLocation = location?.let { LatLng(it.latitude, it.longitude) } ?: defaultLocation
+                googleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(targetLocation, 18f))
+                if (hasLocationPermission()) googleMap?.isMyLocationEnabled = true
+                isMapInitialized = true
+                Timber.tag(TAG).d("현재 위치로 이동: $targetLocation")
+            }.addOnFailureListener {
+                googleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(35.177306, 128.567773), 18f))
+                isMapInitialized = true
+                Timber.tag(TAG).e("위치 가져오기 실패: ${it.message}")
+            }
+        }catch (e:SecurityException){
+            Timber.tag(TAG).d("권환 필요")
         }
+
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
@@ -224,7 +235,11 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         if (requestCode == REQUEST_LOCATION_PERMISSION) {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 if (hasLocationPermission()) {
-                    googleMap?.isMyLocationEnabled = true
+                    try {
+                        googleMap?.isMyLocationEnabled = true
+                    }catch (e:SecurityException) {
+                        Timber.tag(TAG).d("권환 필요")
+                    }
                     setMapToCurrentLocation()
                     isMyLocationShown = true
                 }
@@ -248,7 +263,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     }
 
     private fun updateDateText(date: String) {
-        dateText.text = "${date.substring(0, 4)}년 ${date.substring(4, 6)}월 ${date.substring(6, 8)}일"
+        "${date.substring(0, 4)}년 ${date.substring(4, 6)}월 ${date.substring(6, 8)}일".also { dateText.text = it }
     }
 
     private fun parseDateFromText(dateText: String): String =
@@ -311,7 +326,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
         val file = File(requireContext().getExternalFilesDir(null), "SensorData/${date}_predictions.csv")
         if (!file.exists()) {
-            textDistanceInfo.text = "데이터 없음: $date"
+            "데이터 없음: $date".also { textDistanceInfo.text = it }
             googleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(35.177306, 128.567773), 18f))
             return
         }
@@ -331,7 +346,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                 }
             }
         } catch (e: Exception) {
-            textDistanceInfo.text = "CSV 로드 실패: ${e.message}"
+            "CSV 로드 실패: ${e.message}".also { textDistanceInfo.text = it }
             googleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(35.177306, 128.567773), 18f))
         }
         return predictionData

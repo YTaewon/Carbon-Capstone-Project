@@ -21,8 +21,8 @@ class RankingAdapter(private val profileList: ArrayList<Profiles>) : RecyclerVie
         val profile = profileList[position]
         holder.profile.setImageResource(profile.profile)
         holder.name.text = profile.name
-        holder.score.text = profile.score.toString()
-        holder.ranking.text = (position + 4).toString()
+        profile.score.toString().also { holder.score.text = it }
+        (position + 4).toString().also { holder.ranking.text = it }
     }
 
     class CustomViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {

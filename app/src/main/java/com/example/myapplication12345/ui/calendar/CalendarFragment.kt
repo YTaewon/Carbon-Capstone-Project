@@ -1,6 +1,5 @@
 package com.example.myapplication12345.ui.calendar
 
-import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -18,7 +17,8 @@ import com.example.myapplication12345.R
 import com.example.myapplication12345.ScoreManager
 import com.example.myapplication12345.databinding.FragmentCalendarBinding
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Calendar
+import java.util.Locale
 
 class CalendarFragment : Fragment() {
 
@@ -76,7 +76,12 @@ class CalendarFragment : Fragment() {
         }
         val year = yearFormat.format(mCal.time)
         val month = monthFormat.format(mCal.time)
-        binding.tvDate.text = "${year}년 ${month}월"
+        binding.tvDate.text = buildString {
+            append(year)
+            append("년 ")
+            append(month)
+            append("월")
+        }
     }
 
     private fun initCalendar() {
@@ -253,8 +258,8 @@ class CalendarFragment : Fragment() {
 
         val productLabel = TextView(requireContext()).apply { text = "전기 탄소 배출량" }
         val transportLabel = TextView(requireContext()).apply { text = "이동경로 탄소 배출량" }
-        val productInput = EditText(requireContext()).apply { setText(day.productEmissions.toString()) }
-        val transportInput = EditText(requireContext()).apply { setText(day.transportEmissions.toString()) }
+        val productInput = EditText(requireContext()).apply { setText(day.run { productEmissions.toString() }) }
+        val transportInput = EditText(requireContext()).apply { setText(day.run { transportEmissions.toString() }) }
 
         val layout = LinearLayout(requireContext()).apply {
             orientation = LinearLayout.VERTICAL

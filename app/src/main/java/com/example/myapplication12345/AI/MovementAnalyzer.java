@@ -1,13 +1,12 @@
 package com.example.myapplication12345.AI;
 
-import android.util.Log;
-
 import java.util.List;
 import java.util.Map;
+import timber.log.Timber;
 
 public class MovementAnalyzer {
-    private List<Map<String, Object>> gpsData;
-    private List<Map<String, Object>> imuData;
+    private final List<Map<String, Object>> gpsData;
+    private final List<Map<String, Object>> imuData;
 
     private float finalDistance;
 
@@ -127,19 +126,19 @@ public class MovementAnalyzer {
 
         // 비정상 거리 검증
         if (this.finalDistance < 0) {
-            Log.w("MovementAnalyzer", "비정상 거리 감지: 음수 거리 " + this.finalDistance);
+            Timber.tag("MovementAnalyzer").w("비정상 거리 감지: 음수 거리 %s", this.finalDistance);
             this.finalDistance = 0.0f;
         } else if (this.finalDistance < MIN_DISTANCE_THRESHOLD && totalTime > 0) {
-            Log.w("MovementAnalyzer", "비정상 거리 감지: 너무 작은 거리 " + this.finalDistance + " (시간: " + totalTime + "s)");
+            Timber.tag("MovementAnalyzer").w("비정상 거리 감지: 너무 작은 거리 " + this.finalDistance + " (시간: " + totalTime + "s)");
             this.finalDistance = 0.0f;
         } else if (totalTime > 0 && (this.finalDistance / totalTime) > MAX_REALISTIC_SPEED) {
-            Log.w("MovementAnalyzer", "비정상 거리 감지: 비현실적인 속도 " + (this.finalDistance / totalTime) + " m/s");
+            Timber.tag("MovementAnalyzer").w("비정상 거리 감지: 비현실적인 속도 " + (this.finalDistance / totalTime) + " m/s");
             this.finalDistance = 0.0f;
         }
 
-        Log.d("MovementAnalyzer", "GPS Distance: " + gpsDistance + " meters");
-        Log.d("MovementAnalyzer", "IMU Distance: " + imuDistance + " meters");
-        Log.d("MovementAnalyzer", "Final Distance: " + finalDistance + " meters");
+        Timber.tag("MovementAnalyzer").d("GPS Distance: " + gpsDistance + " meters");
+        Timber.tag("MovementAnalyzer").d("IMU Distance: " + imuDistance + " meters");
+        Timber.tag("MovementAnalyzer").d("Final Distance: " + finalDistance + " meters");
     }
 
     // Getter 메서드

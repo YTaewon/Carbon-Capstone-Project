@@ -11,7 +11,6 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
-import android.location.Location;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
@@ -23,16 +22,12 @@ import android.telephony.CellIdentityLte;
 import android.telephony.CellInfo;
 import android.telephony.CellInfoLte;
 import android.telephony.TelephonyManager;
-import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
 
 import com.example.myapplication12345.R;
 import com.google.android.gms.location.FusedLocationProviderClient;
-import com.google.android.gms.location.LocationCallback;
-import com.google.android.gms.location.LocationRequest;
-import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 
 import java.util.ArrayList;
@@ -43,6 +38,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+
+import timber.log.Timber;
 
 public class SensorDataService extends Service {
     private static final int PROCESS_INTERVAL_01 = 1000; // 1초 간격
@@ -85,7 +82,7 @@ public class SensorDataService extends Service {
         fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
 
         if (!checkPermissions()) {
-            Log.e(TAG, "필수 권한이 없음. 서비스 중단");
+            Timber.tag(TAG).e("필수 권한이 없음. 서비스 중단");
             stopSelf();
             return;
         }
@@ -93,7 +90,7 @@ public class SensorDataService extends Service {
         // 비동기로 SensorDataProcessor 초기화
         executorService.execute(() -> {
             dataProcessor = SensorDataProcessor.getInstance(this);
-            Log.d(TAG, "SensorDataProcessor 초기화 완료 (비동기)");
+            Timber.tag(TAG).d("SensorDataProcessor 초기화 완료 (비동기)");
         });
 
         handler.postDelayed(this::startDataCollection, INITIAL_DELAY_MS);
@@ -189,7 +186,7 @@ public class SensorDataService extends Service {
                     }
                 }
             } catch (SecurityException e) {
-                Log.e(TAG, "Wi-Fi 데이터 수집 실패: 권한 부족", e);
+                Timber.tag(TAG).e(e, "Wi-Fi 데이터 수집 실패: 권한 부족");
             }
         }
     }
@@ -213,7 +210,7 @@ public class SensorDataService extends Service {
                     }
                 }
             } catch (SecurityException e) {
-                Log.e(TAG, "BTS 데이터 수집 실패: 권한 부족", e);
+                Timber.tag(TAG).e(e, "BTS 데이터 수집 실패: 권한 부족");
             }
         }
     }
@@ -233,18 +230,18 @@ public class SensorDataService extends Service {
 //                                Log.d(TAG, "GPS 데이터 추가 (getLastLocation): " + location.getLatitude() + ", " + location.getLongitude());
                             }
                         } else {
-                            Log.w(TAG, "마지막 위치를 가져올 수 없음");
+                            Timber.tag(TAG).w("마지막 위치를 가져올 수 없음");
                         }
                     })
                     .addOnFailureListener(e -> {
-                        Log.e(TAG, "GPS 데이터 가져오기 실패: " + e.getMessage());
+                        Timber.tag(TAG).e("GPS 데이터 가져오기 실패: %s", e.getMessage());
                     });
         }
     }
 
     private void collectIMUData(long timestamp) {
         if (sensorManager == null) {
-            Log.e(TAG, "SensorManager가 초기화되지 않음");
+            Timber.tag(TAG).e("SensorManager가 초기화되지 않음");
             return;
         }
 
@@ -259,7 +256,7 @@ public class SensorDataService extends Service {
         if (accelerometer == null || gyroscope == null || magnetometer == null ||
                 rotationVector == null || pressureSensor == null ||
                 gravitySensor == null || linearAccelSensor == null) {
-            Log.e(TAG, "필요한 센서가 장치에 없음");
+            Timber.tag(TAG).e("필요한 센서가 장치에 없음");
             return;
         }
 
@@ -391,7 +388,7 @@ public class SensorDataService extends Service {
                     synchronized (imuBuffer) {
                         synchronized (uniqueTimestamps) {
                             if (uniqueTimestamps.size() >= MIN_TIMESTAMP_COUNT) {
-                                Log.d(TAG, "60초 데이터 수집 완료 - GPS: " + gpsBuffer.size() +
+                                Timber.tag(TAG).d("60초 데이터 수집 완료 - GPS: " + gpsBuffer.size() +
                                         ", AP: " + apBuffer.size() + ", BTS: " + btsBuffer.size() +
                                         ", IMU: " + imuBuffer.size());
 
@@ -405,10 +402,10 @@ public class SensorDataService extends Service {
                                 if (dataProcessor != null) {
                                     executorService.execute(() -> {
                                         dataProcessor.processSensorData(gpsDataCopy, apDataCopy, btsDataCopy, imuDataCopy);
-                                        Log.d(TAG, "SensorDataProcessor 처리 완료");
+                                        Timber.tag(TAG).d("SensorDataProcessor 처리 완료");
                                     });
                                 } else {
-                                    Log.w(TAG, "SensorDataProcessor가 초기화되지 않음");
+                                    Timber.tag(TAG).w("SensorDataProcessor가 초기화되지 않음");
                                 }
 
                                 // 버퍼 및 타임스탬프 초기화

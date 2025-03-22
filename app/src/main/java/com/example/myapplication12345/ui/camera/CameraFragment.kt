@@ -12,7 +12,11 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.camera.core.*
+import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageCapture
+import androidx.camera.core.ImageCaptureException
+import androidx.camera.core.ImageProxy
+import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
@@ -159,12 +163,13 @@ class CameraFragment : Fragment() {
         )
     }
 
-    private fun ImageProxy.toBitmap(): Bitmap {
-        val buffer: ByteBuffer = planes[0].buffer
-        val bytes = ByteArray(buffer.remaining())
-        buffer.get(bytes)
-        return BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-    }
+    private val ImageProxy.toBitmap: Bitmap
+        get() {
+            val buffer: ByteBuffer = planes[0].buffer
+            val bytes = ByteArray(buffer.remaining())
+            buffer.get(bytes)
+            return BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+        }
 
     private fun processImageUri(uri: Uri) {
         try {
@@ -195,7 +200,9 @@ class CameraFragment : Fragment() {
                 if (usage != null) {
                     calculateAndDisplayCarbon(usage)
                 } else {
-                    binding.resultText.text = "전기 사용량을 찾을 수 없습니다.\n다른 이미지를 시도해보세요."
+                    binding.resultText.text = buildString {
+                        append("전기 사용량을 찾을 수 없습니다.\n다른 이미지를 시도해보세요.")
+                    }
                 }
             }
             .addOnFailureListener { e ->

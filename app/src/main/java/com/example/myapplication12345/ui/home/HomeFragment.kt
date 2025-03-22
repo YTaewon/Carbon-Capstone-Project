@@ -7,7 +7,6 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.MediaStore
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -20,6 +19,7 @@ import androidx.lifecycle.ViewModelProvider
 import com.example.myapplication12345.databinding.FragmentHomeBinding
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
+import timber.log.Timber
 
 class HomeFragment : Fragment() {
 
@@ -70,27 +70,27 @@ class HomeFragment : Fragment() {
                     binding.nicknameText.text = nickname ?: "익명"
                 }
                 override fun onCancelled(databaseError: DatabaseError) {
-                    Log.w("Firebase", "loadNickname:onCancelled", databaseError.toException())
+                    Timber.tag("Firebase").w(databaseError.toException(), "loadNickname:onCancelled")
                     binding.nicknameText.text = "익명"
                 }
             })
             userRef.child("score").addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(dataSnapshot: DataSnapshot) {
                     val score = dataSnapshot.getValue(Int::class.java)
-                    binding.scoreText.text = "점수: ${score ?: 0}"
+                    "점수: ${score ?: 0}".also { binding.scoreText.text = it }
                 }
                 override fun onCancelled(databaseError: DatabaseError) {
-                    Log.w("Firebase", "loadScore:onCancelled", databaseError.toException())
+                    Timber.tag("Firebase").w(databaseError.toException(), "loadScore:onCancelled")
                     binding.scoreText.text = "점수: 0"
                 }
             })
             userRef.child("point").addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(dataSnapshot: DataSnapshot) {
                     val point = dataSnapshot.getValue(Int::class.java)
-                    binding.pointText.text = "탄소 포인트: ${point ?: 0}"
+                    "탄소 포인트: ${point ?: 0}".also { binding.pointText.text = it }
                 }
                 override fun onCancelled(databaseError: DatabaseError) {
-                    Log.w("Firebase", "loadPoint:onCancelled", databaseError.toException())
+                    Timber.tag("Firebase").w(databaseError.toException(), "loadPoint:onCancelled")
                     binding.pointText.text = "탄소 포인트: 0"
                 }
             })
@@ -108,12 +108,12 @@ class HomeFragment : Fragment() {
         // 팁 텍스트 관찰
         homeViewModel.currentTip.observe(viewLifecycleOwner) { newTip ->
             binding.tipText.text = newTip
-            Log.d("HomeFragment", "Tip updated: $newTip") // 디버깅용 로그
+            Timber.tag("HomeFragment").d("Tip updated: $newTip") // 디버깅용 로그
         }
 
         // "다음 팁" 버튼 클릭 리스너 설정
         binding.nextTipButton.setOnClickListener {
-            Log.d("HomeFragment", "Next tip button clicked") // 클릭 확인용 로그
+            Timber.tag("HomeFragment").d("Next tip button clicked") // 클릭 확인용 로그
             homeViewModel.showRandomTip()
 //            Toast.makeText(context, "다음 팁으로 변경됨", Toast.LENGTH_SHORT).show()
         }

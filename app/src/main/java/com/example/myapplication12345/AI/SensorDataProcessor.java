@@ -2,7 +2,6 @@ package com.example.myapplication12345.AI;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
-import android.util.Log;
 
 import com.example.myapplication12345.AI.AP.APProcessor;
 import com.example.myapplication12345.AI.BTS.BTSProcessor;
@@ -27,6 +26,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
+
+import timber.log.Timber;
 
 public class SensorDataProcessor {
     private static final String TAG = "SensorDataProcessor";
@@ -38,7 +40,11 @@ public class SensorDataProcessor {
     };
     private static final int MIN_TIMESTAMP_COUNT = 60;
     private static final int SEGMENT_SIZE = 10;
-    private static final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd", Locale.getDefault());
+    private static final SimpleDateFormat dateFormat;
+
+    static {
+        dateFormat = new SimpleDateFormat("yyyyMMdd", Locale.getDefault());
+    }
 
     private static SensorDataProcessor instance;
     private final Context context;
@@ -62,26 +68,26 @@ public class SensorDataProcessor {
     private void loadModelAsync() {
         new Thread(() -> {
             try {
-                String modelPath = assetFilePath(context, MODEL_FILENAME);
+                String modelPath = assetFilePath(context);
                 model = Module.load(modelPath);
                 isModelLoaded = true;
-                Log.d(TAG, "PyTorch 모델 로드 완료: " + modelPath);
+                Timber.tag(TAG).d("PyTorch 모델 로드 완료: %s", modelPath);
             } catch (IOException e) {
-                Log.e(TAG, "모델 파일 복사 오류: " + e.getMessage(), e);
+                Timber.tag(TAG).e(e, "모델 파일 복사 오류: %s", e.getMessage());
                 throw new IllegalStateException("Failed to load model due to IO error", e);
             } catch (Exception e) {
-                Log.e(TAG, "모델 로드 중 오류: " + e.getMessage(), e);
+                Timber.tag(TAG).e(e, "모델 로드 중 오류: %s", e.getMessage());
                 throw new IllegalStateException("Failed to load model", e);
             }
         }).start();
     }
 
-    private String assetFilePath(Context context, String filename) throws IOException {
-        File file = new File(context.getFilesDir(), filename);
+    private String assetFilePath(Context context) throws IOException {
+        File file = new File(context.getFilesDir(), SensorDataProcessor.MODEL_FILENAME);
         if (file.exists() && file.length() > 0) {
             return file.getAbsolutePath();
         }
-        try (InputStream is = context.getAssets().open(filename);
+        try (InputStream is = context.getAssets().open(SensorDataProcessor.MODEL_FILENAME);
              FileOutputStream fos = new FileOutputStream(file)) {
             byte[] buffer = new byte[4096];
             int read;
@@ -103,16 +109,16 @@ public class SensorDataProcessor {
         float distance = analyzer.getDistance();
 
         if (!isModelLoaded) {
-            Log.w(TAG, "모델이 아직 로드되지 않음. 데이터 처리 스킵");
+            Timber.tag(TAG).w("모델이 아직 로드되지 않음. 데이터 처리 스킵");
             predictedResult = "None"; // 기본값 변경
             return;
         }
 
-        Log.d(TAG, "수신된 데이터 크기 - GPS: " + gpsData.size() + ", AP: " + apData.size() +
+        Timber.tag(TAG).d("수신된 데이터 크기 - GPS: " + gpsData.size() + ", AP: " + apData.size() +
                 ", BTS: " + btsData.size() + ", IMU: " + imuData.size());
 
         if (gpsData.size() < MIN_TIMESTAMP_COUNT || apData.isEmpty() || btsData.isEmpty() || imuData.size() < MIN_TIMESTAMP_COUNT) {
-            Log.w(TAG, "필요한 최소 데이터 요구사항 충족되지 않음");
+            Timber.tag(TAG).w("필요한 최소 데이터 요구사항 충족되지 않음");
             predictedResult = "None"; // 기본값 변경
             return;
         }
@@ -123,7 +129,7 @@ public class SensorDataProcessor {
         List<Map<String, Object>> processedIMU = IMUProcessor.preImu(imuData);
 
         if (processedAP.isEmpty() || processedBTS.isEmpty() || processedGPS.isEmpty() || processedIMU.isEmpty()) {
-            Log.w(TAG, "데이터 전처리 실패 - 하나 이상의 센서 데이터가 비어 있음");
+            Timber.tag(TAG).w("데이터 전처리 실패 - 하나 이상의 센서 데이터가 비어 있음");
             predictedResult = "None"; // 기본값 변경
             return;
         }
@@ -198,9 +204,9 @@ public class SensorDataProcessor {
         File directory = new File(context.getExternalFilesDir(null), "SensorData");
         if (!directory.exists()) {
             if (directory.mkdirs()) {
-                Log.d(TAG, "SensorData 디렉토리 생성 성공: " + directory.getAbsolutePath());
+                Timber.tag(TAG).d("SensorData 디렉토리 생성 성공: %s", directory.getAbsolutePath());
             } else {
-                Log.e(TAG, "SensorData 디렉토리 생성 실패");
+                Timber.tag(TAG).e("SensorData 디렉토리 생성 실패");
                 return;
             }
         }
@@ -213,17 +219,17 @@ public class SensorDataProcessor {
             }
             writer.append(String.format("%d,%s,%.2f,%.6f,%.6f,%.6f,%.6f\n",
                     startTimestamp, transportMode, distance, startLat, startLon, endLat, endLon));
-            Log.d(TAG, "예측 결과 CSV 저장 성공 (" + fileName + "): " + transportMode + ", 거리: " + distance + " 미터, " +
+            Timber.tag(TAG).d("예측 결과 CSV 저장 성공 (" + fileName + "): " + transportMode + ", 거리: " + distance + " 미터, " +
                     "시작: (" + startLat + ", " + startLon + "), 끝: (" + endLat + ", " + endLon + ")");
         } catch (IOException e) {
-            Log.e(TAG, "예측 결과 CSV 저장 실패: " + e.getMessage(), e);
+            Timber.tag(TAG).e(e, "예측 결과 CSV 저장 실패: %s", e.getMessage());
         }
     }
 
     private void predictMovingMode(Tensor inputTensor, List<Map<String, Object>> gpsData, float distance) {
         if (model == null || inputTensor == null) {
             predictedResult = "None"; // 기본값 변경
-            Log.e(TAG, "모델 또는 입력 텐서가 null");
+            Timber.tag(TAG).e("모델 또는 입력 텐서가 null");
             return;
         }
 
@@ -234,7 +240,7 @@ public class SensorDataProcessor {
 
             // 출력 크기 확인
             if (logits.length != 11) {
-                Log.e(TAG, "모델 출력 크기가 예상과 다름: " + logits.length + " (예상: 11)");
+                Timber.tag(TAG).e("모델 출력 크기가 예상과 다름: " + logits.length + " (예상: 11)");
                 predictedResult = "None";
                 return;
             }
@@ -251,10 +257,10 @@ public class SensorDataProcessor {
             float threshold = 0.9f;
             if (maxProb >= threshold && maxIndex < TRANSPORT_MODES.length) {
                 predictedResult = TRANSPORT_MODES[maxIndex];
-                Log.d(TAG, "예측된 이동수단: " + predictedResult + ", 확률: " + maxProb);
+                Timber.tag(TAG).d("예측된 이동수단: " + predictedResult + ", 확률: " + maxProb);
             } else {
                 predictedResult = "None"; // 기본적으로 None로 설정
-                Log.w(TAG, "확률이 임계값 미만 또는 유효하지 않은 인덱스: " + maxProb + ", " + maxIndex);
+                Timber.tag(TAG).w("확률이 임계값 미만 또는 유효하지 않은 인덱스: " + maxProb + ", " + maxIndex);
             }
 
             if (!gpsData.isEmpty() && gpsData.size() >= MIN_TIMESTAMP_COUNT) {
@@ -266,25 +272,25 @@ public class SensorDataProcessor {
                     Map<String, Object> startData = gpsData.get(startIndex);
                     Map<String, Object> endData = gpsData.get(endIndex);
 
-                    long startTimestamp = ((Number) startData.get("timestamp")).longValue();
-                    double startLat = ((Number) startData.get("latitude")).doubleValue();
-                    double startLon = ((Number) startData.get("longitude")).doubleValue();
-                    double endLat = ((Number) endData.get("latitude")).doubleValue();
-                    double endLon = ((Number) endData.get("longitude")).doubleValue();
+                    long startTimestamp = ((Number) Objects.requireNonNull(startData.get("timestamp"))).longValue();
+                    double startLat = ((Number) Objects.requireNonNull(startData.get("latitude"))).doubleValue();
+                    double startLon = ((Number) Objects.requireNonNull(startData.get("longitude"))).doubleValue();
+                    double endLat = ((Number) Objects.requireNonNull(endData.get("latitude"))).doubleValue();
+                    double endLon = ((Number) Objects.requireNonNull(endData.get("longitude"))).doubleValue();
 
                     String transportMode = predictedResult;
                     if (distance <= 0.05) {
                         transportMode = "None"; // 거리 임계값에 따른 기본값 변경
                     }
-                    Log.d(TAG, "구간 " + segment + " 최종 이동수단: " + transportMode + ", 거리: " + distance + "m, " +
+                    Timber.tag(TAG).d("구간 " + segment + " 최종 이동수단: " + transportMode + ", 거리: " + distance + "m, " +
                             "시작: (" + startLat + ", " + startLon + "), 끝: (" + endLat + ", " + endLon + ")");
                     savePredictionToCSV(transportMode, distance/6, startTimestamp, startLat, startLon, endLat, endLon);
                 }
             } else {
-                Log.w(TAG, "GPS 데이터 부족으로 CSV 저장 불가");
+                Timber.tag(TAG).w("GPS 데이터 부족으로 CSV 저장 불가");
             }
         } catch (Exception e) {
-            Log.e(TAG, "예측 중 오류: " + e.getMessage(), e);
+            Timber.tag(TAG).e(e, "예측 중 오류: %s", e.getMessage());
             predictedResult = "None"; // 오류 시 기본값 변경
         }
     }

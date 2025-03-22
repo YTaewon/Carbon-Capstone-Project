@@ -102,8 +102,7 @@ public class IMUConfig {
     }
 
     public static int getSensorChannels(String sensor) {
-        var orDefault = SENSOR_CHANNELS.getOrDefault(sensor, 0);
-        return orDefault;
+        return SENSOR_CHANNELS.getOrDefault(sensor, 0);
     }
 
     public static boolean isProcessEachAxis(String sensor) {

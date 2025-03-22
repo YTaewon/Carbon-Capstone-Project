@@ -2,7 +2,6 @@ package com.example.myapplication12345.ui.login
 
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
@@ -15,6 +14,7 @@ import com.example.myapplication12345.databinding.ActivityLoginBinding
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
+import timber.log.Timber
 
 class LoginActivity : AppCompatActivity() {
 
@@ -35,14 +35,14 @@ class LoginActivity : AppCompatActivity() {
             auth.signInWithEmailAndPassword(email, password)
                 .addOnCompleteListener(this) { task ->
                     if (task.isSuccessful) {
-                        Log.d("LoginActivity", "로그인 성공")
+                        Timber.tag("LoginActivity").d("로그인 성공")
                         Toast.makeText(this, "로그인 성공", Toast.LENGTH_SHORT).show()
 
                         val intent = Intent(this, MainActivity::class.java)
                         startActivity(intent)
                         finish()
                     } else {
-                        Log.d("LoginActivity", "로그인 실패")
+                        Timber.tag("LoginActivity").d("로그인 실패")
                         Toast.makeText(this, "로그인 실패", Toast.LENGTH_SHORT).show()
                     }
                 }

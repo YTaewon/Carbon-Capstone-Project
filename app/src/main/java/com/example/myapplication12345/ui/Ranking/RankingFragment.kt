@@ -190,30 +190,30 @@ class RankingFragment : Fragment() {
             val top1 = profileList[0]
             ivProfile1?.setImageResource(top1.profile)
             tvName1?.text = top1.name
-            tvScore1?.text = top1.score.toString()
+            top1.score.toString().also { tvScore1?.text = it }
         } else {
             tvName1?.text = ""
-            tvScore1?.text = "000"
+            "000".also { tvScore1?.text = it }
         }
 
         if (profileList.size >= 2) {
             val top2 = profileList[1]
             ivProfile2?.setImageResource(top2.profile)
             tvName2?.text = top2.name
-            tvScore2?.text = top2.score.toString()
+            top2.score.toString().also { tvScore2?.text = it }
         } else {
             tvName2?.text = ""
-            tvScore2?.text = "000"
+            "000".also { tvScore2?.text = it }
         }
 
         if (profileList.size >= 3) {
             val top3 = profileList[2]
             ivProfile3?.setImageResource(top3.profile)
             tvName3?.text = top3.name
-            tvScore3?.text = top3.score.toString()
+            top3.score.toString().also { tvScore3?.text = it }
         } else {
             tvName3?.text = ""
-            tvScore3?.text = "000"
+            "000".also { tvScore3?.text = it }
         }
     }
 
