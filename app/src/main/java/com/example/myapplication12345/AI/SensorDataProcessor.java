@@ -278,7 +278,7 @@ public class SensorDataProcessor {
                     }
                     Log.d(TAG, "구간 " + segment + " 최종 이동수단: " + transportMode + ", 거리: " + distance + "m, " +
                             "시작: (" + startLat + ", " + startLon + "), 끝: (" + endLat + ", " + endLon + ")");
-                    savePredictionToCSV(transportMode, distance, startTimestamp, startLat, startLon, endLat, endLon);
+                    savePredictionToCSV(transportMode, distance/6, startTimestamp, startLat, startLon, endLat, endLon);
                 }
             } else {
                 Log.w(TAG, "GPS 데이터 부족으로 CSV 저장 불가");

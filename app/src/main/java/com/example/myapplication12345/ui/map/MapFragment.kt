@@ -72,7 +72,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private lateinit var toggleDistanceButton: ImageView
     private lateinit var calendarButton: ImageView
     private lateinit var testMapButton: Button
-    private lateinit var newButton: ImageView
+    private lateinit var findnowlocateButton: ImageView
     private lateinit var fusedLocationClient: FusedLocationProviderClient
 
     private val transportModes = listOf("WALK", "BIKE", "BUS", "CAR", "SUBWAY", "ETC")
@@ -106,7 +106,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             uiSettings.isZoomGesturesEnabled = true
             uiSettings.isScrollGesturesEnabled = true
             uiSettings.isZoomControlsEnabled = true
-            uiSettings.isMyLocationButtonEnabled = true
+            uiSettings.isMyLocationButtonEnabled = false
         }
 
         val viewPager = activity?.findViewById<ViewPager2>(R.id.viewPager)
@@ -132,7 +132,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         toggleDistanceButton = view.findViewById(R.id.toggle_distance_button)
         calendarButton = view.findViewById(R.id.calendar_button)
         testMapButton = view.findViewById(R.id.test_map)
-        newButton = view.findViewById(R.id.new_button)
+        findnowlocateButton = view.findViewById(R.id.find_now_locate_button)
     }
 
     private fun setupMapView(savedInstanceState: Bundle?) {
@@ -162,7 +162,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         toggleDistanceButton.setOnClickListener { toggleDistanceInfoVisibility() }
         calendarButton.setOnClickListener { showDatePickerDialog() }
         testMapButton.setOnClickListener { handleTestMapButtonClick() }
-        newButton.setOnClickListener {
+        findnowlocateButton.setOnClickListener {
             if (!isMyLocationShown) {
                 // 첫 클릭: 현재 위치 표시 시작
                 enableMyLocationIfPermitted()
@@ -171,7 +171,12 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                 Log.d(TAG, "현재 위치 표시 시작")
             } else {
                 // 두 번째 클릭: 현재 위치 표시 중단
-                googleMap?.isMyLocationEnabled = false
+                try {
+                    googleMap?.isMyLocationEnabled = false
+                }catch (e:SecurityException){
+                    Log.d(TAG,"권환 필요")
+                }
+
                 isMyLocationShown = false
                 Log.d(TAG, "현재 위치 표시 중단")
             }
@@ -180,7 +185,11 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     private fun enableMyLocationIfPermitted() {
         if (hasLocationPermission()) {
-            googleMap?.isMyLocationEnabled = true
+            try {
+                googleMap?.isMyLocationEnabled = true
+            }catch (e:SecurityException){
+                Log.d(TAG,"권환 필요")
+            }
             Log.d(TAG, "내 위치 레이어 활성화됨")
         } else {
             requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), REQUEST_LOCATION_PERMISSION)

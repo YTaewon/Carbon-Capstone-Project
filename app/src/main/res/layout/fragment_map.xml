@@ -228,7 +228,7 @@
                 android:textColor="@color/white" />
 
             <ImageButton
-                android:id="@+id/new_button"
+                android:id="@+id/find_now_locate_button"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
                 android:layout_marginLeft="16dp"
