@@ -17,7 +17,9 @@ import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.ViewModelProvider
+import com.example.myapplication12345.R
 import com.example.myapplication12345.databinding.FragmentHomeBinding
+import com.example.myapplication12345.ui.pedometer.PedometerFragment
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 
@@ -124,6 +126,14 @@ class HomeFragment : Fragment() {
                     doubleClick = false
                 }, 500) // 500ms 이내에 두 번 클릭해야 더블 클릭으로 인식
             }
+        }
+
+        // PedometerFragment를 추가
+        if (savedInstanceState == null) { // 화면 회전 시 중복 추가 방지
+            val pedometerFragment = PedometerFragment()
+            childFragmentManager.beginTransaction()
+                .replace(R.id.pedometer_fragment_container, pedometerFragment)
+                .commit()
         }
 
         return root

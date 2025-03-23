@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import com.example.myapplication12345.R
 import java.text.DecimalFormat
 
 class PedometerFragment : Fragment(), SensorEventListener {
@@ -57,6 +58,8 @@ class PedometerFragment : Fragment(), SensorEventListener {
         } else {
             startStepCounter()
         }
+
+
     }
 
     override fun onCreateView(
