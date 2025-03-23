@@ -3,10 +3,19 @@ package com.example.myapplication12345.ui.home
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.myapplication12345.api.NaverNewsApiService
+import com.example.myapplication12345.data.NewsItem
+import com.example.myapplication12345.data.NewsResponse
+import kotlinx.coroutines.launch
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
+import retrofit2.http.GET
+import retrofit2.http.Header
+import retrofit2.http.Query
 
 class HomeViewModel : ViewModel() {
-
-    // 기존 인사말 텍스트용 LiveData
+    // 인사말 텍스트용 LiveData
     private val _text = MutableLiveData<String>().apply {
         value = "메인화면"
     }
@@ -40,13 +49,96 @@ class HomeViewModel : ViewModel() {
     private val _currentTip = MutableLiveData<String>()
     val currentTip: LiveData<String> get() = _currentTip
 
+    // 뉴스 리스트 LiveData (다수의 뉴스를 저장)
+    private val _newsList = MutableLiveData<List<NewsItem>>()
+    val newsList: LiveData<List<NewsItem>> get() = _newsList
+
+    // 현재 표시할 단일 뉴스 LiveData
+    private val _news = MutableLiveData<NewsItem>()
+    val news: LiveData<NewsItem> get() = _news
+
+    // Retrofit 설정
+    private val retrofit = Retrofit.Builder()
+        .baseUrl("https://openapi.naver.com/")
+        .addConverterFactory(GsonConverterFactory.create())
+        .build()
+
+    private val naverNewsApiService = retrofit.create(NaverNewsApiService::class.java)
+
+    // 네이버 API 인증 정보
+    private val clientId = "bK__n4pTB2lv0XNNkyTF"
+    private val clientSecret = "KcPkPF7NRp"
+
     init {
-        // 초기 팁 설정
         showRandomTip()
+        fetchNews()
     }
 
-    // 랜덤 팁을 표시하는 함수
+    // 랜덤 팁 표시 함수
     fun showRandomTip() {
         _currentTip.value = carbonSavingTips.random()
     }
+
+    // 뉴스 가져오기 함수 (더 많은 뉴스 가져오기)
+    fun fetchNews() {
+        viewModelScope.launch {
+            try {
+                val response = naverNewsApiService.getNews(
+                    clientId = clientId,
+                    clientSecret = clientSecret,
+                    query = "탄소 배출 환경",
+                    display = 100// 10개의 뉴스를 가져오도록 설정 (최대 100까지 가능)
+                )
+
+                val newsItems = response.items.map {
+                    NewsItem(
+                        title = it.title.replace("<b>", "").replace("</b>", ""),
+                        description = it.description.replace("<b>", "").replace("</b>", ""),
+                        originallink = it.originallink,
+                        pubDate = it.pubDate
+                    )
+                }.filter {
+                    // "탄소" 또는 "배출" 키워드가 포함된 뉴스만 필터링
+                    it.title.contains("탄소") || it.description.contains("탄소") ||
+                            it.title.contains("배출") || it.description.contains("배출")||
+                            it.title.contains("환경") || it.description.contains("환경")
+                }
+                _newsList.value = newsItems // 뉴스 리스트 저장
+                _news.value = newsItems.random() // 랜덤으로 하나의 뉴스 선택
+            } catch (e: Exception) {
+                e.printStackTrace()
+                val errorItem = NewsItem("오류", "뉴스를 불러오지 못했습니다.", "", "")
+                _newsList.value = listOf(errorItem)
+                _news.value = errorItem
+            }
+        }
+    }
+
+    // 새로운 랜덤 뉴스 선택 함수
+    fun showRandomNews() {
+        _news.value = _newsList.value?.random() ?: NewsItem("뉴스가 없음", "최신 환경 뉴스가 없습니다.", "", "")
+    }
+}
+
+// 데이터 모델과 API 인터페이스
+data class NewsItem(
+    val title: String,
+    val description: String,
+    val originallink: String,
+    val pubDate: String
+)
+
+data class NewsResponse(
+    val items: List<NewsItem>
+)
+
+interface NaverNewsApiService {
+    @GET("v1/search/news.json")
+    suspend fun getNews(
+        @Header("X-Naver-Client-Id") clientId: String,
+        @Header("X-Naver-Client-Secret") clientSecret: String,
+        @Query("query") query: String,
+        @Query("sort") sort: String = "date",
+        @Query("display") display: Int = 10 // 기본값을 10으로 설정
+    ): NewsResponse
 }

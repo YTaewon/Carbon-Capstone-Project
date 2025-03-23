@@ -15,6 +15,7 @@ import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.viewModels
 import androidx.lifecycle.ViewModelProvider
 import com.example.myapplication12345.databinding.FragmentHomeBinding
 import com.google.firebase.auth.FirebaseAuth
@@ -42,8 +43,8 @@ class HomeFragment : Fragment() {
 
         // 바인딩 초기화
         _binding = FragmentHomeBinding.inflate(inflater, container, false)
-        binding.homeViewModel = homeViewModel // XML의 데이터 바인딩 변수 설정
-        binding.lifecycleOwner = viewLifecycleOwner // LiveData 관찰 설정
+        binding.homeViewModel = homeViewModel
+        binding.lifecycleOwner = viewLifecycleOwner
 
         val root: View = binding.root
         profileImage = binding.profileImage
@@ -108,14 +109,32 @@ class HomeFragment : Fragment() {
         // 팁 텍스트 관찰
         homeViewModel.currentTip.observe(viewLifecycleOwner) { newTip ->
             binding.tipText.text = newTip
-            Timber.tag("HomeFragment").d("Tip updated: $newTip") // 디버깅용 로그
+            Timber.tag("HomeFragment").d("Tip updated: $newTip")
         }
 
         // "다음 팁" 버튼 클릭 리스너 설정
         binding.nextTipButton.setOnClickListener {
-            Timber.tag("HomeFragment").d("Next tip button clicked") // 클릭 확인용 로그
+            Timber.tag("HomeFragment").d("Next tip button clicked")
             homeViewModel.showRandomTip()
-//            Toast.makeText(context, "다음 팁으로 변경됨", Toast.LENGTH_SHORT).show()
+        }
+
+        // 새로고침 버튼 클릭 시 랜덤 뉴스 갱신
+        binding.refreshButton.setOnClickListener {
+            homeViewModel.showRandomNews()
+            Toast.makeText(context, "뉴스가 갱신되었습니다.", Toast.LENGTH_SHORT).show()
+        }
+
+        // 환경 뉴스 섹션 클릭 시 링크로 이동
+        binding.newsSection.setOnClickListener {
+            homeViewModel.news.value?.let { news ->
+                val link = news.originallink
+                if (link.isNotEmpty()) {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(link))
+                    startActivity(intent)
+                } else {
+                    Toast.makeText(context, "유효한 링크가 없습니다.", Toast.LENGTH_SHORT).show()
+                }
+            } ?: Toast.makeText(context, "뉴스가 없습니다.", Toast.LENGTH_SHORT).show()
         }
 
         // 더블 클릭 이벤트 처리

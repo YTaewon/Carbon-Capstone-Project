@@ -4,9 +4,7 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    tools:context=".ui.home.HomeFragment"
-    >
-
+    tools:context=".ui.home.HomeFragment">
 
     <data>
         <variable
@@ -30,9 +28,7 @@
             android:background="@color/headerBackground"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent">
-
-        </LinearLayout>
+            app:layout_constraintEnd_toEndOf="parent"/>
 
         <!-- ScrollView 섹션 -->
         <ScrollView
@@ -73,7 +69,7 @@
                         android:id="@+id/greetingText"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:text="안녕하세요, 사용자님!"
+                        android:text="@{homeViewModel.text}"
                         android:textColor="@color/white"
                         android:textSize="19sp"
                         android:textStyle="bold"
@@ -122,6 +118,7 @@
 
                 </androidx.constraintlayout.widget.ConstraintLayout>
 
+                <!-- 오늘의 탄소 절약 목표 -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -164,7 +161,7 @@
                         android:max="100" />
                 </LinearLayout>
 
-
+                <!-- 오늘의 탄소 절약 팁 -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -199,7 +196,6 @@
                                 android:textColor="@color/black"
                                 android:layout_marginStart="8dp" />
                         </LinearLayout>
-
                         <ImageButton
                             android:id="@+id/next_tip_button"
                             android:layout_width="wrap_content"
@@ -208,24 +204,23 @@
                             android:background="?attr/selectableItemBackgroundBorderless"
                             android:contentDescription="새로고침"
                             app:tint="@color/headerBackground" />
-
                     </LinearLayout>
                     <TextView
                         android:id="@+id/tip_text"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="환경 팁이 여기에 표시됩니다."
+                        android:text="@{homeViewModel.currentTip}"
                         android:textSize="14sp"
                         android:textColor="@color/black" />
                 </LinearLayout>
 
+                <!-- 이동 거리, 탄소 절감, 완료 챌린지 -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
                     android:padding="16dp"
                     android:clipToPadding="false">
-
                     <LinearLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
@@ -256,7 +251,6 @@
                             android:textSize="12sp"
                             android:textColor="@color/black" />
                     </LinearLayout>
-
                     <LinearLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
@@ -287,7 +281,6 @@
                             android:textSize="12sp"
                             android:textColor="@color/black" />
                     </LinearLayout>
-
                     <LinearLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
@@ -319,7 +312,9 @@
                     </LinearLayout>
                 </LinearLayout>
 
+                <!-- 환경 뉴스 섹션 (네이버 API 데이터 바인딩 적용) -->
                 <LinearLayout
+                    android:id="@+id/news_section"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:background="@drawable/background_white"
@@ -328,103 +323,99 @@
                     android:layout_marginRight="16dp"
                     android:elevation="4dp"
                     android:orientation="vertical"
-                    android:layout_marginBottom="16dp">
+                    android:layout_marginBottom="16dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="?android:attr/selectableItemBackground"> <!-- 클릭 시 시각적 피드백 추가 -->
 
                     <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
-
-                    <!-- 아이콘과 제목 -->
-                    <LinearLayout
-                        android:layout_width="0dp"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
                         android:orientation="horizontal"
                         android:gravity="center_vertical">
 
-                        <!-- Globe 아이콘 -->
-                        <ImageView
-                            android:layout_width="24dp"
-                            android:layout_height="24dp"
-                            android:src="@drawable/ic_global"
-                            android:layout_marginEnd="8dp"
-                            app:tint="@color/headerBackground" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="환경 뉴스"
-                            android:textColor="@color/black"
-                            android:textSize="18sp"
-                            android:textStyle="bold" />
-                    </LinearLayout>
-
-                    <ImageButton
-                        android:id="@+id/refresh_button"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:src="@drawable/ic_refresh"
-                        android:background="?attr/selectableItemBackgroundBorderless"
-                        android:contentDescription="새로고침"
-                        app:tint="@color/headerBackground" />
-                </LinearLayout>
-
-                    <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:layout_marginTop="8dp">
-
-                    <!-- 뉴스 제목 -->
-                    <TextView
-                        android:id="@+id/news_title"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="뉴스 제목"
-                        android:textColor="@color/black"
-                        android:textSize="16sp"
-                        android:textStyle="bold" />
-
-                    <!-- 뉴스 요약 -->
-                    <TextView
-                        android:id="@+id/news_summary"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="뉴스 요약"
-                        android:textColor="@color/black"
-                        android:textSize="12sp"
-                        android:layout_marginTop="4dp" />
-
-                    <!-- 출처와 날짜 -->
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:layout_marginTop="8dp">
-
-                        <TextView
-                            android:id="@+id/news_source"
+                        <LinearLayout
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:text="출처"
-                            android:textColor="@color/black"
-                            android:textSize="14sp" />
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical">
+                            <ImageView
+                                android:layout_width="24dp"
+                                android:layout_height="24dp"
+                                android:src="@drawable/ic_global"
+                                android:layout_marginEnd="8dp"
+                                app:tint="@color/headerBackground" />
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="환경 뉴스"
+                                android:textColor="@color/black"
+                                android:textSize="18sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
 
-                        <TextView
-                            android:id="@+id/news_date"
+                        <ImageButton
+                            android:id="@+id/refresh_button"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="날짜"
+                            android:src="@drawable/ic_refresh"
+                            android:background="?attr/selectableItemBackgroundBorderless"
+                            android:contentDescription="새로고침"
+                            app:tint="@color/headerBackground" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:layout_marginTop="8dp">
+
+                        <TextView
+                            android:id="@+id/news_title"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@{homeViewModel.news != null ? homeViewModel.news.title : `뉴스 제목`}"
                             android:textColor="@color/black"
-                            android:textSize="14sp" />
+                            android:textSize="16sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/news_summary"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@{homeViewModel.news != null ? homeViewModel.news.description : `뉴스 요약`}"
+                            android:textColor="@color/black"
+                            android:textSize="12sp"
+                            android:layout_marginTop="4dp" />
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:layout_marginTop="8dp">
+
+                            <TextView
+                                android:id="@+id/news_source"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@{homeViewModel.news != null ? homeViewModel.news.originallink.split(`/`)[2] : `출처`}"
+                                android:textColor="@color/black"
+                                android:textSize="14sp" />
+
+                            <TextView
+                                android:id="@+id/news_date"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@{homeViewModel.news != null ? homeViewModel.news.pubDate.substring(0, 10) : `날짜`}"
+                                android:textColor="@color/black"
+                                android:textSize="14sp" />
+                        </LinearLayout>
                     </LinearLayout>
                 </LinearLayout>
-                </LinearLayout>
 
-                <!-- 성과 및 진행 상황 섹션 -->
+                <!-- 나의 성과 섹션 -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -434,8 +425,6 @@
                     android:layout_marginLeft="16dp"
                     android:layout_marginRight="16dp"
                     android:padding="16dp">
-
-                    <!-- 나의 성과 -->
                     <TextView
                         android:id="@+id/achievementsLabel"
                         android:layout_width="wrap_content"
@@ -445,7 +434,6 @@
                         android:textSize="16sp"
                         android:textStyle="bold"
                         android:layout_marginStart="8dp" />
-
                     <androidx.recyclerview.widget.RecyclerView
                         android:id="@+id/achievementsRecyclerView"
                         android:layout_width="match_parent"
@@ -456,7 +444,7 @@
                         android:scrollbars="horizontal" />
                 </LinearLayout>
 
-                <!-- 그래프 섹션 -->
+                <!-- 일일 탄소 배출 섹션 -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -467,13 +455,10 @@
                     android:layout_marginRight="16dp"
                     android:layout_marginTop="16dp"
                     android:padding="16dp">
-
-                    <!-- 제목과 "모두보기" -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal">
-
                         <TextView
                             android:id="@+id/textView6"
                             android:layout_width="0dp"
@@ -483,7 +468,6 @@
                             android:textColor="@color/textPrimary"
                             android:textSize="16sp"
                             android:textStyle="bold" />
-
                         <TextView
                             android:id="@+id/textView5"
                             android:layout_width="wrap_content"
@@ -491,8 +475,6 @@
                             android:text="모두보기"
                             android:textColor="@color/textPrimary" />
                     </LinearLayout>
-
-                    <!-- RecyclerView -->
                     <androidx.recyclerview.widget.RecyclerView
                         android:id="@+id/stockView"
                         android:layout_width="match_parent"
@@ -504,6 +486,7 @@
                         android:layout_marginTop="8dp" />
                 </LinearLayout>
 
+                <!-- 메뉴 섹션 -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -514,7 +497,6 @@
                     android:elevation="4dp"
                     android:layout_marginTop="16dp"
                     android:padding="16dp">
-
                     <TextView
                         android:id="@+id/textView7"
                         android:layout_width="match_parent"
@@ -524,20 +506,17 @@
                         android:textSize="16sp"
                         android:textStyle="bold"
                         android:layout_marginStart="8dp" />
-
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
                         android:layout_marginTop="8dp">
-
                         <LinearLayout
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:orientation="vertical"
                             android:padding="8dp">
-
                             <TextView
                                 android:id="@+id/menuLabel1"
                                 android:layout_width="wrap_content"
@@ -549,21 +528,18 @@
                                 android:layout_gravity="center"
                                 android:layout_marginTop="8dp" />
                         </LinearLayout>
-
                         <LinearLayout
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:orientation="vertical"
                             android:padding="8dp">
-
                             <ImageView
                                 android:id="@+id/imageView12"
                                 android:layout_width="40dp"
                                 android:layout_height="40dp"
                                 android:src="@drawable/money"
                                 android:layout_gravity="center" />
-
                             <TextView
                                 android:id="@+id/menuLabel2"
                                 android:layout_width="wrap_content"
@@ -575,21 +551,18 @@
                                 android:layout_gravity="center"
                                 android:layout_marginTop="8dp" />
                         </LinearLayout>
-
                         <LinearLayout
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:orientation="vertical"
                             android:padding="8dp">
-
                             <ImageView
                                 android:id="@+id/imageView13"
                                 android:layout_width="40dp"
                                 android:layout_height="40dp"
                                 android:src="@drawable/pic12"
                                 android:layout_gravity="center" />
-
                             <TextView
                                 android:id="@+id/menuLabel3"
                                 android:layout_width="wrap_content"
@@ -601,21 +574,18 @@
                                 android:layout_gravity="center"
                                 android:layout_marginTop="8dp" />
                         </LinearLayout>
-
                         <LinearLayout
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:orientation="vertical"
                             android:padding="8dp">
-
                             <ImageView
                                 android:id="@+id/imageView14"
                                 android:layout_width="40dp"
                                 android:layout_height="40dp"
                                 android:src="@drawable/pic2"
                                 android:layout_gravity="center" />
-
                             <TextView
                                 android:id="@+id/menuLabel4"
                                 android:layout_width="wrap_content"
@@ -630,6 +600,7 @@
                     </LinearLayout>
                 </LinearLayout>
 
+                <!-- 주간비교 섹션 -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -638,7 +609,6 @@
                     android:elevation="4dp"
                     android:layout_margin="16dp"
                     android:padding="16dp">
-
                     <TextView
                         android:id="@+id/textView14"
                         android:layout_width="match_parent"
@@ -648,7 +618,6 @@
                         android:textSize="16sp"
                         android:textStyle="bold"
                         android:layout_marginStart="8dp" />
-
                     <androidx.recyclerview.widget.RecyclerView
                         android:id="@+id/stockView2"
                         android:layout_width="match_parent"
@@ -669,8 +638,6 @@
             android:layout_height="0dp"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent">
-        </androidx.coordinatorlayout.widget.CoordinatorLayout>
-
+            app:layout_constraintStart_toStartOf="parent"/>
     </androidx.constraintlayout.widget.ConstraintLayout>
 </layout>

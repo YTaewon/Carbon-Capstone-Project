@@ -2,6 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+
     <!-- 사용자의 신체 활동(걷기, 달리기 등) 인식을 위한 퍼미션 (Android 10 이상에서 필요, 런타임 요청 필요) -->
     <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
 
