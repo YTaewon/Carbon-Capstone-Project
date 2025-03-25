@@ -86,9 +86,6 @@
             android:name=".ui.login.JoinActivity"
             android:exported="false" />
         <activity
-            android:name=".ui.login.LoginActivity"
-            android:exported="false" />
-        <activity
             android:name=".ui.login.IntroActivity"
             android:exported="false" />
 

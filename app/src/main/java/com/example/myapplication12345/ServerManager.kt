@@ -9,10 +9,12 @@ import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ServerValue
 import com.google.firebase.database.ValueEventListener
+import kotlinx.coroutines.suspendCancellableCoroutine
 import timber.log.Timber
 import java.util.Calendar
+import kotlin.coroutines.resume
 
-class ScoreManager(private val context: Context) {
+class ServerManager(private val context: Context) {
 
     private val database = FirebaseDatabase.getInstance()
     private val auth = FirebaseAuth.getInstance()
@@ -37,6 +39,14 @@ class ScoreManager(private val context: Context) {
     // 로컬 캐시에 점수 저장하기
     private fun cacheScore(score: Int) {
         prefs.edit().putInt("cachedScore", score).apply()
+    }
+
+    // 로컬 캐시에서 닉네임 가져오기
+    private fun getCachedNickname(): String = prefs.getString("cachedNickname", "익명") ?: "익명"
+
+    // 로컬 캐시에 닉네임 저장하기
+    private fun cacheNickname(nickname: String) {
+        prefs.edit().putString("cachedNickname", nickname).apply()
     }
 
     /**
@@ -106,8 +116,9 @@ class ScoreManager(private val context: Context) {
         val cachedScore = getCachedScore()
         onScoreRetrieved(cachedScore) // 캐시된 점수를 먼저 반환
 
-        val userRef = getUserReference() ?: run {
-            Toast.makeText(context, "로그인이 필요해요.", Toast.LENGTH_SHORT).show()
+        val userRef = getUserReference()
+        if (userRef == null) {
+            onScoreRetrieved(0) // 로그인되지 않은 경우 0 반환
             return
         }
 
@@ -120,6 +131,7 @@ class ScoreManager(private val context: Context) {
 
             override fun onCancelled(databaseError: DatabaseError) {
                 handleError(databaseError.toException(), "점수 가져오기")
+                onScoreRetrieved(cachedScore) // 에러 시 캐시된 값 반환
             }
         })
     }
@@ -157,6 +169,32 @@ class ScoreManager(private val context: Context) {
 
             override fun onCancelled(databaseError: DatabaseError) {
                 handleError(databaseError.toException(), "점수 가져오기")
+            }
+        })
+    }
+
+    /**
+     * 닉네임을 가져오는 메서드
+     */
+    suspend fun getNickname(): String = suspendCancellableCoroutine { continuation ->
+        val cachedNickname = getCachedNickname()
+        val userRef = getUserReference()
+
+        if (userRef == null) {
+            continuation.resume("익명") // 로그인 없으면 "익명" 반환
+            return@suspendCancellableCoroutine
+        }
+
+        userRef.child("nickname").addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(dataSnapshot: DataSnapshot) {
+                val nickname = dataSnapshot.getValue(String::class.java) ?: cachedNickname
+                cacheNickname(nickname)
+                continuation.resume(nickname) // 성공 시 닉네임 반환
+            }
+
+            override fun onCancelled(databaseError: DatabaseError) {
+                handleError(databaseError.toException(), "닉네임 가져오기")
+                continuation.resume(cachedNickname) // 에러 시 캐시된 값 반환
             }
         })
     }

@@ -14,7 +14,7 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import com.example.myapplication12345.R
-import com.example.myapplication12345.ScoreManager
+import com.example.myapplication12345.ServerManager
 import com.example.myapplication12345.databinding.FragmentCalendarBinding
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -30,7 +30,7 @@ class CalendarFragment : Fragment() {
     private val mCal: Calendar = Calendar.getInstance()
     private lateinit var calendarViewModel: CalendarViewModel
     private var selectedPosition: Int = -1
-    private lateinit var scoreManager: ScoreManager
+    private lateinit var serverManager: ServerManager
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -38,7 +38,7 @@ class CalendarFragment : Fragment() {
     ): View {
         calendarViewModel = ViewModelProvider(this)[CalendarViewModel::class.java]
         _binding = FragmentCalendarBinding.inflate(inflater, container, false)
-        scoreManager = ScoreManager(requireContext())
+        serverManager = ServerManager(requireContext())
         val root: View = binding.root
 
         updateDateText()
@@ -108,7 +108,7 @@ class CalendarFragment : Fragment() {
     }
 
     private fun fetchScoreForDay(date: Calendar, position: Int) {
-        scoreManager.getScoresForDate(date) { score ->
+        serverManager.getScoresForDate(date) { score ->
             if (position < dayList.size) {
                 val day = dayList[position]
                 day.productEmissions = score

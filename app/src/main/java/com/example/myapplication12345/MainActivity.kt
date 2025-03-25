@@ -3,6 +3,8 @@ package com.example.myapplication12345
 import android.content.Intent
 import android.os.Bundle
 import android.widget.ImageButton
+import android.widget.ImageView
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.GravityCompat
 import androidx.drawerlayout.widget.DrawerLayout
@@ -15,29 +17,43 @@ import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
 import androidx.activity.OnBackPressedCallback
 import androidx.core.view.get
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
     private lateinit var auth: FirebaseAuth
     private lateinit var binding: ActivityMainBinding
-    private lateinit var scoreManager: ScoreManager
+    private lateinit var serverManager: ServerManager
     private lateinit var drawerLayout: DrawerLayout
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         auth = Firebase.auth
         binding = ActivityMainBinding.inflate(layoutInflater)
-        scoreManager = ScoreManager(this)
+        serverManager = ServerManager(this)
         setContentView(binding.root)
 
         setSupportActionBar(binding.toolbar)
         supportActionBar?.title = ""
 
+        // DrawerLayout과 NavigationView 초기화
         drawerLayout = findViewById(R.id.drawer_layout)
         val navView = findViewById<NavigationView>(R.id.nav_view)
 
+        // 메뉴 버튼 클릭 시 사이드바 열기
         val menuButton = findViewById<ImageButton>(R.id.menu)
         menuButton.setOnClickListener {
             drawerLayout.openDrawer(GravityCompat.START)
+        }
+
+        // 사용자 프로필 설정
+        val headerView = navView.getHeaderView(0) // 헤더 뷰 가져오기
+        val profileName = headerView.findViewById<TextView>(R.id.profile_name)
+        val profileImage = headerView.findViewById<ImageView>(R.id.profile_image)
+
+        lifecycleScope.launch {
+            val nickname = serverManager.getNickname() // suspend 호출로 즉시 값 반환
+            profileName.text = nickname // "익명" 또는 최신 값 설정
         }
 
         navView.setNavigationItemSelectedListener { menuItem ->
@@ -50,7 +66,7 @@ class MainActivity : AppCompatActivity() {
                     intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                     startActivity(intent)
                 }
-                R.id.nav_plus -> scoreManager.addScoreToCurrentUser(5)
+                R.id.nav_plus -> serverManager.addScoreToCurrentUser(5)
             }
             drawerLayout.closeDrawer(GravityCompat.START)
             true

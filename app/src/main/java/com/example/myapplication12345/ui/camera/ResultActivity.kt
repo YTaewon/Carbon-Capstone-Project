@@ -6,18 +6,18 @@ import androidx.appcompat.app.AppCompatActivity
 import android.widget.TextView
 import android.widget.Toast
 import com.example.myapplication12345.R
-import com.example.myapplication12345.ScoreManager
+import com.example.myapplication12345.ServerManager
 
 class ResultActivity : AppCompatActivity() {
 
-    private lateinit var scoreManager: ScoreManager
+    private lateinit var serverManager: ServerManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_result)
 
         // ScoreManager 초기화
-        scoreManager = ScoreManager(this)
+        serverManager = ServerManager(this)
 
         val usage = intent.getDoubleExtra("USAGE", 0.0)
         val carbonEmission = intent.getDoubleExtra("CARBON_EMISSION", 0.0)
@@ -35,7 +35,7 @@ class ResultActivity : AppCompatActivity() {
         val points = convertCarbonToPoints(carbonEmission)
 
         // 변환된 포인트를 사용자 점수에 추가
-        scoreManager.addScoreToCurrentUser(points) {
+        serverManager.addScoreToCurrentUser(points) {
             Toast.makeText(this, "탄소 배출량 절감으로 ${points}점이 추가되었습니다!", Toast.LENGTH_SHORT).show()
         }
     }
