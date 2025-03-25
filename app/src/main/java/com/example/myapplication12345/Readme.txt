@@ -59,3 +59,6 @@
                  RankingAdapter.kt          랭킹 실행
                  RankingFragment.kt         랭킹 백엔드
 
+중요
+local.properties
+MAPS_API_KEY = 구글 맵 api

@@ -14,18 +14,10 @@ import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.myapplication12345.R
-import com.example.myapplication12345.ScoreManager
-import com.example.myapplication12345.ui.login.IntroActivity
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.ktx.auth
 import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.ktx.Firebase
 import timber.log.Timber
 
 class RankingFragment : Fragment() {
-
-    private lateinit var auth: FirebaseAuth
-    private lateinit var scoreManager: ScoreManager
     private lateinit var recyclerView: RecyclerView
     private lateinit var rankingAdapter: RankingAdapter
 
@@ -46,8 +38,6 @@ class RankingFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View? {
         val view = inflater.inflate(R.layout.fragment_ranking, container, false)
-        auth = Firebase.auth
-        scoreManager = ScoreManager(requireContext())
 
         // RecyclerView 초기화
         recyclerView = view.findViewById(R.id.rv_profile)
@@ -77,19 +67,6 @@ class RankingFragment : Fragment() {
                     btnMonthly -> fetchRankingData(TYPE_MONTHLY)
                 }
             }
-        }
-
-        // 로그아웃 버튼 설정
-        view.findViewById<Button>(R.id.logoutBtn).setOnClickListener {
-            auth.signOut()
-            val intent = Intent(requireContext(), IntroActivity::class.java)
-            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            startActivity(intent)
-        }
-
-        // Plus 버튼 설정
-        view.findViewById<Button>(R.id.plusBtn).setOnClickListener {
-            scoreManager.addScoreToCurrentUser(5)
         }
 
         // 시스템 바 Insets 설정

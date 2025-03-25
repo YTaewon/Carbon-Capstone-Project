@@ -78,6 +78,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private lateinit var selectTransportButton: ImageView
     private lateinit var toggleDistanceButton: ImageView
     private lateinit var calendarButton: ImageView
+    private lateinit var datetext: TextView
     private lateinit var testMapButton: Button
     private lateinit var findnowlocateButton: ImageView
     private lateinit var fusedLocationClient: FusedLocationProviderClient
@@ -138,6 +139,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         selectTransportButton = view.findViewById(R.id.select_transport_button)
         toggleDistanceButton = view.findViewById(R.id.toggle_distance_button)
         calendarButton = view.findViewById(R.id.calendar_button)
+        datetext = view.findViewById(R.id.date_text)
         testMapButton = view.findViewById(R.id.test_map)
         findnowlocateButton = view.findViewById(R.id.find_now_locate_button)
     }
@@ -168,6 +170,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         selectTransportButton.setOnClickListener { showTransportSelectionDialog() }
         toggleDistanceButton.setOnClickListener { toggleDistanceInfoVisibility() }
         calendarButton.setOnClickListener { showDatePickerDialog() }
+        datetext.setOnClickListener { showDatePickerDialog() }
         testMapButton.setOnClickListener { handleTestMapButtonClick() }
         findnowlocateButton.setOnClickListener {
             if (!isMyLocationShown) {

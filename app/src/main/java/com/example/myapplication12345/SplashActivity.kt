@@ -68,16 +68,19 @@ class SplashActivity : AppCompatActivity() {
             add(Manifest.permission.ACCESS_WIFI_STATE)
             add(Manifest.permission.ACCESS_FINE_LOCATION)
             add(Manifest.permission.READ_PHONE_STATE)
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q){
+                add(Manifest.permission.ACTIVITY_RECOGNITION)
+            }
+
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 add(Manifest.permission.POST_NOTIFICATIONS)
+                add(Manifest.permission.READ_MEDIA_IMAGES)
             }
 
             if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.S_V2) {
                 add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
                 add(Manifest.permission.READ_EXTERNAL_STORAGE)
-            }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                add(Manifest.permission.READ_MEDIA_IMAGES)
             }
         }
 
@@ -99,15 +102,19 @@ class SplashActivity : AppCompatActivity() {
             add(Manifest.permission.ACCESS_WIFI_STATE)
             add(Manifest.permission.ACCESS_FINE_LOCATION)
             add(Manifest.permission.READ_PHONE_STATE)
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q){
+                add(Manifest.permission.ACTIVITY_RECOGNITION)
+            }
+
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 add(Manifest.permission.POST_NOTIFICATIONS)
+                add(Manifest.permission.READ_MEDIA_IMAGES)
             }
+
             if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.S_V2) {
                 add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
                 add(Manifest.permission.READ_EXTERNAL_STORAGE)
-            }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                add(Manifest.permission.READ_MEDIA_IMAGES)
             }
         }
 

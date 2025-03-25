@@ -1,24 +1,36 @@
 <?xml version="1.0" encoding="utf-8"?>
-<layout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto">
+<androidx.drawerlayout.widget.DrawerLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/drawer_layout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
 
+    <!-- 기존 LinearLayout (메인 콘텐츠) -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical">
 
-        <!-- Toolbar -->
         <androidx.appcompat.widget.Toolbar
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
-            android:layout_height="60dp"
-            android:background="@color/headerBackground"
-            android:padding="8dp">
+            android:layout_height="50dp"
+            android:background="@color/headerBackground">
+
+            <ImageButton
+                android:id="@+id/menu"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_gravity="start"
+                android:background="@color/headerBackground"
+                android:layout_marginRight="34dp"
+                android:src="@drawable/ic_menu"/>
 
             <ImageView
                 android:id="@+id/logo"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
                 android:src="@drawable/img_logo" />
 
             <TextView
@@ -26,22 +38,28 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center_vertical"
-                android:layout_marginStart="20dp"
+                android:layout_marginStart="24dp"
                 android:text="탄소중립"
                 android:textColor="@color/white"
-                android:textSize="20sp"
+                android:textSize="18sp"
                 android:textStyle="bold" />
+
+<!--            <ImageView-->
+<!--                android:id="@+id/user"-->
+<!--                android:layout_width="30dp"-->
+<!--                android:layout_height="30dp"-->
+<!--                android:layout_marginEnd="16dp"-->
+<!--                android:layout_gravity="end"-->
+<!--                android:src="@drawable/user" />-->
 
         </androidx.appcompat.widget.Toolbar>
 
-        <!-- ViewPager2 -->
         <androidx.viewpager2.widget.ViewPager2
             android:id="@+id/viewPager"
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1" />
 
-        <!-- BottomNavigationView -->
         <com.google.android.material.bottomnavigation.BottomNavigationView
             android:id="@+id/bottomNavigation"
             android:layout_width="match_parent"
@@ -52,6 +70,15 @@
             app:itemActiveIndicatorStyle="@style/Theme.OneThree.Indicator"
             app:itemTextColor="@color/headerBackground"
             app:itemIconTint="@color/headerBackground"/>
-
     </LinearLayout>
-</layout>
+
+    <!-- NavigationView에 헤더 추가 -->
+    <com.google.android.material.navigation.NavigationView
+        android:id="@+id/nav_view"
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:layout_gravity="start"
+        app:headerLayout="@layout/sidebar_nav_header"
+        app:menu="@menu/sidebar_nav_menu" />
+
+</androidx.drawerlayout.widget.DrawerLayout>
