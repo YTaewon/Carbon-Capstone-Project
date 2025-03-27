@@ -4,7 +4,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.myapplication12345.api.NaverNewsApiService
+import com.example.myapplication12345.ui.news.NaverNewsApiService
 import com.example.myapplication12345.data.NewsItem
 import com.example.myapplication12345.data.NewsResponse
 import kotlinx.coroutines.launch

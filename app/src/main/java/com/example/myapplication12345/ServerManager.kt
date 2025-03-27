@@ -110,7 +110,7 @@ class ServerManager(private val context: Context) {
     }
 
     /**
-     * 점수를 가져오는 메서드 (캐시 우선)
+     * 점수를 가져오는 메서드
      */
     fun getScore(onScoreRetrieved: (Int) -> Unit) {
         val cachedScore = getCachedScore()

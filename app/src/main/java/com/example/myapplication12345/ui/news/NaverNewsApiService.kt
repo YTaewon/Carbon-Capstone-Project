@@ -1,4 +1,4 @@
-package com.example.myapplication12345.api
+package com.example.myapplication12345.ui.news
 
 import com.example.myapplication12345.data.NewsResponse
 import retrofit2.http.GET

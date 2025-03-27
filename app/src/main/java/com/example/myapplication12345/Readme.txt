@@ -1,7 +1,7 @@
 │
  myapplication12345
-     │  MainActivity.kt                     매인
-     │  ScoreManager.kt                     서버 연결 및 점수 설정
+     │  MainActivity.kt                     메인 네비게이션바 및 상단 툴바 설정
+     │  ServerManager.kt                    서버 연결
      │  SplashActivity.kt                   로딩 화면 및 퍼미셜
      │  ViewPagerAdapter.kt                 네비게이션바 설정
      │
@@ -42,13 +42,15 @@
          │      HomeViewModel.kt            홈 실행
          │
          ├─login
-         │      IntroActivity.kt            로딩 화면
+         │      IntroActivity.kt            로그인 및 회원 가입 이동 버튼 화면
          │      JoinActivity.kt             회원 가입 화면
-         │      LoginActivity.kt            로그인 화면
          │
          ├─map
-         │      MapFragment.kt              지도 백엔드
-         │      MapViewModel.kt             지도 실행
+         │      MapFragment.kt              지도 실행 및 백엔드
+         │
+         ├─news
+         │      NaverNewsApiService.kt      네이비 뉴스 api
+         │      NewsData.kt                 네이버 뉴스 가져올 데이터 설정
          │
          ├─pedometer
          │      PedometerFragment.kt        만보기 백엔드
