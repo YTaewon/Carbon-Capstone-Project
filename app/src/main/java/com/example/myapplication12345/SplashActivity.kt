@@ -16,6 +16,8 @@ import com.google.firebase.ktx.Firebase
 import timber.log.Timber
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.AlarmManager
+import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import com.example.myapplication12345.AI.SensorDataService
@@ -59,9 +61,18 @@ class SplashActivity : AppCompatActivity() {
             Timber.tag(TAG).d("User is not null")
             Timber.tag(TAG).d("모든 권한 확인됨, 서비스 시작")
             startSensorService()
+            setDailyAlarm()
             navigateToMain()
         }
     }
+
+    private fun setDailyAlarm() {
+        val alarmIntent = Intent(this, AlarmBootReceiver::class.java).apply {
+            action = "SET_ALARM"
+        }
+        sendBroadcast(alarmIntent)
+    }
+
 
     private fun hasPermissions(): Boolean {
         val requiredPermissions = ArrayList<String>().apply {
@@ -82,6 +93,8 @@ class SplashActivity : AppCompatActivity() {
                 add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
                 add(Manifest.permission.READ_EXTERNAL_STORAGE)
             }
+
+
         }
 
         return requiredPermissions.all { permission ->
@@ -123,6 +136,15 @@ class SplashActivity : AppCompatActivity() {
             permissionsToRequest.toTypedArray(),
             PERMISSION_REQUEST_CODE
         )
+
+        // 정확한 알람 권한 요청
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+            if (!alarmManager.canScheduleExactAlarms()) {
+                val intent = Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
+                startActivity(intent)
+            }
+        }
     }
 
     override fun onRequestPermissionsResult(

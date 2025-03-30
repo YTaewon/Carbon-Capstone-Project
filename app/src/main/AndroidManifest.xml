@@ -56,6 +56,13 @@
 
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
+
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
+
+
+
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -89,6 +96,12 @@
             android:name=".ui.login.IntroActivity"
             android:exported="false" />
 
+        <receiver android:name=".AlarmBootReceiver" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+            </intent-filter>
+        </receiver>
+
         <!-- 위치 기반 포그라운드 서비스로 실행되는 SensorDataService -->
         <service android:name=".AI.SensorDataService"
             android:foregroundServiceType="location|dataSync"
@@ -101,6 +114,8 @@
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="${MAPS_API_KEY}" />
+
+
 
     </application>
 
