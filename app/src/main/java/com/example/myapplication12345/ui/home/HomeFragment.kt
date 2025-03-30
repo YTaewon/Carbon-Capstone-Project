@@ -15,12 +15,18 @@ import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.viewModels
+import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.ViewModelProvider
 import com.example.myapplication12345.databinding.FragmentHomeBinding
+import com.example.myapplication12345.ui.pedometer.PedometerFragment
+import com.example.myapplication12345.ui.pedometer.PedometerViewModel
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.*
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
 import timber.log.Timber
+import java.text.DecimalFormat
 
 class HomeFragment : Fragment() {
 
@@ -28,6 +34,7 @@ class HomeFragment : Fragment() {
     private val binding get() = _binding!!
 
     private lateinit var homeViewModel: HomeViewModel
+    private val pedometerViewModel: PedometerViewModel by activityViewModels()
     private lateinit var profileImage: ImageView
     private lateinit var galleryLauncher: ActivityResultLauncher<Intent>
     private var doubleClick = false
@@ -38,10 +45,7 @@ class HomeFragment : Fragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        // ViewModel 초기화
         homeViewModel = ViewModelProvider(this)[HomeViewModel::class.java]
-
-        // 바인딩 초기화
         _binding = FragmentHomeBinding.inflate(inflater, container, false)
         binding.homeViewModel = homeViewModel
         binding.lifecycleOwner = viewLifecycleOwner
@@ -49,7 +53,6 @@ class HomeFragment : Fragment() {
         val root: View = binding.root
         profileImage = binding.profileImage
 
-        // 갤러리 런처 초기화
         galleryLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == Activity.RESULT_OK) {
                 selectedImageUri = result.data?.data
@@ -112,6 +115,12 @@ class HomeFragment : Fragment() {
             Timber.tag("HomeFragment").d("Tip updated: $newTip")
         }
 
+        // 이동 거리 관찰
+        val decimalFormat = DecimalFormat("#.##")
+        pedometerViewModel.distanceKm.observe(viewLifecycleOwner) { distance ->
+            binding.tvTotalTrees.text = "${decimalFormat.format(distance)}km"
+        }
+
         // "다음 팁" 버튼 클릭 리스너 설정
         binding.nextTipButton.setOnClickListener {
             Timber.tag("HomeFragment").d("Next tip button clicked")
@@ -146,6 +155,12 @@ class HomeFragment : Fragment() {
                 doubleClick = true
                 doubleHandler.postDelayed({ doubleClick = false }, 500)
             }
+        }
+
+        // PedometerFragment 다이얼로그 띄우기
+        binding.distanceContainer.setOnClickListener {
+            val pedometerFragment = PedometerFragment()
+            pedometerFragment.show(childFragmentManager, "PedometerFragment")
         }
 
         return root

@@ -16,9 +16,23 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -27,20 +41,22 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
-import androidx.fragment.app.Fragment
+import androidx.fragment.app.DialogFragment
+import androidx.fragment.app.activityViewModels
 import timber.log.Timber
 import java.text.DecimalFormat
 
-class PedometerFragment : Fragment(), SensorEventListener {
+class PedometerFragment : DialogFragment(), SensorEventListener {
 
     private lateinit var sensorManager: SensorManager
     private var stepSensor: Sensor? = null
-    private val stepsState = mutableStateOf(0)
     private var initialSteps = -1
     private var totalGoal = 10000
     private var startTime by mutableStateOf(0L)
     private val caloriesPerStep = 0.03
     private val distancePerStep = 0.64
+
+    private val viewModel: PedometerViewModel by activityViewModels()
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -87,9 +103,19 @@ class PedometerFragment : Fragment(), SensorEventListener {
         return ComposeView(requireContext()).apply {
             setContent {
                 MaterialTheme {
-                    StepCounterScreen(steps = stepsState.value, goal = totalGoal)
+                    StepCounterScreen(steps = viewModel.steps.value ?: 0, goal = totalGoal)
                 }
             }
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        dialog?.window?.let { window ->
+            val params = window.attributes
+            params.width = (resources.displayMetrics.widthPixels * 0.8).toInt() // 화면 너비의 80%
+            params.height = (resources.displayMetrics.heightPixels * 0.7).toInt() // 내용에 맞게 높이 조절
+            window.attributes = params
         }
     }
 
@@ -121,13 +147,15 @@ class PedometerFragment : Fragment(), SensorEventListener {
                 initialSteps = totalSteps
                 prefs.edit().putInt("initial_steps", initialSteps).apply()
             }
-            stepsState.value = totalSteps - initialSteps
-            Timber.tag("PedometerFragment").d("Steps updated: ${stepsState.value}")
+            val steps = totalSteps - initialSteps
+            viewModel.updateSteps(steps) // ViewModel에 걸음 수 업데이트
+            Timber.tag("PedometerFragment").d("Steps updated: $steps")
         }
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
 
+    // StepCounterScreen 함수는 이전과 동일하게 유지 (steps 파라미터만 viewModel.steps.value로 변경됨)
     @Composable
     fun StepCounterScreen(steps: Int, goal: Int) {
         var mainStat by remember { mutableStateOf("steps") }
@@ -150,7 +178,7 @@ class PedometerFragment : Fragment(), SensorEventListener {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFFF5F5F5)) // 백그라운드 색상 설정
+                .background(Color(0xFFF5F5F5))
                 .padding(16.dp),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally

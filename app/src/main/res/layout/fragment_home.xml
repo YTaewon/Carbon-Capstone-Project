@@ -222,6 +222,7 @@
                     android:padding="16dp"
                     android:clipToPadding="false">
                     <LinearLayout
+                        android:id="@+id/distance_container"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
