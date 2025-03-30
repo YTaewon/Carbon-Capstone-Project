@@ -1,5 +1,7 @@
 package com.example.myapplication12345.AI;
 
+import static com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY;
+
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -217,7 +219,7 @@ public class SensorDataService extends Service {
 
     private void collectGPSData(long timestamp) {
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            fusedLocationProviderClient.getLastLocation()
+            fusedLocationProviderClient.getCurrentLocation(PRIORITY_HIGH_ACCURACY, null)
                     .addOnSuccessListener(location -> {
                         if (location != null) {
                             Map<String, Object> data = new LinkedHashMap<>();
