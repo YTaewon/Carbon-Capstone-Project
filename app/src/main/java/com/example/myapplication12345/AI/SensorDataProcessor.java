@@ -32,7 +32,7 @@ import timber.log.Timber;
 
 public class SensorDataProcessor {
     private static final String TAG = "SensorDataProcessor";
-    private static final String MODEL_FILENAME = "model.ptl";
+    private static final String MODEL_FILENAME = "model_optimized2.ptl";
     // TRANSPORT_MODES 확장: 11개 요소로 정의
     private static final String[] TRANSPORT_MODES = {
             "WALK", "WALK", "BIKE", "CAR", "BUS",
@@ -150,9 +150,10 @@ public class SensorDataProcessor {
         List<Map<String, Object>> combinedData = new ArrayList<>();
         for (int i = 0; i < MIN_TIMESTAMP_COUNT; i++) {
             Map<String, Object> row = new LinkedHashMap<>();
-            row.putAll(getWithFallback(sortedAP, 0));
-            row.putAll(getWithFallback(sortedBTS, i % Math.min(12, sortedBTS.size())));
-            row.putAll(getWithFallback(sortedGPS, i % Math.min(12, sortedGPS.size())));
+            row.putAll(getWithFallback(sortedGPS, 0));
+//            row.putAll(getWithFallback(sortedAP, 0));
+//            row.putAll(getWithFallback(sortedBTS, i % Math.min(12, sortedBTS.size())));
+//            row.putAll(getWithFallback(sortedGPS, i % Math.min(12, sortedGPS.size())));
             row.putAll(getWithFallback(sortedIMU, i));
             combinedData.add(row);
         }
@@ -166,7 +167,7 @@ public class SensorDataProcessor {
     }
 
     private static Tensor convertListMapToTensor(List<Map<String, Object>> dataList) {
-        int numRows = 340; // 모델 입력 크기에 맞게 조정 필요
+        int numRows = 334; // 모델 입력 크기에 맞게 조정 필요
         int numCols = MIN_TIMESTAMP_COUNT;
         float[] dataArray = new float[numRows * numCols];
         int index = 0;

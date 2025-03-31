@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.activityViewModels
+import com.example.myapplication12345.R
 import timber.log.Timber
 import java.text.DecimalFormat
 
@@ -114,8 +115,9 @@ class PedometerFragment : DialogFragment(), SensorEventListener {
         dialog?.window?.let { window ->
             val params = window.attributes
             params.width = (resources.displayMetrics.widthPixels * 0.8).toInt() // 화면 너비의 80%
-            params.height = (resources.displayMetrics.heightPixels * 0.7).toInt() // 내용에 맞게 높이 조절
+            params.height = (resources.displayMetrics.heightPixels * 0.5).toInt() // 내용에 맞게 높이 조절
             window.attributes = params
+            window.setBackgroundDrawableResource(R.drawable.background_white) // 라운드 배경 설정
         }
     }
 
@@ -185,7 +187,7 @@ class PedometerFragment : DialogFragment(), SensorEventListener {
         ) {
             CircularProgressIndicator(
                 progress = { progress.coerceAtMost(1f) },
-                modifier = Modifier.size(200.dp),
+                modifier = Modifier.size(150.dp),
                 color = progressColor,
                 trackColor = trackColor,
                 strokeWidth = 12.dp,
