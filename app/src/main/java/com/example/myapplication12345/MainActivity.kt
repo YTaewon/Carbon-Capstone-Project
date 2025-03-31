@@ -11,6 +11,7 @@ import androidx.drawerlayout.widget.DrawerLayout
 import androidx.viewpager2.widget.ViewPager2
 import com.example.myapplication12345.databinding.ActivityMainBinding
 import com.example.myapplication12345.ui.login.IntroActivity
+import com.example.myapplication12345.ui.sidebar.foodcalculator.FoodCalculatorActivity
 import com.google.android.material.navigation.NavigationView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.ktx.auth
@@ -58,7 +59,9 @@ class MainActivity : AppCompatActivity() {
 
         navView.setNavigationItemSelectedListener { menuItem ->
             when (menuItem.itemId) {
-                R.id.nav_home -> {}
+                R.id.nav_home -> {
+                    binding.viewPager.currentItem = 0
+                }
                 R.id.nav_settings -> {}
                 R.id.nav_logout -> {
                     auth.signOut()
@@ -66,7 +69,13 @@ class MainActivity : AppCompatActivity() {
                     intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                     startActivity(intent)
                 }
-                R.id.nav_plus -> serverManager.addScoreToCurrentUser(5)
+                R.id.nav_plus -> {
+                    serverManager.addScoreToCurrentUser(5)
+                }
+                R.id.nav_food -> {
+                    val intent = Intent(this, FoodCalculatorActivity::class.java)
+                    startActivity(intent)
+                }
             }
             drawerLayout.closeDrawer(GravityCompat.START)
             true

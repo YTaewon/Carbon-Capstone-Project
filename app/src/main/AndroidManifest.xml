@@ -96,6 +96,10 @@
             android:name=".ui.login.IntroActivity"
             android:exported="false" />
 
+        <activity
+            android:name=".ui.sidebar.foodcalculator.FoodCalculatorActivity"
+            android:exported="false" />
+
         <receiver android:name=".AlarmBootReceiver" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED"/>

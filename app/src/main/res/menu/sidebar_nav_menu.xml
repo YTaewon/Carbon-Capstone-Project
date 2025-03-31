@@ -4,16 +4,27 @@
     <item
         android:id="@+id/nav_profile"
         android:title="프로필" />
+
     <item
         android:id="@+id/nav_home"
         android:title="홈" />
+
     <item
         android:id="@+id/nav_settings"
         android:title="설정" />
+
+    <item
+        android:id="@+id/nav_food"
+        android:title="탄소 계산기(음식)" />
+
     <item
         android:id="@+id/nav_logout"
         android:title="로그아웃" />
+
     <item
         android:id="@+id/nav_plus"
         android:title="점수추가" />
+
+
+
 </menu>
