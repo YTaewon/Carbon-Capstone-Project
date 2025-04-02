@@ -6,7 +6,6 @@ import androidx.camera.core.ImageProxy
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.common.InputImage
 
-
 //더이상 사용 되지 않음
 class BarcodeAnalyzer(private val onBarcodeDetected: (String) -> Unit) : ImageAnalysis.Analyzer {
     private val scanner = BarcodeScanning.getClient()

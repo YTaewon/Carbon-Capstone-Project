@@ -25,6 +25,4 @@
         android:id="@+id/nav_plus"
         android:title="점수추가" />
 
-
-
 </menu>

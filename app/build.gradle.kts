@@ -96,6 +96,7 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 
+    implementation ("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
     // ML Kit 바코드 스캐닝
     implementation("com.google.mlkit:barcode-scanning:17.0.3")
 

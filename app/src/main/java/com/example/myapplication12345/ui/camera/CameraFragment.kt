@@ -1,7 +1,7 @@
 package com.example.myapplication12345.ui.camera
 
 import android.Manifest
-import android.content.Intent
+import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -26,6 +26,7 @@ import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.korean.KoreanTextRecognizerOptions
 import timber.log.Timber
 import java.nio.ByteBuffer
+import java.util.Calendar
 
 class CameraFragment : Fragment() {
     private var _binding: FragmentCameraBinding? = null
@@ -37,7 +38,13 @@ class CameraFragment : Fragment() {
     private var isPermissionRequested = false
 
     private val getContent = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-        uri?.let { processImageUri(it) }
+        uri?.let {
+            if (canInputThisMonth()) {
+                processImageUri(it)
+            } else {
+                Toast.makeText(requireContext(), "이 달에는 이미 입력했습니다.", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     private val requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
@@ -69,7 +76,7 @@ class CameraFragment : Fragment() {
 
         if (allPermissionsGranted()) {
             binding.startCameraButton.isEnabled = true
-            binding.startCameraButton.visibility = View.VISIBLE // 초기 상태에서 버튼 보이게
+            binding.startCameraButton.visibility = View.VISIBLE
         } else if (!isPermissionRequested) {
             requestPermissionLauncher.launch(Manifest.permission.CAMERA)
         } else {
@@ -86,30 +93,72 @@ class CameraFragment : Fragment() {
         }
 
         binding.captureButton.setOnClickListener {
-            capturePhoto()
+            if (canInputThisMonth()) {
+                capturePhoto()
+            } else {
+                Toast.makeText(requireContext(), "이 달에는 이미 입력했습니다.", Toast.LENGTH_SHORT).show()
+            }
         }
 
         binding.galleryButton.setOnClickListener {
             getContent.launch("image/*")
         }
-    }
 
-    override fun onStart() {
-        super.onStart()
-        if (allPermissionsGranted() && cameraProvider == null) {
-            binding.startCameraButton.visibility = View.VISIBLE // 네비게이션으로 돌아올 때 버튼 표시
-            Timber.d("Fragment started, showing startCameraButton")
+        // 저장된 값 표시
+        displaySavedResult()
+
+        // Pull-to-Refresh 설정
+        binding.swipeRefreshLayout.setOnRefreshListener {
+            displaySavedResult()
+            binding.swipeRefreshLayout.isRefreshing = false // 새로고침 완료
         }
     }
 
-    override fun onStop() {
-        super.onStop()
-        cameraProvider?.unbindAll() // 카메라 리소스 해제
-        cameraProvider = null
-        if (allPermissionsGranted()) {
-            binding.startCameraButton.visibility = View.VISIBLE // 네비게이션 이동 시 버튼 다시 표시
+    // 저장된 결과 표시
+    private fun displaySavedResult() {
+        val prefs = requireContext().getSharedPreferences("CameraInputPrefs", Context.MODE_PRIVATE)
+        val lastInputTime = prefs.getLong("lastInputTime", 0L)
+
+        if (lastInputTime != 0L && isSameMonth(lastInputTime)) {
+            val usage = prefs.getFloat("usage", -1f).toDouble()
+            val carbonEmission = prefs.getFloat("carbonEmission", -1f).toDouble()
+            if (usage >= 0 && carbonEmission >= 0) {
+                binding.resultText.text = buildString {
+                    append("전기 사용량: $usage kWh\n")
+                    append("탄소 배출량: %.2f kg CO2".format(carbonEmission))
+                }
+            } else {
+                binding.resultText.text = "저장된 데이터가 없습니다."
+            }
+        } else {
+            binding.resultText.text = "이 달의 데이터가 없습니다."
         }
-        Timber.d("Fragment stopped, camera unbound, button visible")
+    }
+
+    // 현재 달과 같은 달인지 확인
+    private fun isSameMonth(timestamp: Long): Boolean {
+        val currentCalendar = Calendar.getInstance()
+        val lastInputCalendar = Calendar.getInstance().apply { timeInMillis = timestamp }
+        return currentCalendar.get(Calendar.YEAR) == lastInputCalendar.get(Calendar.YEAR) &&
+                currentCalendar.get(Calendar.MONTH) == lastInputCalendar.get(Calendar.MONTH)
+    }
+
+    // 월별 입력 가능 여부 확인
+    private fun canInputThisMonth(): Boolean {
+        val prefs = requireContext().getSharedPreferences("CameraInputPrefs", Context.MODE_PRIVATE)
+        val lastInputTime = prefs.getLong("lastInputTime", 0L)
+        return lastInputTime == 0L || !isSameMonth(lastInputTime)
+    }
+
+    // 입력 시간과 결과 저장
+    private fun saveInputTimeAndResult(usage: Double, carbonEmission: Double) {
+        val prefs = requireContext().getSharedPreferences("CameraInputPrefs", Context.MODE_PRIVATE)
+        with(prefs.edit()) {
+            putLong("lastInputTime", System.currentTimeMillis())
+            putFloat("usage", usage.toFloat())
+            putFloat("carbonEmission", carbonEmission.toFloat())
+            apply()
+        }
     }
 
     private fun startCamera() {
@@ -149,7 +198,7 @@ class CameraFragment : Fragment() {
             ContextCompat.getMainExecutor(requireContext()),
             object : ImageCapture.OnImageCapturedCallback() {
                 override fun onCaptureSuccess(imageProxy: ImageProxy) {
-                    val bitmap = imageProxy.toBitmap()
+                    val bitmap = imageProxy.toBitmap
                     imageProxy.close()
                     val inputImage = InputImage.fromBitmap(bitmap, 0)
                     recognizeText(inputImage)
@@ -198,7 +247,9 @@ class CameraFragment : Fragment() {
                     .firstOrNull() ?: extractUsage(visionText.text)
 
                 if (usage != null) {
-                    calculateAndDisplayCarbon(usage)
+                    val carbonEmission = usage * EMISSION_FACTOR
+                    calculateAndDisplayCarbon(usage, carbonEmission)
+                    saveInputTimeAndResult(usage, carbonEmission)
                 } else {
                     binding.resultText.text = buildString {
                         append("전기 사용량을 찾을 수 없습니다.\n다른 이미지를 시도해보세요.")
@@ -255,13 +306,11 @@ class CameraFragment : Fragment() {
         return numberMatch
     }
 
-    private fun calculateAndDisplayCarbon(usage: Double) {
-        val carbonEmission = usage * EMISSION_FACTOR
-        val intent = Intent(requireContext(), ResultActivity::class.java).apply {
-            putExtra("USAGE", usage)
-            putExtra("CARBON_EMISSION", carbonEmission)
+    private fun calculateAndDisplayCarbon(usage: Double, carbonEmission: Double) {
+        binding.resultText.text = buildString {
+            append("전기 사용량: $usage kWh\n")
+            append("탄소 배출량: %.2f kg CO2".format(carbonEmission))
         }
-        startActivity(intent)
     }
 
     private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {

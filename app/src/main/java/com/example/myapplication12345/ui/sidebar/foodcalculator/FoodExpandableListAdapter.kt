@@ -47,7 +47,7 @@ class FoodExpandableListAdapter(
         groupPosition: Int, childPosition: Int, isLastChild: Boolean, convertView: View?, parent: ViewGroup?
     ): View {
         val view = convertView ?: LayoutInflater.from(context).inflate(
-            R.layout.list_item_food, parent, false
+            R.layout.item_food, parent, false
         )
         val foodItem = filteredCategories[groupPosition].items[childPosition]
 

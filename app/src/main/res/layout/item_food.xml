@@ -16,7 +16,7 @@
         android:id="@+id/food_quantity"
         android:layout_width="100dp"
         android:layout_height="wrap_content"
-        android:hint="인분/개수"
+        android:hint=""
         android:inputType="number"
         android:textSize="16sp" />
 </LinearLayout>
