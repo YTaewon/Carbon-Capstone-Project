@@ -223,7 +223,7 @@
             android:background="@drawable/register_button_background"
             android:text="회원가입"
             android:textAllCaps="false"
-            android:textColor="@color/colorPrimary"
+            android:textColor="@color/black"
             android:textSize="13sp"
             android:textStyle="bold"
             app:layout_constraintTop_toBottomOf="@id/loginBtn"

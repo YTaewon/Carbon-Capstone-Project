@@ -85,13 +85,18 @@
                 android:textSize="23sp" />
         </LinearLayout>
 
-        <Button
+        <androidx.appcompat.widget.AppCompatButton
             android:id="@+id/calculateButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+             android:background="@drawable/background_green_dark"
             android:text="결과보기"
+            android:elevation="4dp"
+            android:textStyle="bold"
+            android:textColor="@color/white"
             android:layout_gravity="center"
             android:layout_marginBottom="16dp"/>
+
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
