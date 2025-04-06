@@ -17,6 +17,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.ViewModelProvider
+import com.bumptech.glide.Glide
+import com.example.myapplication12345.R
 import com.example.myapplication12345.databinding.FragmentHomeBinding
 import com.example.myapplication12345.ui.pedometer.PedometerFragment
 import com.example.myapplication12345.ui.pedometer.PedometerViewModel
@@ -25,6 +27,7 @@ import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
+import com.google.firebase.storage.FirebaseStorage
 import timber.log.Timber
 import java.text.DecimalFormat
 
@@ -41,6 +44,11 @@ class HomeFragment : Fragment() {
     private val doubleHandler = Handler(Looper.getMainLooper())
     private var selectedImageUri: Uri? = null
 
+    // Firebase 관련 변수
+    private lateinit var storage: FirebaseStorage
+    private lateinit var database: FirebaseDatabase
+    private val auth = FirebaseAuth.getInstance()
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -53,21 +61,27 @@ class HomeFragment : Fragment() {
         val root: View = binding.root
         profileImage = binding.profileImage
 
+        // Firebase 초기화
+        storage = FirebaseStorage.getInstance()
+        database = FirebaseDatabase.getInstance()
+
+        // 갤러리 런처 설정
         galleryLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == Activity.RESULT_OK) {
                 selectedImageUri = result.data?.data
                 if (selectedImageUri != null) {
-                    profileImage.setImageURI(selectedImageUri)
-                    Toast.makeText(context, "프로필 이미지가 변경되었습니다.", Toast.LENGTH_SHORT).show()
+                    profileImage.setImageURI(selectedImageUri) // 미리보기
+                    uploadImageToFirebase(selectedImageUri!!) // Firebase에 업로드
                 }
             }
         }
 
         // Firebase 데이터 가져오기
-        val database = FirebaseDatabase.getInstance()
-        val userId = FirebaseAuth.getInstance().currentUser?.uid
+        val userId = auth.currentUser?.uid
         if (userId != null) {
             val userRef = database.getReference("users").child(userId)
+
+            // 닉네임
             userRef.child("nickname").addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(dataSnapshot: DataSnapshot) {
                     val nickname = dataSnapshot.getValue(String::class.java)
@@ -78,6 +92,8 @@ class HomeFragment : Fragment() {
                     binding.nicknameText.text = "익명"
                 }
             })
+
+            // 점수
             userRef.child("score").addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(dataSnapshot: DataSnapshot) {
                     val score = dataSnapshot.getValue(Int::class.java)
@@ -88,6 +104,8 @@ class HomeFragment : Fragment() {
                     binding.scoreText.text = "점수: 0"
                 }
             })
+
+            // 포인트
             userRef.child("point").addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(dataSnapshot: DataSnapshot) {
                     val point = dataSnapshot.getValue(Int::class.java)
@@ -95,13 +113,16 @@ class HomeFragment : Fragment() {
                 }
                 override fun onCancelled(databaseError: DatabaseError) {
                     Timber.tag("Firebase").w(databaseError.toException(), "loadPoint:onCancelled")
-                    binding.pointText.text = "탄소 포인트: 0"
+                    binding.pointText.text = "탄소 배출량: 0"
                 }
             })
+
+            // 프로필 이미지 로드
+            loadProfileImage(userId)
         } else {
             binding.nicknameText.text = "익명"
             binding.scoreText.text = "점수: 0"
-            binding.pointText.text = "탄소 포인트: 0"
+            binding.pointText.text = "탄소 배출량: 0"
         }
 
         // 인사말 텍스트 관찰
@@ -166,9 +187,65 @@ class HomeFragment : Fragment() {
         return root
     }
 
+    // 갤러리 열기
     private fun openGallery() {
         val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
         galleryLauncher.launch(intent)
+    }
+
+    // Firebase Storage에 이미지 업로드
+    private fun uploadImageToFirebase(imageUri: Uri) {
+        val userId = auth.currentUser?.uid ?: return
+        val storageRef = storage.reference.child("profile_images/$userId.jpg")
+
+        storageRef.putFile(imageUri)
+            .addOnSuccessListener {
+                storageRef.downloadUrl.addOnSuccessListener { downloadUrl ->
+                    saveImageUrlToDatabase(downloadUrl.toString(), userId)
+                    Toast.makeText(context, "프로필 이미지가 업로드되었습니다.", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .addOnFailureListener { e ->
+                Timber.tag("Firebase").e(e, "Image upload failed")
+                Toast.makeText(context, "이미지 업로드 실패: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+    }
+
+    // 서버에 이미지 URL 저장
+    private fun saveImageUrlToDatabase(imageUrl: String, userId: String) {
+        val userRef = database.getReference("users").child(userId)
+        userRef.child("profileImageUrl").setValue(imageUrl)
+            .addOnSuccessListener {
+                Timber.tag("Firebase").d("Profile image URL saved: $imageUrl")
+                loadProfileImage(userId) // 즉시 UI 업데이트
+            }
+            .addOnFailureListener { e ->
+                Timber.tag("Firebase").e(e, "Failed to save image URL")
+            }
+    }
+
+    // 프로필 이미지 로드
+    private fun loadProfileImage(userId: String) {
+        val userRef = database.getReference("users").child(userId)
+        userRef.child("profileImageUrl").addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val imageUrl = snapshot.getValue(String::class.java)
+                if (imageUrl != null) {
+                    Glide.with(this@HomeFragment)
+                        .load(imageUrl)
+                        .placeholder(R.drawable.user) // 기본 이미지
+                        .error(R.drawable.user) // 로드 실패 시 기본 이미지
+                        .into(profileImage)
+                } else {
+                    profileImage.setImageResource(R.drawable.user) // 기본 이미지 설정
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Timber.tag("Firebase").w(error.toException(), "loadProfileImage:onCancelled")
+                profileImage.setImageResource(R.drawable.user)
+            }
+        })
     }
 
     override fun onDestroyView() {

@@ -130,7 +130,8 @@ dependencies {
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-database-ktx")
-
+    implementation("com.google.firebase:firebase-storage:20.3.0")
+    implementation("com.google.firebase:firebase-database:20.3.0") // 또는 Firestore
     //timbe
     implementation ("com.jakewharton.timber:timber:5.0.1")
 
@@ -184,4 +185,7 @@ dependencies {
     //만보기 라이브데이터 의존성
     implementation ("androidx.lifecycle:lifecycle-livedata-ktx:2.6.1")
     implementation ("androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.1")
+
+    //gilde 
+    implementation ("com.github.bumptech.glide:glide:4.16.0")
 }

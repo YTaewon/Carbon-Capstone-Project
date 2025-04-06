@@ -1,4 +1,4 @@
 package com.example.myapplication12345.ui.ranking
 
-class Profiles(val profile: Int, val name: String, val score: Int) {
+class Profiles(val userId: String, val name: String, val score: Int) {
 }
