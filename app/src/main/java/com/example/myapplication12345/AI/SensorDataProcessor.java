@@ -32,7 +32,7 @@ import timber.log.Timber;
 
 public class SensorDataProcessor {
     private static final String TAG = "SensorDataProcessor";
-    private static final String MODEL_FILENAME = "model_optimized88.ptl";
+    private static final String MODEL_FILENAME = "model_optimized89.ptl";
     // TRANSPORT_MODES 확장: 11개 요소로 정의
     private static final String[] TRANSPORT_MODES = {
             "WALK", "WALK", "BIKE", "CAR", "BUS",
