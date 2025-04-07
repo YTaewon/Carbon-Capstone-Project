@@ -1,28 +1,37 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <group android:checkableBehavior="single">
+        <item
+            android:id="@+id/nav_home"
+            android:title="홈" />
 
-    <item
-        android:id="@+id/nav_profile"
-        android:title="프로필" />
+        <item
+            android:id="@+id/nav_profile"
+            android:title="프로필" />
 
-    <item
-        android:id="@+id/nav_home"
-        android:title="홈" />
+        <item
+            android:id="@+id/nav_settings"
+            android:title="설정" />
 
-    <item
-        android:id="@+id/nav_settings"
-        android:title="설정" />
+        <item
+            android:id="@+id/nav_logout"
+            android:title="로그아웃" />
+    </group>
 
-    <item
-        android:id="@+id/nav_food"
-        android:title="탄소 계산기(음식)" />
+    <item android:title="탄소 계산기">
+        <menu>
+            <item
+                android:id="@+id/nav_food"
+                android:title="음식" />
+        </menu>
+    </item>
 
-    <item
-        android:id="@+id/nav_logout"
-        android:title="로그아웃" />
-
-    <item
-        android:id="@+id/nav_plus"
-        android:title="점수추가" />
+    <item android:title="임시">
+        <menu>
+            <item
+                android:id="@+id/nav_plus"
+                android:title="점수추가" />
+        </menu>
+    </item>
 
 </menu>

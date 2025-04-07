@@ -39,6 +39,7 @@
             android:background="@drawable/background_green_dark"
             android:elevation="4dp"
             android:text="전체"
+            android:textSize="16dp"
             android:textColor="@android:color/white" />
 
         <androidx.appcompat.widget.AppCompatButton
@@ -50,6 +51,7 @@
             android:background="@drawable/background_green_dark"
             android:elevation="4dp"
             android:text="일간"
+            android:textSize="16dp"
             android:textColor="@android:color/white" />
 
         <androidx.appcompat.widget.AppCompatButton
@@ -61,6 +63,7 @@
             android:background="@drawable/background_green_dark"
             android:elevation="4dp"
             android:text="주간"
+            android:textSize="16dp"
             android:textColor="@android:color/white" />
 
         <androidx.appcompat.widget.AppCompatButton
@@ -72,6 +75,7 @@
             android:background="@drawable/background_green_dark"
             android:elevation="4dp"
             android:text="월간"
+            android:textSize="16dp"
             android:textColor="@android:color/white" />
     </LinearLayout>
 
@@ -129,6 +133,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="title"
+                android:textColor="@color/black"
                 android:textAlignment="center"
                 android:textSize="16sp"
                 android:textStyle="bold" />
@@ -215,6 +220,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="title"
+                android:textColor="@color/black"
                 android:textAlignment="center"
                 android:textSize="16sp"
                 android:textStyle="bold" />
@@ -291,6 +297,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="title"
+                android:textColor="@color/black"
                 android:textAlignment="center"
                 android:textSize="16sp"
                 android:textStyle="bold" />

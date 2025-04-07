@@ -32,6 +32,7 @@
                 android:layout_marginRight="20dp"
                 android:textSize="20sp"
                 android:textStyle="bold"
+                android:textColor="@color/black"
                 android:text="2025년 03월"
                 android:layout_gravity="center" />
 
