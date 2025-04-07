@@ -57,6 +57,10 @@ class HomeViewModel : ViewModel() {
     private val _news = MutableLiveData<NewsItem>()
     val news: LiveData<NewsItem> get() = _news
 
+    // 오늘의 탄소 절약 목표 진행률 LiveData
+    private val _progress = MutableLiveData<Int>(100) // 기본값 50
+    val progress: LiveData<Int> get() = _progress
+
     // Retrofit 설정
     private val retrofit = Retrofit.Builder()
         .baseUrl("https://openapi.naver.com/")
@@ -87,7 +91,7 @@ class HomeViewModel : ViewModel() {
                     clientId = clientId,
                     clientSecret = clientSecret,
                     query = "탄소 배출 환경",
-                    display = 100// 10개의 뉴스를 가져오도록 설정 (최대 100까지 가능)
+                    display = 100 // 10개의 뉴스를 가져오도록 설정 (최대 100까지 가능)
                 )
 
                 val newsItems = response.items.map {
@@ -100,7 +104,7 @@ class HomeViewModel : ViewModel() {
                 }.filter {
                     // "탄소" 또는 "배출" 키워드가 포함된 뉴스만 필터링
                     it.title.contains("탄소") || it.description.contains("탄소") ||
-                            it.title.contains("배출") || it.description.contains("배출")||
+                            it.title.contains("배출") || it.description.contains("배출") ||
                             it.title.contains("환경") || it.description.contains("환경")
                 }
                 _newsList.value = newsItems // 뉴스 리스트 저장
@@ -117,6 +121,13 @@ class HomeViewModel : ViewModel() {
     // 새로운 랜덤 뉴스 선택 함수
     fun showRandomNews() {
         _news.value = _newsList.value?.random() ?: NewsItem("뉴스가 없음", "최신 환경 뉴스가 없습니다.", "", "")
+    }
+
+    // 진행률 설정 함수
+    fun setProgress(value: Int) {
+        if (value in 1..100) {
+            _progress.value = value
+        }
     }
 }
 

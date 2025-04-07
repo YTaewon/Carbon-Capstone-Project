@@ -157,7 +157,7 @@
                         android:layout_height="10dp"
                         android:progressBackgroundTint="#A5D6A7"
                         android:progressTint="#16A34A"
-                        android:progress="50"
+                        android:progress="@{homeViewModel.progress}"
                         android:max="100" />
                 </LinearLayout>
 
