@@ -269,7 +269,7 @@ public class SensorDataProcessor {
                 int totalSegments = gpsData.size() / SEGMENT_SIZE;
                 for (int segment = 0; segment < totalSegments; segment++) {
                     int startIndex = segment * SEGMENT_SIZE;
-                    int endIndex = Math.min(startIndex + SEGMENT_SIZE - 1, gpsData.size() - 1);
+                    int endIndex = Math.min(startIndex + SEGMENT_SIZE, gpsData.size() - 1);
 
                     Map<String, Object> startData = gpsData.get(startIndex);
                     Map<String, Object> endData = gpsData.get(endIndex);
