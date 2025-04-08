@@ -19,7 +19,10 @@ import com.google.firebase.ktx.Firebase
 import androidx.activity.OnBackPressedCallback
 import androidx.core.view.get
 import androidx.lifecycle.lifecycleScope
+import com.example.myapplication12345.ui.sidebar.carbonquiz.QuizActivity
+import com.google.firebase.ktx.BuildConfig
 import kotlinx.coroutines.launch
+import timber.log.Timber
 
 class MainActivity : AppCompatActivity() {
     private lateinit var auth: FirebaseAuth
@@ -29,6 +32,14 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        if (BuildConfig.DEBUG) {
+            Timber.plant(Timber.DebugTree())
+        }else{
+            //릴리즈 할경우 제거 필요
+            Timber.plant(Timber.DebugTree())
+        }
+
         auth = Firebase.auth
         binding = ActivityMainBinding.inflate(layoutInflater)
         serverManager = ServerManager(this)
@@ -74,6 +85,10 @@ class MainActivity : AppCompatActivity() {
                 }
                 R.id.nav_food -> {
                     val intent = Intent(this, FoodCalculatorActivity::class.java)
+                    startActivity(intent)
+                }
+                R.id.nav_quiz -> {
+                    val intent = Intent(this, QuizActivity::class.java)
                     startActivity(intent)
                 }
             }

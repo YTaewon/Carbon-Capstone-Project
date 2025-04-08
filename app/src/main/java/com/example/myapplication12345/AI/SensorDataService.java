@@ -13,6 +13,7 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.location.Location;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
@@ -30,6 +31,9 @@ import androidx.core.content.ContextCompat;
 
 import com.example.myapplication12345.R;
 import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationCallback;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 
 import java.util.ArrayList;
@@ -70,12 +74,13 @@ public class SensorDataService extends Service {
     private final Set<Long> uniqueTimestamps = new HashSet<>();
 
     private SensorDataProcessor dataProcessor;
+    private LocationCallback locationCallback;
+    private Location lastKnownLocation;
 
     @Override
     public void onCreate() {
         super.onCreate();
 
-        // 포어그라운드 서비스로 전환 및 알림 표시
         startForeground(NOTIFICATION_ID, createForegroundNotification());
 
         wifiManager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
@@ -89,18 +94,25 @@ public class SensorDataService extends Service {
             return;
         }
 
-        // 비동기로 SensorDataProcessor 초기화
         executorService.execute(() -> {
             dataProcessor = SensorDataProcessor.getInstance(this);
             Timber.tag(TAG).d("SensorDataProcessor 초기화 완료 (비동기)");
         });
 
+        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            fusedLocationProviderClient.getLastLocation()
+                    .addOnSuccessListener(location -> {
+                        if (location != null) {
+                            lastKnownLocation = location;
+                            Timber.tag(TAG).d("초기 마지막 위치 설정: %f, %f", location.getLatitude(), location.getLongitude());
+                        }
+                    });
+        }
+
         handler.postDelayed(this::startDataCollection, INITIAL_DELAY_MS);
     }
 
-    // 포어그라운드 서비스 알림 생성
     private Notification createForegroundNotification() {
-        // 알림 채널 생성 (Android 8.0 이상)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
                     NOTIFICATION_CHANNEL_ID,
@@ -112,15 +124,13 @@ public class SensorDataService extends Service {
             notificationManager.createNotificationChannel(channel);
         }
 
-        // 알림 빌더 설정 및 Notification 객체 반환
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
-                .setSmallIcon(R.drawable.img_logo) // 앱 아이콘
+        return new NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+                .setSmallIcon(R.drawable.img_logo)
                 .setContentTitle("센서 데이터 수집 서비스")
                 .setContentText("백그라운드에서 센서 데이터를 수집 중입니다.")
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-                .setOngoing(true); // 사용자가 알림을 제거하지 못하도록 설정
-
-        return builder.build(); // Builder에서 Notification 객체 생성
+                .setOngoing(true)
+                .build();
     }
 
     private boolean checkPermissions() {
@@ -140,6 +150,8 @@ public class SensorDataService extends Service {
     }
 
     private void startDataCollection() {
+        startGPSUpdates();
+
         Runnable dataCollectionRunnable = new Runnable() {
             @Override
             public void run() {
@@ -149,7 +161,6 @@ public class SensorDataService extends Service {
                 collectBTSData(timestamp);
                 collectGPSData(timestamp);
 
-                // 고유 타임스탬프 업데이트 및 처리
                 synchronized (uniqueTimestamps) {
                     uniqueTimestamps.add(timestamp);
                     if (uniqueTimestamps.size() >= MIN_TIMESTAMP_COUNT) {
@@ -161,6 +172,53 @@ public class SensorDataService extends Service {
             }
         };
         handler.post(dataCollectionRunnable);
+    }
+
+    private void startGPSUpdates() {
+        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            // LocationRequest.Builder 사용
+            LocationRequest locationRequest = new LocationRequest.Builder(PRIORITY_HIGH_ACCURACY, PROCESS_INTERVAL_01)
+                    .setMinUpdateIntervalMillis(PROCESS_INTERVAL_01 / 2) // setFastestInterval 대체
+                    .build();
+
+            locationCallback = new LocationCallback() {
+                @Override
+                public void onLocationResult(LocationResult locationResult) {
+                    if (locationResult != null) {
+                        Location location = locationResult.getLastLocation();
+                        if (location != null) {
+                            lastKnownLocation = location;
+//                            Timber.tag(TAG).d("GPS 업데이트 수신: %f, %f", location.getLatitude(), location.getLongitude());
+                        }
+                    }
+                }
+            };
+
+            fusedLocationProviderClient.requestLocationUpdates(locationRequest, locationCallback, Looper.getMainLooper());
+        }
+    }
+
+    private void collectGPSData(long timestamp) {
+        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            Map<String, Object> data = new LinkedHashMap<>();
+            data.put("timestamp", timestamp);
+
+            if (lastKnownLocation != null) {
+                data.put("latitude", lastKnownLocation.getLatitude());
+                data.put("longitude", lastKnownLocation.getLongitude());
+                data.put("accuracy", lastKnownLocation.getAccuracy());
+//                Timber.tag(TAG).d("GPS 데이터 추가: %f, %f", lastKnownLocation.getLatitude(), lastKnownLocation.getLongitude());
+            } else {
+                data.put("latitude", 0.0);
+                data.put("longitude", 0.0);
+                data.put("accuracy", 0.0f);
+                Timber.tag(TAG).w("GPS 데이터 없음, 기본값 사용");
+            }
+
+            synchronized (gpsBuffer) {
+                gpsBuffer.add(data);
+            }
+        }
     }
 
     private void collectAPData(long timestamp) {
@@ -214,30 +272,6 @@ public class SensorDataService extends Service {
             } catch (SecurityException e) {
                 Timber.tag(TAG).e(e, "BTS 데이터 수집 실패: 권한 부족");
             }
-        }
-    }
-
-    private void collectGPSData(long timestamp) {
-        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            fusedLocationProviderClient.getCurrentLocation(PRIORITY_HIGH_ACCURACY, null)
-                    .addOnSuccessListener(location -> {
-                        if (location != null) {
-                            Map<String, Object> data = new LinkedHashMap<>();
-                            data.put("timestamp", timestamp);
-                            data.put("latitude", location.getLatitude());
-                            data.put("longitude", location.getLongitude());
-                            data.put("accuracy", location.getAccuracy());
-                            synchronized (gpsBuffer) {
-                                gpsBuffer.add(data);
-//                                Log.d(TAG, "GPS 데이터 추가 (getLastLocation): " + location.getLatitude() + ", " + location.getLongitude());
-                            }
-                        } else {
-                            Timber.tag(TAG).w("마지막 위치를 가져올 수 없음");
-                        }
-                    })
-                    .addOnFailureListener(e -> {
-                        Timber.tag(TAG).e("GPS 데이터 가져오기 실패: %s", e.getMessage());
-                    });
         }
     }
 
@@ -390,17 +424,14 @@ public class SensorDataService extends Service {
                     synchronized (imuBuffer) {
                         synchronized (uniqueTimestamps) {
                             if (uniqueTimestamps.size() >= MIN_TIMESTAMP_COUNT) {
-                                Timber.tag(TAG).d("60초 데이터 수집 완료 - GPS: " + gpsBuffer.size() +
-                                        ", AP: " + apBuffer.size() + ", BTS: " + btsBuffer.size() +
-                                        ", IMU: " + imuBuffer.size());
+                                Timber.tag(TAG).d("60초 데이터 수집 완료 - GPS: %d, AP: %d, BTS: %d, IMU: %d",
+                                        gpsBuffer.size(), apBuffer.size(), btsBuffer.size(), imuBuffer.size());
 
-                                // 데이터 복제
                                 List<Map<String, Object>> gpsDataCopy = cloneData(gpsBuffer);
                                 List<Map<String, Object>> apDataCopy = cloneData(apBuffer);
                                 List<Map<String, Object>> btsDataCopy = cloneData(btsBuffer);
                                 List<Map<String, Object>> imuDataCopy = cloneData(imuBuffer);
 
-                                // SensorDataProcessor로 전달
                                 if (dataProcessor != null) {
                                     executorService.execute(() -> {
                                         dataProcessor.processSensorData(gpsDataCopy, apDataCopy, btsDataCopy, imuDataCopy);
@@ -410,7 +441,6 @@ public class SensorDataService extends Service {
                                     Timber.tag(TAG).w("SensorDataProcessor가 초기화되지 않음");
                                 }
 
-                                // 버퍼 및 타임스탬프 초기화
                                 gpsBuffer.clear();
                                 apBuffer.clear();
                                 btsBuffer.clear();
@@ -437,8 +467,11 @@ public class SensorDataService extends Service {
     public void onDestroy() {
         super.onDestroy();
         handler.removeCallbacksAndMessages(null);
-        processBuffers(); // 종료 시 남은 데이터 처리
+        if (locationCallback != null) {
+            fusedLocationProviderClient.removeLocationUpdates(locationCallback);
+        }
+        processBuffers();
         executorService.shutdown();
-        stopForeground(true); // 포어그라운드 서비스 종료 및 알림 제거
+        stopForeground(true);
     }
 }
