@@ -60,7 +60,6 @@
             android:layout_marginTop="8dp"
             android:text="질문이 여기에 표시됩니다."
             android:textSize="20sp"
-            android:textStyle="bold"
             android:textColor="@color/black"
             android:background="@drawable/background_radius_white"
             android:elevation="4dp"
