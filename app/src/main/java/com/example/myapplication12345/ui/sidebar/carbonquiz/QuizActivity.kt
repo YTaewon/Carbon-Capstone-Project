@@ -194,6 +194,9 @@ class QuizActivity : AppCompatActivity() {
             } else {
                 questionAnswersIndex *= 10
                 questionText.text = "점수 : $questionAnswersIndex"
+                if(questionAnswersIndex == 100){
+                    //추후 추가 예정
+                }
                 option1.visibility = View.GONE
                 option2.visibility = View.GONE
                 option3.visibility = View.GONE

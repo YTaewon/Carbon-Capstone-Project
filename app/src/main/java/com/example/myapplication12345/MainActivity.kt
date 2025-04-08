@@ -20,6 +20,8 @@ import androidx.activity.OnBackPressedCallback
 import androidx.core.view.get
 import androidx.lifecycle.lifecycleScope
 import com.example.myapplication12345.ui.sidebar.carbonquiz.QuizActivity
+import com.example.myapplication12345.ui.sidebar.profile.ProfileActivity
+import com.example.myapplication12345.ui.sidebar.setting.SettingActivity
 import com.google.firebase.ktx.BuildConfig
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -73,20 +75,32 @@ class MainActivity : AppCompatActivity() {
                 R.id.nav_home -> {
                     binding.viewPager.currentItem = 0
                 }
-                R.id.nav_settings -> {}
+                R.id.nav_profile -> {
+                    val intent = Intent(this, ProfileActivity::class.java)
+                    startActivity(intent)
+                }
+
+                R.id.nav_settings -> {
+                    val intent = Intent(this, SettingActivity::class.java)
+                    startActivity(intent)
+                }
+
                 R.id.nav_logout -> {
                     auth.signOut()
                     val intent = Intent(this, IntroActivity::class.java)
                     intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                     startActivity(intent)
                 }
+
                 R.id.nav_plus -> {
                     serverManager.addScoreToCurrentUser(5)
                 }
+
                 R.id.nav_food -> {
                     val intent = Intent(this, FoodCalculatorActivity::class.java)
                     startActivity(intent)
                 }
+
                 R.id.nav_quiz -> {
                     val intent = Intent(this, QuizActivity::class.java)
                     startActivity(intent)
