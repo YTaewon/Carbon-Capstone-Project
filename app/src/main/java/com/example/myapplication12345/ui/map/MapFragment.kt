@@ -105,6 +105,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         updateDateText(selectedDate)
         loadAndDisplayPredictionData(selectedDate)
         updateTestMapButtonState(selectedDate)
+        toggleDistanceInfoVisibility()
 
         return view
     }
@@ -397,24 +398,6 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                             .color(getTransportColor(mode))
                             .width(5f)
                     )
-
-//                    // Check if this is not the last segment and if the next segment's start doesn't match this end
-//                    if (index < sortedData.size - 1) {
-//                        val nextData = sortedData[index + 1]
-//                        val nextStartPoint = nextData["start_latitude"]?.toDoubleOrNull()?.let { lat ->
-//                            nextData["start_longitude"]?.toDoubleOrNull()?.let { lon -> LatLng(lat, lon) }
-//                        }
-//
-//                        if (nextStartPoint != null && (endPoint.latitude != nextStartPoint.latitude || endPoint.longitude != nextStartPoint.longitude)) {
-//                            // Draw a connecting line if the end point doesn't match the next start point
-//                            googleMap?.addPolyline(
-//                                PolylineOptions()
-//                                    .add(endPoint, nextStartPoint)
-//                                    .color(getTransportColor(mode)) // Same color as the current segment
-//                                    .width(5f)
-//                            )
-//                        }
-//                    }
                 }
             }
             if (totalDistance > 0) distanceInfo.append(String.format("%s: %.2f m\n", modeNames[mode] ?: mode, totalDistance))
