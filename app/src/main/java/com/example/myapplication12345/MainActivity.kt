@@ -37,9 +37,6 @@ class MainActivity : AppCompatActivity() {
 
         if (BuildConfig.DEBUG) {
             Timber.plant(Timber.DebugTree())
-        }else{
-            //릴리즈 할경우 제거 필요
-            Timber.plant(Timber.DebugTree())
         }
 
         auth = Firebase.auth

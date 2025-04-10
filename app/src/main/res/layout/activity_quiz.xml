@@ -50,6 +50,44 @@
 
         </androidx.appcompat.widget.Toolbar>
 
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/background_white"
+            android:layout_marginTop="16dp"
+            android:layout_marginLeft="16dp"
+            android:layout_marginRight="16dp"
+            android:elevation="4dp"
+            android:orientation="vertical">
+
+            <!-- Nested LinearLayout to place ProgressBar and ImageView on the same line -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <ProgressBar
+                    android:id="@+id/progress_Monthly"
+                    style="@android:style/Widget.ProgressBar.Horizontal"
+                    android:layout_width="0dp"
+                    android:layout_height="10dp"
+                    android:layout_weight="1"
+                    android:layout_margin="5dp"
+                    android:progressBackgroundTint="#A5D6A7"
+                    android:progressTint="#16A34A"
+                    android:max="10" />
+
+                <TextView
+                    android:id="@+id/progress_Text"
+                    android:layout_width="40dp"
+                    android:layout_height="20dp"
+                    android:textSize="14sp"
+                    android:text=" 0/10"/>
+
+            </LinearLayout>
+        </LinearLayout>
+
         <TextView
             android:id="@+id/questionText"
             android:layout_width="match_parent"
@@ -59,7 +97,8 @@
             android:layout_marginBottom="8dp"
             android:layout_marginTop="8dp"
             android:text="질문이 여기에 표시됩니다."
-            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textSize="20sp"
             android:textColor="@color/black"
             android:background="@drawable/background_radius_white"
             android:elevation="4dp"
@@ -128,7 +167,7 @@
         <TextView
             android:id="@+id/resultText"
             android:layout_width="match_parent"
-            android:layout_height="32dp"
+            android:layout_height="100dp"
             android:layout_marginLeft="16dp"
             android:layout_marginRight="16dp"
             android:layout_marginBottom="8dp"
