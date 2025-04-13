@@ -8,7 +8,6 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.Bundle
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
@@ -18,6 +17,7 @@ import android.widget.CheckBox
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.ActivityCompat
 import androidx.fragment.app.Fragment
 import androidx.viewpager2.widget.ViewPager2
@@ -45,8 +45,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     companion object {
         private const val TAG = "MapFragment"
-        private val dateFormat = SimpleDateFormat("yyyyMMdd", Locale.getDefault())
-        private const val REQUEST_LOCATION_PERMISSION = 1
+        private val dateFormat = SimpleDateFormat("yyyyMMdd", Locale.KOREAN)
 
         fun createTestCsvFile(context: Context, date: Date) {
             val sensorDataDir = File(context.getExternalFilesDir(null), "SensorData").apply { mkdirs() }
@@ -60,7 +59,9 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                     val centerPoints = listOf(35.177306 to 128.567773, 35.182838 to 128.564494, 35.186558 to 128.563180, 35.191691 to 128.567251, 35.194362 to 128.569659, 35.198268 to 128.570484)
                     val endPoints = listOf(35.182838 to 128.564494, 35.186558 to 128.563180, 35.191691 to 128.567251, 35.194362 to 128.569659, 35.198268 to 128.570484, 35.202949 to 128.572035)
                     modes.forEachIndexed { index, mode ->
-                        writer.append(String.format("%d,%s,%.2f,%.6f,%.6f,%.6f,%.6f\n", System.currentTimeMillis() + index * 1000L, mode, 500.0, centerPoints[index].first, centerPoints[index].second, endPoints[index].first, endPoints[index].second))
+                        writer.append(String.format(buildString {
+                            append("%d,%s,%.2f,%.6f,%.6f,%.6f,%.6f\n")
+                        }, System.currentTimeMillis() + index * 1000L, mode, 500.0, centerPoints[index].first, centerPoints[index].second, endPoints[index].first, endPoints[index].second))
                     }
                 }
                 Timber.tag(TAG).d("Test CSV created: $file")
@@ -73,12 +74,11 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private var mapView: MapView? = null
     private var googleMap: GoogleMap? = null
     private lateinit var textDistanceInfo: TextView
-    private lateinit var dateText: TextView
     private lateinit var loadButton: ImageView
     private lateinit var selectTransportButton: ImageView
     private lateinit var toggleDistanceButton: ImageView
     private lateinit var calendarButton: ImageView
-    private lateinit var datetext: TextView
+    private lateinit var dateText: TextView
     private lateinit var testMapButton: Button
     private lateinit var findnowlocateButton: ImageView
     private lateinit var fusedLocationClient: FusedLocationProviderClient
@@ -139,7 +139,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         selectTransportButton = view.findViewById(R.id.select_transport_button)
         toggleDistanceButton = view.findViewById(R.id.toggle_distance_button)
         calendarButton = view.findViewById(R.id.calendar_button)
-        datetext = view.findViewById(R.id.date_text)
+        dateText = view.findViewById(R.id.date_text)
         testMapButton = view.findViewById(R.id.test_map)
         findnowlocateButton = view.findViewById(R.id.find_now_locate_button)
     }
@@ -170,7 +170,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         selectTransportButton.setOnClickListener { showTransportSelectionDialog() }
         toggleDistanceButton.setOnClickListener { toggleDistanceInfoVisibility() }
         calendarButton.setOnClickListener { showDatePickerDialog() }
-        datetext.setOnClickListener { showDatePickerDialog() }
+        dateText.setOnClickListener { showDatePickerDialog() }
         testMapButton.setOnClickListener { handleTestMapButtonClick() }
         findnowlocateButton.setOnClickListener {
             if (!isMyLocationShown) {
@@ -183,7 +183,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                 // 두 번째 클릭: 현재 위치 표시 중단
                 try {
                     googleMap?.isMyLocationEnabled = false
-                }catch (e:SecurityException){
+                }catch (_:SecurityException){
                     Timber.tag(TAG).d("권환 필요")
                 }
 
@@ -197,12 +197,12 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         if (hasLocationPermission()) {
             try {
                 googleMap?.isMyLocationEnabled = true
-            }catch (e:SecurityException){
+            }catch (_:SecurityException){
                 Timber.tag(TAG).d("권환 필요")
             }
             Timber.tag(TAG).d("내 위치 레이어 활성화됨")
         } else {
-            requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), REQUEST_LOCATION_PERMISSION)
+            locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
         }
     }
 
@@ -211,7 +211,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     private fun setMapToCurrentLocation() {
         if (!hasLocationPermission()) {
-            requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), REQUEST_LOCATION_PERMISSION)
+            locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
             return
         }
         try {
@@ -227,32 +227,10 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                 isMapInitialized = true
                 Timber.tag(TAG).e("위치 가져오기 실패: ${it.message}")
             }
-        }catch (e:SecurityException){
+        }catch (_:SecurityException){
             Timber.tag(TAG).d("권환 필요")
         }
 
-    }
-
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == REQUEST_LOCATION_PERMISSION) {
-            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                if (hasLocationPermission()) {
-                    try {
-                        googleMap?.isMyLocationEnabled = true
-                    }catch (e:SecurityException) {
-                        Timber.tag(TAG).d("권환 필요")
-                    }
-                    setMapToCurrentLocation()
-                    isMyLocationShown = true
-                }
-            } else {
-                Toast.makeText(requireContext(), "위치 권한이 필요합니다.", Toast.LENGTH_SHORT).show()
-                googleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(35.177306, 128.567773), 18f))
-                isMapInitialized = true
-                isMyLocationShown = false
-            }
-        }
     }
 
     private fun showDatePickerDialog() {
@@ -275,7 +253,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         try {
             val parts = dateText.split("년 ", "월 ", "일")
             "${parts[0]}${parts[1].padStart(2, '0')}${parts[2].padStart(2, '0')}"
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             dateFormat.format(System.currentTimeMillis())
         }
 
@@ -287,9 +265,20 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     private fun showTransportSelectionDialog() {
         val dialogView = LayoutInflater.from(context).inflate(R.layout.dialog_transport_selection, null)
-        val checkBoxes = transportModes.mapIndexed { index, _ ->
-            dialogView.findViewById<CheckBox>(resources.getIdentifier("checkbox_${transportModes[index].toLowerCase()}", "id", requireContext().packageName))
-                .apply { isChecked = selectedModes.contains(transportModes[index]) }
+
+        // transportModes와 체크박스 ID 매핑
+        val checkboxIds = mapOf(
+            "WALK" to R.id.checkbox_walk,
+            "BIKE" to R.id.checkbox_bike,
+            "BUS" to R.id.checkbox_bus,
+            "CAR" to R.id.checkbox_car,
+            "SUBWAY" to R.id.checkbox_subway,
+            "ETC" to R.id.checkbox_etc
+        )
+
+        val checkBoxes = transportModes.map { mode ->
+            dialogView.findViewById<CheckBox>(checkboxIds[mode] ?: throw IllegalArgumentException("Invalid mode: $mode"))
+                .apply { isChecked = selectedModes.contains(mode) }
         } + dialogView.findViewById<CheckBox>(R.id.checkbox_all).apply { isChecked = selectedModes.size == transportModes.size }
 
         checkBoxes.last().setOnCheckedChangeListener { _, isChecked ->
@@ -306,8 +295,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             .setView(dialogView)
             .setPositiveButton("확인") { _, _ ->
                 selectedModes.clear()
-                checkBoxes.dropLast(1).forEachIndexed { index, checkBox ->
-                    if (checkBox.isChecked) selectedModes.add(transportModes[index])
+                transportModes.forEachIndexed { index, mode ->
+                    if (checkBoxes[index].isChecked) selectedModes.add(mode)
                 }
                 loadAndDisplayPredictionData(parseDateFromText(dateText.text.toString()))
             }
@@ -406,6 +395,27 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
         textDistanceInfo.text = if (hasData) distanceInfo.toString() else "데이터 없음"
         if (hasData) firstPoint?.let { googleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(it, 18f)); isMapInitialized = true }
+    }
+
+    private val locationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            Timber.tag(TAG).d("위치 권한 승인됨")
+            try {
+                googleMap?.isMyLocationEnabled = true
+            } catch (e: SecurityException) {
+                Timber.tag(TAG).e("위치 권한 오류: ${e.message}")
+            }
+            setMapToCurrentLocation()
+            isMyLocationShown = true
+        } else {
+            Timber.tag(TAG).d("위치 권한 거부됨")
+            Toast.makeText(requireContext(), "위치 권한이 필요합니다.", Toast.LENGTH_SHORT).show()
+            googleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(35.177306, 128.567773), 18f))
+            isMapInitialized = true
+            isMyLocationShown = false
+        }
     }
 
     private fun getTransportColor(mode: String): Int = when (mode) {
