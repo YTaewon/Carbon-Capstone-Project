@@ -34,11 +34,14 @@ class RankingAdapter(private val profileList: ArrayList<Profiles>) : RecyclerVie
             .child("profileImageUrl").addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     val imageUrl = snapshot.getValue(String::class.java)
-                    Glide.with(holder.itemView.context)
+                    if (imageUrl != null) {Glide.with(holder.itemView.context)
                         .load(imageUrl)
                         .placeholder(R.drawable.user)
                         .error(R.drawable.user)
                         .into(holder.profile)
+                    }else{
+                        holder.profile.setImageResource(R.drawable.user)
+                    }
                 }
 
                 override fun onCancelled(error: DatabaseError) {
@@ -49,10 +52,10 @@ class RankingAdapter(private val profileList: ArrayList<Profiles>) : RecyclerVie
     }
 
     class CustomViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-        val profile = itemView.findViewById<ImageView>(R.id.iv_profile)
-        val name = itemView.findViewById<TextView>(R.id.tv_name)
-        val score = itemView.findViewById<TextView>(R.id.tv_score)
-        val ranking = itemView.findViewById<TextView>(R.id.tv_ranking)
+        val profile = itemView.findViewById<ImageView>(R.id.iv_profile)!!
+        val name = itemView.findViewById<TextView>(R.id.tv_name)!!
+        val score = itemView.findViewById<TextView>(R.id.tv_score)!!
+        val ranking = itemView.findViewById<TextView>(R.id.tv_ranking)!!
     }
 
     fun updateData(newProfiles: ArrayList<Profiles>) {
