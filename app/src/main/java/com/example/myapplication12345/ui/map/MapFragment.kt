@@ -63,9 +63,9 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                         writer.append(String.format("%d,%s,%.2f,%.6f,%.6f,%.6f,%.6f\n", System.currentTimeMillis() + index * 1000L, mode, 500.0, centerPoints[index].first, centerPoints[index].second, endPoints[index].first, endPoints[index].second))
                     }
                 }
-                Log.d(TAG, "Test CSV created: $file")
+                Timber.tag(TAG).d("Test CSV created: $file")
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to create test CSV: ${e.message}")
+                Timber.tag(TAG).e("Failed to create test CSV: ${e.message}")
             }
         }
     }
@@ -135,7 +135,6 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private fun initializeViews(view: View) {
         mapView = view.findViewById(R.id.map_view)
         textDistanceInfo = view.findViewById(R.id.text_distance_info)
-        dateText = view.findViewById(R.id.date_text)
         loadButton = view.findViewById(R.id.load_button)
         selectTransportButton = view.findViewById(R.id.select_transport_button)
         toggleDistanceButton = view.findViewById(R.id.toggle_distance_button)
@@ -259,7 +258,9 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private fun showDatePickerDialog() {
         val calendar = Calendar.getInstance()
         DatePickerDialog(requireContext(), R.style.DatePickerTheme, { _, year, month, day ->
-            val selectedDate = String.format("%04d%02d%02d", year, month + 1, day)
+            val selectedDate = String.format(buildString {
+                append("%04d%02d%02d")
+            }, year, month + 1, day)
             updateDateText(selectedDate)
             loadAndDisplayPredictionData(selectedDate)
             updateTestMapButtonState(selectedDate)
