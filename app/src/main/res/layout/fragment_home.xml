@@ -179,7 +179,7 @@
                                 android:gravity="center">
 
                                 <TextView
-                                    android:id="@+id/level_value"
+                                    android:id="@+id/score_value"
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:text="0"
@@ -188,7 +188,7 @@
                                     android:textStyle="bold" />
 
                                 <TextView
-                                    android:id="@+id/level_label"
+                                    android:id="@+id/score_label"
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
                                     android:text="점수"
@@ -200,81 +200,8 @@
                         </LinearLayout>
                     </androidx.constraintlayout.widget.ConstraintLayout>
                 </androidx.cardview.widget.CardView>
-
-                <!-- 사용자 프로필 섹션 -->
-                <androidx.constraintlayout.widget.ConstraintLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="150dp"
-                    android:layout_margin="16dp"
-                    android:elevation="4dp"
-                    android:padding="16dp"
-                    android:background="@drawable/background_radius_blue">
-
-                    <!-- 프로필 이미지 -->
-                    <ImageView
-                        android:id="@+id/profileImage"
-                        android:layout_width="64dp"
-                        android:layout_height="64dp"
-                        android:src="@drawable/user"
-                        app:layout_constraintTop_toTopOf="parent"
-                        app:layout_constraintStart_toStartOf="parent" />
-
-                    <!-- 인사말 -->
-                    <TextView
-                        android:id="@+id/greetingText"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:text="@{homeViewModel.text}"
-                        android:textColor="@color/white"
-                        android:textSize="19sp"
-                        android:textStyle="bold"
-                        app:layout_constraintStart_toEndOf="@id/profileImage"
-                        app:layout_constraintEnd_toEndOf="parent"
-                        app:layout_constraintTop_toTopOf="@id/profileImage"
-                        app:layout_constraintHorizontal_bias="0"
-                        android:layout_marginStart="12dp" />
-
-                    <!-- 닉네임 -->
-                    <TextView
-                        android:id="@+id/nicknameText"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:textColor="@color/white"
-                        android:textSize="14sp"
-                        android:textStyle="bold"
-                        android:text="닉네임"
-                        app:layout_constraintStart_toStartOf="@id/greetingText"
-                        app:layout_constraintTop_toBottomOf="@id/greetingText"
-                        android:layout_marginTop="4dp" />
-
-                    <!-- 포인트 -->
-                    <TextView
-                        android:id="@+id/pointText"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:textColor="@color/white"
-                        android:textSize="14sp"
-                        android:text="포인트"
-                        app:layout_constraintStart_toStartOf="@id/nicknameText"
-                        app:layout_constraintTop_toBottomOf="@id/nicknameText"
-                        android:layout_marginTop="4dp" />
-
-                    <!-- 점수 -->
-                    <TextView
-                        android:id="@+id/scoreText"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:textColor="@color/white"
-                        android:textSize="14sp"
-                        android:text="점수"
-                        app:layout_constraintStart_toStartOf="@id/pointText"
-                        app:layout_constraintTop_toBottomOf="@id/pointText"
-                        android:layout_marginTop="4dp" />
-
-
-                </androidx.constraintlayout.widget.ConstraintLayout>
-
                 <!-- 오늘의 탄소 절약 목표 -->
+
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -305,6 +232,7 @@
                             android:text="오늘의 탄소 절약 목표"
                             android:textSize="16sp"
                             android:textStyle="bold"
+                            android:layout_marginStart="8dp"
                             android:textColor="@color/black" />
 
                         <TextView

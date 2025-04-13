@@ -32,42 +32,38 @@ import timber.log.Timber
 import java.text.DecimalFormat
 
 class HomeFragment : Fragment() {
+    private lateinit var homeViewModel: HomeViewModel
+    private lateinit var profileImage: ImageView
 
     private var _binding: FragmentHomeBinding? = null
     private val binding get() = _binding!!
 
-    private lateinit var homeViewModel: HomeViewModel
     private val pedometerViewModel: PedometerViewModel by activityViewModels()
-    private lateinit var profileImage: ImageView
     private lateinit var galleryLauncher: ActivityResultLauncher<Intent>
     private var doubleClick = false
     private val doubleHandler = Handler(Looper.getMainLooper())
     private var selectedImageUri: Uri? = null
 
     // Firebase 관련 변수
+    private val auth = FirebaseAuth.getInstance()
     private lateinit var storage: FirebaseStorage
     private lateinit var database: FirebaseDatabase
-    private val auth = FirebaseAuth.getInstance()
-
-    private lateinit var profileImage2: ImageView
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
+        val view = inflater.inflate(R.layout.fragment_home, container, false)
+        _binding = FragmentHomeBinding.bind(view)
         homeViewModel = ViewModelProvider(this)[HomeViewModel::class.java]
-        _binding = FragmentHomeBinding.inflate(inflater, container, false)
         binding.homeViewModel = homeViewModel
         binding.lifecycleOwner = viewLifecycleOwner
 
-        val root: View = binding.root
-        profileImage = binding.profileImage
-        profileImage2 = binding.profileImg
+        profileImage = view.findViewById(R.id.profile_img)
 
         // Firebase 초기화
         storage = FirebaseStorage.getInstance()
         database = FirebaseDatabase.getInstance()
-
         // 갤러리 런처 설정
         galleryLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == Activity.RESULT_OK) {
@@ -75,14 +71,14 @@ class HomeFragment : Fragment() {
                 if (selectedImageUri != null) {
                     profileImage.setImageURI(selectedImageUri) // 미리보기
                     uploadImageToFirebase(selectedImageUri!!) // Firebase에 업로드
-                    profileImage.setImageURI(selectedImageUri)
-                    uploadImageToFirebase(selectedImageUri!!)
                 }
             }
         }
 
         // Firebase 데이터 가져오기
         val userId = auth.currentUser?.uid
+        loadProfileImage(userId.toString())
+
         if (userId != null) {
             val userRef = database.getReference("users").child(userId)
 
@@ -90,19 +86,15 @@ class HomeFragment : Fragment() {
             userRef.child("nickname").addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(dataSnapshot: DataSnapshot) {
                     val nickname = dataSnapshot.getValue(String::class.java)?: "익명"
-                    binding.nicknameText.text = nickname
-
                     binding.greeting.text = buildString {
                         append("안녕하세요, ")
                         append(nickname)
                         append("님!")
-                    } // ver2
+                    }
                 }
                 override fun onCancelled(databaseError: DatabaseError) {
                     Timber.tag("Firebase").w(databaseError.toException(), "loadNickname:onCancelled")
-                    binding.nicknameText.text = "익명"
-
-                    binding.greeting.text = "익명"//ver2
+                    binding.greeting.text = "안녕하세요, 익명님!"
                 }
             })
 
@@ -110,13 +102,11 @@ class HomeFragment : Fragment() {
             userRef.child("score").addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(dataSnapshot: DataSnapshot) {
                     val score = dataSnapshot.getValue(Int::class.java)
-                    "점수: ${score ?: 0}".also { binding.scoreText.text = it }
-
-                    " ${score ?: 0}".also { binding.levelValue.text = it }
+                    " ${score ?: 0}".also { binding.scoreValue.text = it }
                 }
                 override fun onCancelled(databaseError: DatabaseError) {
                     Timber.tag("Firebase").w(databaseError.toException(), "loadScore:onCancelled")
-                    binding.scoreText.text = "점수: 0"
+                    binding.scoreValue.text = "점수: 0"
                 }
             })
 
@@ -124,25 +114,18 @@ class HomeFragment : Fragment() {
             userRef.child("point").addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(dataSnapshot: DataSnapshot) {
                     val point = dataSnapshot.getValue(Int::class.java)
-                    "탄소 포인트: ${point ?: 0}".also { binding.pointText.text = it }
+                    "${point ?: 0}".also { binding.pointsValue.text = it }
                 }
                 override fun onCancelled(databaseError: DatabaseError) {
                     Timber.tag("Firebase").w(databaseError.toException(), "loadPoint:onCancelled")
-                    binding.pointText.text = "탄소 배출량: 0"
+                    binding.pointsValue.text = "0"
                 }
             })
 
-            // 프로필 이미지 로드
-            loadProfileImage(userId)
         } else {
-            binding.nicknameText.text = "익명"
-            binding.scoreText.text = "점수: 0"
-            binding.pointText.text = "탄소 배출량: 0"
-        }
-
-        // 인사말 텍스트 관찰
-        homeViewModel.text.observe(viewLifecycleOwner) { newText ->
-            binding.greetingText.text = newText
+            binding.greeting.text = "안녕하세요, 익명님!"
+            binding.scoreValue.text = "점수: 0"
+            binding.pointsValue.text = "탄소 배출량: 0"
         }
 
         // 팁 텍스트 관찰
@@ -211,8 +194,7 @@ class HomeFragment : Fragment() {
             homeViewModel.setProgress(newProgress)
             Toast.makeText(context, "목표 진행률: $newProgress%", Toast.LENGTH_SHORT).show()
         }
-
-        return root
+        return view
     }
 
     // 갤러리 열기
@@ -246,7 +228,6 @@ class HomeFragment : Fragment() {
             .addOnSuccessListener {
                 Timber.tag("Firebase").d("Profile image URL saved: $imageUrl")
                 loadProfileImage(userId) // 즉시 UI 업데이트
-                loadProfileImage(userId)
             }
             .addOnFailureListener { e ->
                 Timber.tag("Firebase").e(e, "Failed to save image URL")
@@ -268,23 +249,14 @@ class HomeFragment : Fragment() {
                         .error(R.drawable.user)
                         .into(profileImage)
 
-                    Glide.with(this@HomeFragment)
-                        .load(imageUrl)
-                        .placeholder(R.drawable.user) // 기본 이미지
-                        .error(R.drawable.user) // 로드 실패 시 기본 이미지
-                        .placeholder(R.drawable.user)
-                        .error(R.drawable.user)
-                        .into(profileImage2)
                 } else {
                     profileImage.setImageResource(R.drawable.user) // 기본 이미지 설정
-                    profileImage2.setImageResource(R.drawable.user)
                 }
             }
 
             override fun onCancelled(error: DatabaseError) {
                 Timber.tag("Firebase").w(error.toException(), "loadProfileImage:onCancelled")
                 profileImage.setImageResource(R.drawable.user)
-                profileImage2.setImageResource(R.drawable.user)
             }
         })
     }

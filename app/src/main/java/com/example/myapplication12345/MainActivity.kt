@@ -72,6 +72,7 @@ class MainActivity : AppCompatActivity() {
         val headerView = navView.getHeaderView(0) // 헤더 뷰 가져오기
         val profileName = headerView.findViewById<TextView>(R.id.profile_name)
         profileImage = headerView.findViewById<ImageView>(R.id.profile_image)
+
         val userId = auth.currentUser?.uid
         loadProfileImage(userId.toString());
 
