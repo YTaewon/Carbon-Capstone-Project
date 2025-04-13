@@ -46,6 +46,161 @@
                 android:layout_height="wrap_content"
                 android:orientation="vertical">
 
+                <!-- 프로필 카드 섹션 -->
+                <androidx.cardview.widget.CardView
+                    android:id="@+id/profile_card"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_margin="16dp"
+                    app:cardCornerRadius="16dp"
+                    app:cardElevation="4dp"
+                    app:cardBackgroundColor="@android:color/transparent"
+                    app:cardPreventCornerOverlap="true">
+
+                    <androidx.constraintlayout.widget.ConstraintLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/background_gradient_green"
+                        android:padding="18dp">
+
+                        <!-- 프로필 헤더 섹션 -->
+                        <androidx.constraintlayout.widget.ConstraintLayout
+                            android:id="@+id/profile_header"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            app:layout_constraintTop_toTopOf="parent"
+                            app:layout_constraintStart_toStartOf="parent"
+                            app:layout_constraintEnd_toEndOf="parent">
+
+                            <!-- 프로필 이미지 -->
+                            <de.hdodenhof.circleimageview.CircleImageView
+                                android:id="@+id/profile_img"
+                                android:layout_width="64dp"
+                                android:layout_height="64dp"
+                                android:src="@drawable/user"
+                                app:civ_border_width="3dp"
+                                app:civ_border_color="@color/white"
+                                app:layout_constraintTop_toTopOf="parent"
+                                app:layout_constraintStart_toStartOf="parent"
+                                app:layout_constraintBottom_toBottomOf="parent" />
+
+                            <!-- 프로필 상세 정보 -->
+                            <LinearLayout
+                                android:id="@+id/profile_details"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:orientation="vertical"
+                                android:layout_marginStart="16dp"
+                                app:layout_constraintTop_toTopOf="@id/profile_img"
+                                app:layout_constraintStart_toEndOf="@id/profile_img"
+                                app:layout_constraintEnd_toEndOf="parent"
+                                app:layout_constraintBottom_toBottomOf="@id/profile_img">
+
+                                <!-- 인사말 -->
+                                <TextView
+                                    android:id="@+id/greeting"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="안녕하세요, 에코님!"
+                                    android:textColor="@color/white"
+                                    android:textSize="20sp"
+                                    android:textStyle="bold" />
+
+                                <!-- 상태 메시지 -->
+                                <TextView
+                                    android:id="@+id/nickname"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="지구를 지키는 당신의 노력이 빛나고 있어요"
+                                    android:textColor="@color/white"
+                                    android:textSize="14sp"
+                                    android:alpha="0.9"
+                                    android:layout_marginTop="4dp" />
+                            </LinearLayout>
+                        </androidx.constraintlayout.widget.ConstraintLayout>
+
+                        <!-- 구분선 -->
+                        <View
+                            android:id="@+id/divider"
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:background="#33FFFFFF"
+                            android:layout_marginTop="16dp"
+                            app:layout_constraintTop_toBottomOf="@id/profile_header"
+                            app:layout_constraintStart_toStartOf="parent"
+                            app:layout_constraintEnd_toEndOf="parent" />
+
+                        <!-- 통계 정보 섹션 -->
+                        <LinearLayout
+                            android:id="@+id/stats"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:layout_marginTop="8dp"
+                            app:layout_constraintTop_toBottomOf="@id/divider"
+                            app:layout_constraintStart_toStartOf="parent"
+                            app:layout_constraintEnd_toEndOf="parent"
+                            app:layout_constraintBottom_toBottomOf="parent">
+
+                            <!-- 포인트 통계 -->
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical"
+                                android:gravity="center">
+
+                                <TextView
+                                    android:id="@+id/points_value"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="0"
+                                    android:textColor="@color/white"
+                                    android:textSize="18sp"
+                                    android:textStyle="bold" />
+
+                                <TextView
+                                    android:id="@+id/points_label"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="포인트"
+                                    android:textColor="@color/white"
+                                    android:textSize="12sp"
+                                    android:alpha="0.8"
+                                    android:layout_marginTop="4dp" />
+                            </LinearLayout>
+
+                            <!-- 레벨 통계 -->
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical"
+                                android:gravity="center">
+
+                                <TextView
+                                    android:id="@+id/level_value"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="0"
+                                    android:textColor="@color/white"
+                                    android:textSize="18sp"
+                                    android:textStyle="bold" />
+
+                                <TextView
+                                    android:id="@+id/level_label"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="점수"
+                                    android:textColor="@color/white"
+                                    android:textSize="12sp"
+                                    android:alpha="0.8"
+                                    android:layout_marginTop="4dp" />
+                            </LinearLayout>
+                        </LinearLayout>
+                    </androidx.constraintlayout.widget.ConstraintLayout>
+                </androidx.cardview.widget.CardView>
+
                 <!-- 사용자 프로필 섹션 -->
                 <androidx.constraintlayout.widget.ConstraintLayout
                     android:layout_width="match_parent"
@@ -116,6 +271,7 @@
                         app:layout_constraintTop_toBottomOf="@id/pointText"
                         android:layout_marginTop="4dp" />
 
+
                 </androidx.constraintlayout.widget.ConstraintLayout>
 
                 <!-- 오늘의 탄소 절약 목표 -->
@@ -135,6 +291,13 @@
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
                         android:layout_marginBottom="8dp">
+
+                        <ImageView
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:src="@drawable/ic_check_circle_outline"
+                            app:tint="@color/headerBackground" />
+
                         <TextView
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
@@ -143,6 +306,7 @@
                             android:textSize="16sp"
                             android:textStyle="bold"
                             android:textColor="@color/black" />
+
                         <TextView
                             android:id="@+id/tv_monthly_progress"
                             android:layout_width="wrap_content"

@@ -19,18 +19,27 @@ import com.google.firebase.ktx.Firebase
 import androidx.activity.OnBackPressedCallback
 import androidx.core.view.get
 import androidx.lifecycle.lifecycleScope
+import com.bumptech.glide.Glide
+import com.example.myapplication12345.ui.home.HomeFragment
 import com.example.myapplication12345.ui.sidebar.carbonquiz.QuizActivity
 import com.example.myapplication12345.ui.sidebar.profile.ProfileActivity
 import com.example.myapplication12345.ui.sidebar.setting.SettingActivity
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
 import com.google.firebase.ktx.BuildConfig
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
 class MainActivity : AppCompatActivity() {
     private lateinit var auth: FirebaseAuth
+    private lateinit var database: FirebaseDatabase
     private lateinit var binding: ActivityMainBinding
     private lateinit var serverManager: ServerManager
     private lateinit var drawerLayout: DrawerLayout
+
+    private lateinit var profileImage: ImageView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -40,8 +49,10 @@ class MainActivity : AppCompatActivity() {
         }
 
         auth = Firebase.auth
+        database = FirebaseDatabase.getInstance()
         binding = ActivityMainBinding.inflate(layoutInflater)
         serverManager = ServerManager(this)
+
         setContentView(binding.root)
 
         setSupportActionBar(binding.toolbar)
@@ -60,7 +71,9 @@ class MainActivity : AppCompatActivity() {
         // 사용자 프로필 설정
         val headerView = navView.getHeaderView(0) // 헤더 뷰 가져오기
         val profileName = headerView.findViewById<TextView>(R.id.profile_name)
-        val profileImage = headerView.findViewById<ImageView>(R.id.profile_image)
+        profileImage = headerView.findViewById<ImageView>(R.id.profile_image)
+        val userId = auth.currentUser?.uid
+        loadProfileImage(userId.toString());
 
         lifecycleScope.launch {
             val nickname = serverManager.getNickname() // suspend 호출로 즉시 값 반환
@@ -128,6 +141,33 @@ class MainActivity : AppCompatActivity() {
                 } else {
                     finish() // 기본 뒤로 가기 동작 (Activity 종료)
                 }
+            }
+        })
+    }
+
+    // 프로필 이미지 로드
+    private fun loadProfileImage(userId: String) {
+        val userRef = database.getReference("users").child(userId)
+        userRef.child("profileImageUrl").addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val imageUrl = snapshot.getValue(String::class.java)
+                if (imageUrl != null) {
+                    Glide.with(this@MainActivity)
+                        .load(imageUrl)
+                        .placeholder(R.drawable.user) // 기본 이미지
+                        .error(R.drawable.user) // 로드 실패 시 기본 이미지
+                        .placeholder(R.drawable.user)
+                        .error(R.drawable.user)
+                        .into(profileImage)
+
+                } else {
+                    profileImage.setImageResource(R.drawable.user) // 기본 이미지 설정
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Timber.tag("Firebase").w(error.toException(), "loadProfileImage:onCancelled")
+                profileImage.setImageResource(R.drawable.user)
             }
         })
     }

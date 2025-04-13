@@ -189,4 +189,7 @@ dependencies {
 
     //gilde 
     implementation ("com.github.bumptech.glide:glide:4.16.0")
+
+    //원형 프로필
+    implementation ("de.hdodenhof:circleimageview:3.1.0")
 }

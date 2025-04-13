@@ -1,19 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:orientation="vertical"
     android:padding="30dp"
     android:background="@color/headerBackground"
     android:gravity="center_vertical">
 
     <!-- 프로필 이미지 -->
-    <ImageView
+    <de.hdodenhof.circleimageview.CircleImageView
         android:id="@+id/profile_image"
         android:layout_width="80dp"
         android:layout_height="80dp"
         android:src="@drawable/user"
+        app:civ_border_color="@color/white"
+        app:civ_border_width="3dp"
         android:layout_gravity="center_horizontal"
         android:contentDescription="프로필 이미지" />
 
