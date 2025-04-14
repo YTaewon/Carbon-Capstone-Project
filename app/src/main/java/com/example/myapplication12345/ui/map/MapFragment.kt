@@ -40,6 +40,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import androidx.core.graphics.toColorInt
 
 class MapFragment : Fragment(), OnMapReadyCallback {
 
@@ -419,13 +420,13 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     }
 
     private fun getTransportColor(mode: String): Int = when (mode) {
-        "WALK" -> Color.GREEN
-        "BIKE" -> Color.BLUE
-        "BUS" -> Color.YELLOW
-        "CAR" -> Color.RED
-        "SUBWAY" -> Color.MAGENTA
-        "ETC" -> Color.GRAY
-        else -> Color.BLACK
+        "WALK" -> "#DB4437".toColorInt()
+        "BIKE" -> "#F4B400".toColorInt()
+        "BUS" -> "#0F9D58".toColorInt()
+        "CAR" -> "#4285F4".toColorInt()
+        "SUBWAY" -> "#9933CC".toColorInt()
+        "ETC" -> "#2E2E2E".toColorInt()
+        else -> "#2E2E2E".toColorInt()
     }
 
     private fun isCsvFileExists(date: String): Boolean =
