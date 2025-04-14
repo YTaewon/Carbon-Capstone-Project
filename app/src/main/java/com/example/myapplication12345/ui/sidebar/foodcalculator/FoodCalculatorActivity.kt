@@ -55,7 +55,9 @@ class FoodCalculatorActivity : AppCompatActivity() {
                     totalCarbon += food.carbonValue * food.quantity
                 }
             }
-            binding.textViewResult.text = "결과: %.2f gCO2e".format(totalCarbon)
+            binding.textViewResult.text = buildString {
+                append("결과: %.2f gCO2e")
+            }.format(totalCarbon)
         }
     }
 }

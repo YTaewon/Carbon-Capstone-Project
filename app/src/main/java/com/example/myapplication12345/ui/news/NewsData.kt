@@ -1,4 +1,4 @@
-package com.example.myapplication12345.data
+package com.example.myapplication12345.ui.news
 
 // 뉴스 항목 모델
 data class NewsItem(

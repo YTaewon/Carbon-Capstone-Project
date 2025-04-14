@@ -5,14 +5,10 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myapplication12345.ui.news.NaverNewsApiService
-import com.example.myapplication12345.data.NewsItem
-import com.example.myapplication12345.data.NewsResponse
+import com.example.myapplication12345.ui.news.NewsItem
 import kotlinx.coroutines.launch
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
-import retrofit2.http.GET
-import retrofit2.http.Header
-import retrofit2.http.Query
 
 class HomeViewModel : ViewModel() {
     // 인사말 텍스트용 LiveData
@@ -51,7 +47,6 @@ class HomeViewModel : ViewModel() {
 
     // 뉴스 리스트 LiveData (다수의 뉴스를 저장)
     private val _newsList = MutableLiveData<List<NewsItem>>()
-    val newsList: LiveData<List<NewsItem>> get() = _newsList
 
     // 현재 표시할 단일 뉴스 LiveData
     private val _news = MutableLiveData<NewsItem>()
@@ -129,27 +124,4 @@ class HomeViewModel : ViewModel() {
             _progress.value = value
         }
     }
-}
-
-// 데이터 모델과 API 인터페이스
-data class NewsItem(
-    val title: String,
-    val description: String,
-    val originallink: String,
-    val pubDate: String
-)
-
-data class NewsResponse(
-    val items: List<NewsItem>
-)
-
-interface NaverNewsApiService {
-    @GET("v1/search/news.json")
-    suspend fun getNews(
-        @Header("X-Naver-Client-Id") clientId: String,
-        @Header("X-Naver-Client-Secret") clientSecret: String,
-        @Query("query") query: String,
-        @Query("sort") sort: String = "date",
-        @Query("display") display: Int = 10 // 기본값을 10으로 설정
-    ): NewsResponse
 }

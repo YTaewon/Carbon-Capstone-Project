@@ -53,7 +53,7 @@ class PedometerFragment : DialogFragment(), SensorEventListener {
     private var stepSensor: Sensor? = null
     private var initialSteps = -1
     private var totalGoal = 10000
-    private var startTime by mutableStateOf(0L)
+    private var startTime by androidx.compose.runtime.mutableLongStateOf(0L)
     private val caloriesPerStep = 0.03
     private val distancePerStep = 0.64
 

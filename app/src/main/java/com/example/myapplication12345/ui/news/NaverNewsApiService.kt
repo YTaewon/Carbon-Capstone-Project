@@ -1,6 +1,6 @@
 package com.example.myapplication12345.ui.news
 
-import com.example.myapplication12345.data.NewsResponse
+import com.example.myapplication12345.ui.news.NewsResponse
 import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.Query

@@ -13,6 +13,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import timber.log.Timber
 import java.util.Calendar
 import kotlin.coroutines.resume
+import androidx.core.content.edit
 
 class ServerManager(private val context: Context) {
 
@@ -38,7 +39,7 @@ class ServerManager(private val context: Context) {
 
     // 로컬 캐시에 점수 저장하기
     private fun cacheScore(score: Int) {
-        prefs.edit().putInt("cachedScore", score).apply()
+        prefs.edit() { putInt("cachedScore", score) }
     }
 
     // 로컬 캐시에서 닉네임 가져오기
@@ -46,7 +47,7 @@ class ServerManager(private val context: Context) {
 
     // 로컬 캐시에 닉네임 저장하기
     private fun cacheNickname(nickname: String) {
-        prefs.edit().putString("cachedNickname", nickname).apply()
+        prefs.edit() { putString("cachedNickname", nickname) }
     }
 
     /**

@@ -137,7 +137,10 @@ class HomeFragment : Fragment() {
         // 이동 거리 관찰
         val decimalFormat = DecimalFormat("#.##")
         pedometerViewModel.distanceKm.observe(viewLifecycleOwner) { distance ->
-            binding.tvTotalTrees.text = "${decimalFormat.format(distance)}km"
+            binding.tvTotalTrees.text = buildString {
+                append(decimalFormat.format(distance))
+                append("km")
+            }
         }
 
         // "다음 팁" 버튼 클릭 리스너 설정
@@ -185,7 +188,10 @@ class HomeFragment : Fragment() {
         // 오늘의 탄소 절약 목표 프로그레스 관찰
         homeViewModel.progress.observe(viewLifecycleOwner) { progress ->
             binding.progressMonthlyGoal.progress = progress
-            binding.tvMonthlyProgress.text = "$progress/100%"
+            binding.tvMonthlyProgress.text = buildString {
+                append(progress)
+                append("/100%")
+            }
         }
 
         // 프로그레스 테스트용 클릭 리스너

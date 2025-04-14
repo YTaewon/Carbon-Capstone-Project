@@ -199,7 +199,10 @@ class QuizActivity : AppCompatActivity() {
             showQuestion()
             resultText.text = ""
             progress.progress = currentQuestionIndex
-            progressText.setText("$currentQuestionIndex/10")
+            progressText.text = buildString {
+                append(currentQuestionIndex)
+                append("/10")
+            }
             nextButton.visibility = View.GONE
             enableOptions()
         }
@@ -220,13 +223,22 @@ class QuizActivity : AppCompatActivity() {
                 resultText.text = ""
                 nextButton.visibility = View.GONE
                 progress.progress = currentQuestionIndex
-                progressText.setText("$currentQuestionIndex/10")
+                progressText.text = buildString {
+                    append(currentQuestionIndex)
+                    append("/10")
+                }
                 enableOptions()
             } else {
                 progress.progress = currentQuestionIndex
-                progressText.setText("$currentQuestionIndex/10")
+                progressText.text = buildString {
+                    append(currentQuestionIndex)
+                    append("/10")
+                }
                 questionAnswersIndex *= 10
-                questionText.text = "점수 : $questionAnswersIndex"
+                questionText.text = buildString {
+                    append("점수 : ")
+                    append(questionAnswersIndex)
+                }
                 if(questionAnswersIndex == 100){
                     //추후 추가 예정
                 }
@@ -299,10 +311,16 @@ class QuizActivity : AppCompatActivity() {
         goneOption()
         resultText.visibility = View.VISIBLE
         if (selectedOption == currentQuestion.correctAnswer) {
-            resultText.text = "정답입니다!\n${currentQuestion.result}"
+            resultText.text = buildString {
+                append("정답입니다!\n")
+                append(currentQuestion.result)
+            }
             questionAnswersIndex++
         } else {
-            resultText.text = "오답입니다.\n${currentQuestion.result}"
+            resultText.text = buildString {
+                append("오답입니다.\n")
+                append(currentQuestion.result)
+            }
         }
         nextButton.visibility = View.VISIBLE
         disableOptions()

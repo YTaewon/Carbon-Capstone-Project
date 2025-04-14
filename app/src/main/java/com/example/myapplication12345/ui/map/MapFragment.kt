@@ -6,7 +6,6 @@ import android.app.AlertDialog
 import android.app.DatePickerDialog
 import android.content.Context
 import android.content.pm.PackageManager
-import android.graphics.Color
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.MotionEvent
