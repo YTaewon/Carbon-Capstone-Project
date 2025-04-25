@@ -20,7 +20,6 @@ import androidx.activity.OnBackPressedCallback
 import androidx.core.view.get
 import androidx.lifecycle.lifecycleScope
 import com.bumptech.glide.Glide
-import com.example.myapplication12345.ui.home.HomeFragment
 import com.example.myapplication12345.ui.sidebar.carbonquiz.QuizActivity
 import com.example.myapplication12345.ui.sidebar.profile.ProfileActivity
 import com.example.myapplication12345.ui.sidebar.setting.SettingActivity
@@ -28,7 +27,6 @@ import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
-import com.google.firebase.ktx.BuildConfig
 import kotlinx.coroutines.launch
 import timber.log.Timber
 

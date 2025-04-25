@@ -4,7 +4,6 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.core.view.ViewCompat
@@ -14,6 +13,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.example.myapplication12345.R
+import com.google.android.material.tabs.TabLayout
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
@@ -49,24 +49,29 @@ class RankingFragment : Fragment() {
         rankingAdapter = RankingAdapter(ArrayList())
         recyclerView.adapter = rankingAdapter
 
-        val btnNow = view.findViewById<Button>(R.id.btn_now)
-        val btnDaily = view.findViewById<Button>(R.id.btn_daily)
-        val btnWeekly = view.findViewById<Button>(R.id.btn_weekly)
-        val btnMonthly = view.findViewById<Button>(R.id.btn_monthly)
-        val buttons = listOf(btnNow, btnDaily, btnWeekly, btnMonthly)
-
-        buttons.forEach { button ->
-            button.setOnClickListener { clickedButton ->
-                buttons.forEach { it.textSize = 16f }
-                view.findViewById<Button>(clickedButton.id).textSize = 20f
-                when (button) {
-                    btnNow -> fetchRankingData(TYPE_NOW)
-                    btnDaily -> fetchRankingData(TYPE_DAILY)
-                    btnWeekly -> fetchRankingData(TYPE_WEEKLY)
-                    btnMonthly -> fetchRankingData(TYPE_MONTHLY)
+        // TabLayout 설정
+        val tabLayout = view.findViewById<TabLayout>(R.id.tab_layout)
+        tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
+            override fun onTabSelected(tab: TabLayout.Tab?) {
+                tab?.let {
+                    // 탭 위치에 따라 데이터 가져오기
+                    when (tab.position) {
+                        0 -> fetchRankingData(TYPE_NOW)
+                        1 -> fetchRankingData(TYPE_DAILY)
+                        2 -> fetchRankingData(TYPE_WEEKLY)
+                        3 -> fetchRankingData(TYPE_MONTHLY)
+                    }
                 }
             }
-        }
+
+            override fun onTabUnselected(tab: TabLayout.Tab?) {
+                // 선택 해제 시 추가 동작 없음
+            }
+
+            override fun onTabReselected(tab: TabLayout.Tab?) {
+                // 탭이 다시 선택되었을 때의 동작 (필요 시 구현)
+            }
+        })
 
         ViewCompat.setOnApplyWindowInsetsListener(view.findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
@@ -74,9 +79,8 @@ class RankingFragment : Fragment() {
             insets
         }
 
+        // 초기 데이터 로드 (기본적으로 "Now" 탭)
         fetchRankingData(TYPE_NOW)
-        btnNow.textSize = 20f
-
         return view
     }
 
@@ -165,7 +169,7 @@ class RankingFragment : Fragment() {
                 })
         }
 
-        if (profileList.size >= 1) {
+        if (profileList.isNotEmpty()) {
             val top1 = profileList[0]
             loadProfileImage(top1.userId, ivProfile1)
             tvName1?.text = top1.name
@@ -173,7 +177,9 @@ class RankingFragment : Fragment() {
         } else {
             ivProfile1?.setImageResource(R.drawable.user)
             tvName1?.text = ""
-            tvScore1?.text = "000"
+            tvScore1?.text = buildString {
+                append("000")
+            }
         }
 
         if (profileList.size >= 2) {
@@ -184,7 +190,9 @@ class RankingFragment : Fragment() {
         } else {
             ivProfile2?.setImageResource(R.drawable.user)
             tvName2?.text = ""
-            tvScore2?.text = "000"
+            tvScore2?.text = buildString {
+                append("000")
+            }
         }
 
         if (profileList.size >= 3) {
@@ -195,7 +203,9 @@ class RankingFragment : Fragment() {
         } else {
             ivProfile3?.setImageResource(R.drawable.user)
             tvName3?.text = ""
-            tvScore3?.text = "000"
+            tvScore3?.text = buildString {
+                append("000")
+            }
         }
     }
 
