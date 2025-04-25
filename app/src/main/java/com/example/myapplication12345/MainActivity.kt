@@ -42,10 +42,6 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        if (BuildConfig.DEBUG) {
-            Timber.plant(Timber.DebugTree())
-        }
-
         auth = Firebase.auth
         database = FirebaseDatabase.getInstance()
         binding = ActivityMainBinding.inflate(layoutInflater)

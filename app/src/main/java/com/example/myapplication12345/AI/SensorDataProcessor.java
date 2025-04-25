@@ -51,7 +51,7 @@ public class SensorDataProcessor {
     private static SensorDataProcessor instance;
     private final Context context;
     private Module model;
-    private String predictedResult = "None"; // 기본값을 None으로 변경
+    private String predictedResult = "ETC";
     private volatile boolean isModelLoaded = false;
 
     // 기존 생성자와 모델 로드 로직 유지
@@ -112,7 +112,7 @@ public class SensorDataProcessor {
 
         if (!isModelLoaded) {
             Timber.tag(TAG).w("모델이 아직 로드되지 않음. 데이터 처리 스킵");
-            predictedResult = "None"; // 기본값 변경
+            predictedResult = "ETC"; // 기본값 변경
             return;
         }
 
@@ -121,7 +121,7 @@ public class SensorDataProcessor {
 
         if (gpsData.size() < MIN_TIMESTAMP_COUNT || apData.isEmpty() || btsData.isEmpty() || imuData.size() < MIN_TIMESTAMP_COUNT) {
             Timber.tag(TAG).w("필요한 최소 데이터 요구사항 충족되지 않음");
-            predictedResult = "None"; // 기본값 변경
+            predictedResult = "ETC"; // 기본값 변경
             return;
         }
 
@@ -132,7 +132,7 @@ public class SensorDataProcessor {
 
         if (processedAP.isEmpty() || processedBTS.isEmpty() || processedGPS.isEmpty() || processedIMU.isEmpty()) {
             Timber.tag(TAG).w("데이터 전처리 실패 - 하나 이상의 센서 데이터가 비어 있음");
-            predictedResult = "None"; // 기본값 변경
+            predictedResult = "ETC"; // 기본값 변경
             return;
         }
 
@@ -159,7 +159,7 @@ public class SensorDataProcessor {
             row.putAll(getWithFallback(sortedIMU, i));
             combinedData.add(row);
         }
-        Timber.tag(TAG).e(sortedIMU.toString());
+        Timber.tag(TAG).d(sortedIMU.toString());
         return convertListMapToTensor(combinedData);
     }
 
@@ -231,7 +231,7 @@ public class SensorDataProcessor {
 
     private void predictMovingMode(Tensor inputTensor, List<Map<String, Object>> gpsData, float distance) {
         if (model == null || inputTensor == null) {
-            predictedResult = "None"; // 기본값 변경
+            predictedResult = "ETC"; // 기본값 변경
             Timber.tag(TAG).e("모델 또는 입력 텐서가 null");
             return;
         }
@@ -244,7 +244,7 @@ public class SensorDataProcessor {
             // 출력 크기 확인
             if (logits.length != 11) {
                 Timber.tag(TAG).e("모델 출력 크기가 예상과 다름: " + logits.length + " (예상: 11)");
-                predictedResult = "None";
+                predictedResult = "ETC";
                 return;
             }
 
@@ -262,7 +262,7 @@ public class SensorDataProcessor {
                 predictedResult = TRANSPORT_MODES[maxIndex];
                 Timber.tag(TAG).d("예측된 이동수단: " + predictedResult + ", 확률: " + maxProb);
             } else {
-                predictedResult = "None"; // 기본적으로 None로 설정
+                predictedResult = "ETC"; // 기본적으로 ETC 설정
                 Timber.tag(TAG).w("확률이 임계값 미만 또는 유효하지 않은 인덱스: " + maxProb + ", " + maxIndex);
             }
 
@@ -283,7 +283,7 @@ public class SensorDataProcessor {
 
                     String transportMode = predictedResult;
                     if (distance <= 0.05) {
-                        transportMode = "None"; // 거리 임계값에 따른 기본값 변경
+                        transportMode = "ETC"; // 거리 임계값에 따른 기본값 변경
                     }
                     Timber.tag(TAG).d("구간 " + segment + " 최종 이동수단: " + transportMode + ", 거리: " + distance + "m, " +
                             "시작: (" + startLat + ", " + startLon + "), 끝: (" + endLat + ", " + endLon + ")");
@@ -294,7 +294,7 @@ public class SensorDataProcessor {
             }
         } catch (Exception e) {
             Timber.tag(TAG).e(e, "예측 중 오류: %s", e.getMessage());
-            predictedResult = "None"; // 오류 시 기본값 변경
+            predictedResult = "ETC"; // 오류 시 기본값 변경
         }
     }
 

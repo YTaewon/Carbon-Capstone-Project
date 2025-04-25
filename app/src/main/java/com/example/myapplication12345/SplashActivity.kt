@@ -42,6 +42,10 @@ class SplashActivity : AppCompatActivity() {
             insets
         }
 
+        if (BuildConfig.DEBUG) {
+            Timber.plant(Timber.DebugTree())
+        }
+
         // 권한 확인 및 즉시 진행
         if (!hasPermissions()) {
             Timber.tag(TAG).d("권한 확인 실패, 요청 시작")
