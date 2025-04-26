@@ -150,9 +150,15 @@ public class SensorDataProcessor {
         List<Map<String, Object>> sortedIMU = sortAndRemoveTimestamp(imuData);
 
         List<Map<String, Object>> combinedData = new ArrayList<>();
+
+        final int repetitionsPerGpsRecord = 5;
+
         for (int i = 0; i < MIN_TIMESTAMP_COUNT; i++) {
             Map<String, Object> row = new LinkedHashMap<>();
-            row.putAll(getWithFallback(sortedGPS, 0));
+
+            int gpsIndex = i / repetitionsPerGpsRecord;
+            row.putAll(getWithFallback(sortedGPS, gpsIndex));
+
 //            row.putAll(getWithFallback(sortedAP, 0));
 //            row.putAll(getWithFallback(sortedBTS, i % Math.min(12, sortedBTS.size())));
 //            row.putAll(getWithFallback(sortedGPS, i % Math.min(12, sortedGPS.size())));
