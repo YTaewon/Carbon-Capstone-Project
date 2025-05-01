@@ -16,23 +16,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -53,7 +39,7 @@ class PedometerFragment : DialogFragment(), SensorEventListener {
     private var stepSensor: Sensor? = null
     private var initialSteps = -1
     private var totalGoal = 10000
-    private var startTime by androidx.compose.runtime.mutableLongStateOf(0L)
+    private var startTime by mutableStateOf(0L)
     private val caloriesPerStep = 0.03
     private val distancePerStep = 0.64
 
@@ -114,10 +100,10 @@ class PedometerFragment : DialogFragment(), SensorEventListener {
         super.onStart()
         dialog?.window?.let { window ->
             val params = window.attributes
-            params.width = (resources.displayMetrics.widthPixels * 0.8).toInt() // 화면 너비의 80%
-            params.height = (resources.displayMetrics.heightPixels * 0.5).toInt() // 내용에 맞게 높이 조절
+            params.width = (resources.displayMetrics.widthPixels * 0.8).toInt()
+            params.height = (resources.displayMetrics.heightPixels * 0.5).toInt()
             window.attributes = params
-            window.setBackgroundDrawableResource(R.drawable.background_white) // 라운드 배경 설정
+            window.setBackgroundDrawableResource(R.drawable.background_white)
         }
     }
 
@@ -150,14 +136,13 @@ class PedometerFragment : DialogFragment(), SensorEventListener {
                 prefs.edit().putInt("initial_steps", initialSteps).apply()
             }
             val steps = totalSteps - initialSteps
-            viewModel.updateSteps(steps) // ViewModel에 걸음 수 업데이트
+            viewModel.updateSteps(steps)
             Timber.tag("PedometerFragment").d("Steps updated: $steps")
         }
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
 
-    // StepCounterScreen 함수는 이전과 동일하게 유지 (steps 파라미터만 viewModel.steps.value로 변경됨)
     @Composable
     fun StepCounterScreen(steps: Int, goal: Int) {
         var mainStat by remember { mutableStateOf("steps") }
@@ -174,8 +159,14 @@ class PedometerFragment : DialogFragment(), SensorEventListener {
         val activityDurationMinutes = (activityDurationSeconds / 60).toInt().coerceAtLeast(0)
         val calories = (steps * caloriesPerStep).toFloat()
         val distanceMeters = steps * distancePerStep
-        val distanceKm = distanceMeters / 1000.0
         val decimalFormat = DecimalFormat("#.##")
+
+        // 거리 포맷팅 (1000m 이상이면 km으로 변환)
+        val distanceText = if (distanceMeters >= 1000) {
+            "${decimalFormat.format(distanceMeters / 1000.0)}km"
+        } else {
+            "${distanceMeters.toInt()}m"
+        }
 
         Column(
             modifier = Modifier
@@ -264,7 +255,7 @@ class PedometerFragment : DialogFragment(), SensorEventListener {
                     }
                     "distance" -> {
                         Text(
-                            text = decimalFormat.format(distanceKm),
+                            text = distanceText, // 포맷팅된 거리 사용
                             style = MaterialTheme.typography.headlineLarge.copy(
                                 fontSize = 48.sp,
                                 fontWeight = FontWeight.Bold
@@ -272,7 +263,7 @@ class PedometerFragment : DialogFragment(), SensorEventListener {
                             color = Color.Black
                         )
                         Text(
-                            text = "km",
+                            text = if (distanceMeters >= 1000) "km" else "m",
                             style = MaterialTheme.typography.bodyMedium.copy(
                                 fontSize = 16.sp,
                                 color = Color.Gray
@@ -336,7 +327,7 @@ class PedometerFragment : DialogFragment(), SensorEventListener {
                         }
                         "distance" -> {
                             Text(
-                                text = "${decimalFormat.format(distanceKm)} km",
+                                text = distanceText,
                                 style = MaterialTheme.typography.bodySmall.copy(color = Color.Gray)
                             )
                             Text(
@@ -392,7 +383,7 @@ class PedometerFragment : DialogFragment(), SensorEventListener {
                         }
                         "distance" -> {
                             Text(
-                                text = "${decimalFormat.format(distanceKm)} km",
+                                text = distanceText,
                                 style = MaterialTheme.typography.bodySmall.copy(color = Color.Gray)
                             )
                             Text(
@@ -448,7 +439,7 @@ class PedometerFragment : DialogFragment(), SensorEventListener {
                         }
                         "distance" -> {
                             Text(
-                                text = "${decimalFormat.format(distanceKm)} km",
+                                text = distanceText,
                                 style = MaterialTheme.typography.bodySmall.copy(color = Color.Gray)
                             )
                             Text(

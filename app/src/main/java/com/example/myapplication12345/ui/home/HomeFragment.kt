@@ -135,12 +135,8 @@ class HomeFragment : Fragment() {
         }
 
         // 이동 거리 관찰
-        val decimalFormat = DecimalFormat("#.##")
-        pedometerViewModel.distanceKm.observe(viewLifecycleOwner) { distance ->
-            binding.tvTotalTrees.text = buildString {
-                append(decimalFormat.format(distance))
-                append("km")
-            }
+        pedometerViewModel.distanceMeters.observe(viewLifecycleOwner) {
+            binding.tvTotalTrees.text = pedometerViewModel.getFormattedDistance()
         }
 
         // "다음 팁" 버튼 클릭 리스너 설정
