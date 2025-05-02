@@ -24,15 +24,17 @@
         </menu>
     </item>
 
+    <item  android:title="기타">
+        <menu>
+            <item
+                android:id="@+id/nav_quiz"
+                android:title="퀴즈" />
 
-    <item
-        android:id="@+id/nav_quiz"
-        android:title="퀴즈" />
-
-    <item
-        android:id="@+id/nav_chatbot"
-        android:title="챗봇" />
-
+            <item
+                android:id="@+id/nav_chatbot"
+                android:title="챗봇" />
+        </menu>
+    </item>
 
     <item android:title="임시">
         <menu>
