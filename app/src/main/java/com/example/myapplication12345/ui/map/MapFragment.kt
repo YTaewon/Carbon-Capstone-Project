@@ -48,8 +48,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         private val dateFormat = SimpleDateFormat("yyyyMMdd", Locale.KOREAN)
 
         fun createTestCsvFile(context: Context, date: Date) {
-            val sensorDataDir = File(context.getExternalFilesDir(null), "SensorData").apply { mkdirs() }
-            val file = File(sensorDataDir, "${dateFormat.format(date)}_predictions.csv")
+            val mapDataDir = File(context.getExternalFilesDir(null), "Map").apply { mkdirs() }
+            val file = File(mapDataDir, "${dateFormat.format(date)}_predictions.csv")
             if (file.exists()) return
 
             try {
@@ -318,7 +318,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private fun loadAndDisplayPredictionData(date: String) {
         if (!isAdded || googleMap == null) return
 
-        val file = File(requireContext().getExternalFilesDir(null), "SensorData/${date}_predictions.csv")
+        val file = File(requireContext().getExternalFilesDir(null), "Map/${date}_predictions.csv")
         if (!file.exists()) {
             "데이터 없음: $date".also { textDistanceInfo.text = it }
             googleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(35.177306, 128.567773), 18f))
@@ -429,7 +429,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     }
 
     private fun isCsvFileExists(date: String): Boolean =
-        File(requireContext().getExternalFilesDir(null), "SensorData/${date}_predictions.csv").exists()
+        File(requireContext().getExternalFilesDir(null), "Map/${date}_predictions.csv").exists()
 
     private fun updateTestMapButtonState(date: String) {
         testMapButton.isEnabled = !isCsvFileExists(date)

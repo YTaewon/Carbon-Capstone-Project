@@ -18,6 +18,7 @@ android {
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         manifestPlaceholders["MAPS_API_KEY"] = localProperty("MAPS_API_KEY", "")
+        manifestPlaceholders["OPENAI_API_KEY"] = localProperty("OPENAI_API_KEY", "")
     }
 
 

@@ -457,14 +457,14 @@ public class SensorDataProcessor {
         String date = dateFormat.format(startTimestamp); // 시작 타임스탬프 기준으로 날짜 폴더 사용
         String fileName = date + "_predictions.csv";
 
-        File directory = new File(context.getExternalFilesDir(null), "SensorData");
+        File directory = new File(context.getExternalFilesDir(null), "Map");
         // 디렉토리 존재 확인 및 생성
         if (!directory.exists()) {
             if (!directory.mkdirs()) {
-                Timber.tag(TAG).e("SensorData 디렉토리 생성 실패");
+                Timber.tag(TAG).e("Map 디렉토리 생성 실패");
                 return; // 디렉토리 생성 실패 시 저장 불가
             }
-            Timber.tag(TAG).d("SensorData 디렉토리 생성 성공: %s", directory.getAbsolutePath());
+            Timber.tag(TAG).d("Map 디렉토리 생성 성공: %s", directory.getAbsolutePath());
         }
 
         File file = new File(directory, fileName);
