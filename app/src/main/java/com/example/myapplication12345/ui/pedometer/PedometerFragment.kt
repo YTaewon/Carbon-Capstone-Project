@@ -46,6 +46,7 @@ import androidx.fragment.app.activityViewModels
 import com.example.myapplication12345.R
 import timber.log.Timber
 import java.text.DecimalFormat
+import androidx.core.content.edit
 
 class PedometerFragment : DialogFragment(), SensorEventListener {
 
@@ -147,7 +148,7 @@ class PedometerFragment : DialogFragment(), SensorEventListener {
             val prefs = requireActivity().getSharedPreferences("stepper", Context.MODE_PRIVATE)
             if (initialSteps == -1 || totalSteps < initialSteps) {
                 initialSteps = totalSteps
-                prefs.edit().putInt("initial_steps", initialSteps).apply()
+                prefs.edit() { putInt("initial_steps", initialSteps) }
             }
             val steps = totalSteps - initialSteps
             viewModel.updateSteps(steps)

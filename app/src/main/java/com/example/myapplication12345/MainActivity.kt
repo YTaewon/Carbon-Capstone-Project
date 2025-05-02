@@ -9,9 +9,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.GravityCompat
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.viewpager2.widget.ViewPager2
-import com.example.myapplication12345.databinding.ActivityMainBinding
-import com.example.myapplication12345.ui.login.IntroActivity
-import com.example.myapplication12345.ui.sidebar.foodcalculator.FoodCalculatorActivity
+
 import com.google.android.material.navigation.NavigationView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.ktx.auth
@@ -20,9 +18,15 @@ import androidx.activity.OnBackPressedCallback
 import androidx.core.view.get
 import androidx.lifecycle.lifecycleScope
 import com.bumptech.glide.Glide
+
+import com.example.myapplication12345.databinding.ActivityMainBinding
+import com.example.myapplication12345.ui.login.IntroActivity
+import com.example.myapplication12345.ui.sidebar.foodcalculator.FoodCalculatorActivity
 import com.example.myapplication12345.ui.sidebar.carbonquiz.QuizActivity
 import com.example.myapplication12345.ui.sidebar.profile.ProfileActivity
 import com.example.myapplication12345.ui.sidebar.setting.SettingActivity
+import com.example.myapplication12345.chatbot.ChatbotUi
+
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
@@ -108,6 +112,11 @@ class MainActivity : AppCompatActivity() {
 
                 R.id.nav_quiz -> {
                     val intent = Intent(this, QuizActivity::class.java)
+                    startActivity(intent)
+                }
+
+                R.id.nav_chatbot -> {
+                    val intent = Intent(this, ChatbotUi::class.java)
                     startActivity(intent)
                 }
             }
