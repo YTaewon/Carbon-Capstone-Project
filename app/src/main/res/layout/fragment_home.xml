@@ -532,6 +532,18 @@
                                 android:text="@{homeViewModel.news != null ? homeViewModel.news.pubDate.substring(0, 10) : `날짜`}"
                                 android:textColor="@color/black"
                                 android:textSize="14sp" />
+
+                            <Button
+                                android:id="@+id/open_chatbot_button"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_margin="16dp"
+                                android:text="챗봇 실행하기"
+                                android:backgroundTint="@color/headerBackground"
+                                android:textColor="@color/white"
+                                app:layout_constraintBottom_toBottomOf="parent"
+                                app:layout_constraintEnd_toEndOf="parent"
+                                app:layout_constraintStart_toStartOf="parent"/>
                         </LinearLayout>
                     </LinearLayout>
                 </LinearLayout>

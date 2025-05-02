@@ -19,6 +19,7 @@ import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.ViewModelProvider
 import com.bumptech.glide.Glide
 import com.example.myapplication12345.R
+import com.example.myapplication12345.chatbot.ChatbotUi
 import com.example.myapplication12345.databinding.FragmentHomeBinding
 import com.example.myapplication12345.ui.pedometer.PedometerFragment
 import com.example.myapplication12345.ui.pedometer.PedometerViewModel
@@ -60,6 +61,11 @@ class HomeFragment : Fragment() {
         binding.lifecycleOwner = viewLifecycleOwner
 
         profileImage = view.findViewById(R.id.profile_img)
+
+        binding.openChatbotButton.setOnClickListener {
+            val intent = Intent(requireContext(), ChatbotUi::class.java)
+            startActivity(intent)
+        }
 
         // Firebase 초기화
         storage = FirebaseStorage.getInstance()
