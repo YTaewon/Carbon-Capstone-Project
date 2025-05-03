@@ -12,6 +12,7 @@ import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.ProgressBar;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -34,6 +35,7 @@ public class ChatbotUi extends AppCompatActivity {
     RecyclerView recyclerView;
     ChatMsgAdapter adapter;
     ImageButton btnSend;
+    ImageView backButton;
     EditText etMsg;
     ProgressBar progressBar;
     List<ChatMsg> chatMsgList;
@@ -41,12 +43,13 @@ public class ChatbotUi extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_chatui);
+        setContentView(R.layout.activity_chatbot);
         //뷰 객체 연결
         recyclerView = findViewById(R.id.recyclerView);
         btnSend = findViewById(R.id.btn_send);
         etMsg = findViewById(R.id.et_msg);
         progressBar = findViewById(R.id.progressBar);
+        backButton = findViewById(R.id.back_button);
 
         //채팅 메시지 데이터를 담을 list 생성
         chatMsgList = new ArrayList<>();
@@ -56,6 +59,7 @@ public class ChatbotUi extends AppCompatActivity {
         adapter.setDataList(chatMsgList);
         recyclerView.setAdapter(adapter);
 
+        backButton.setOnClickListener(v -> finish());
 
         //EditText 객체에 text가 변경될 때 실행될 리스너 설정
         etMsg.addTextChangedListener(new TextWatcher() {
