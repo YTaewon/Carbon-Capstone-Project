@@ -4,6 +4,7 @@
      │  ServerManager.kt                    서버 연결
      │  SplashActivity.kt                   로딩 화면 및 퍼미셜
      │  ViewPagerAdapter.kt                 네비게이션바 설정
+     │  AlarmBootReceiver.kt                알람
      │
      ├─AI
      │  │  MovementAnalyzer.java            이동 거리 계산
@@ -26,7 +27,34 @@
      │          IMUProcessor.java           IMU 전처리 실행
      │          IMUUtils.java               IMU 전처리 도구 모음
      │
+     ├─chatbot
+     │      ApiClient.java
+     │      ChatbotUi.java
+     │      ChatGPTApi.java
+     │      ChatGPTRequest.java
+     │      ChatGPTResponse.java
+     │      ChatMsg.java
+     │      ChatMsgAdapter.java
+     │
      └─ui
+         ├─sidebar
+         │  ├─carbonquiz
+         │  │       QuizActivity.kt
+         │  │
+         │  ├─foodcalculator
+         │  │       FilterManager.kt
+         │  │       FoodCalculatorActivity.kt
+         │  │       FoodCategory.kt
+         │  │       FoodDataManager.kt
+         │  │       FoodExpandableListAdapter.kt
+         │  │       FoodItem.kt
+         │  │
+         │  ├─profile
+         │  │       ProfileActivity.kt
+         │  │
+         │  └─setting
+         │          SettingActivity.kt
+         │
          ├─calendar
          │      CalendarFragment.kt         지도 백엔드
          │      CalendarViewModel.kt        지도 실행
@@ -61,6 +89,8 @@
                  RankingAdapter.kt          랭킹 실행
                  RankingFragment.kt         랭킹 백엔드
 
-중요
-local.properties
-MAPS_API_KEY = 구글 맵 api
+
+    중요
+    local.properties
+        MAPS_API_KEY = 구글 맵 api
+        OPENAI_API_KEY = 챗 gpt api
