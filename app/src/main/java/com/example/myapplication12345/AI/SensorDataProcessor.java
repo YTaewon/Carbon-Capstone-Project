@@ -548,7 +548,7 @@ public class SensorDataProcessor {
 
                 for (int segment = 0; segment < totalSegments; segment++) {
                     int startIndex = segment * SEGMENT_SIZE;
-                    int endIndex = startIndex + SEGMENT_SIZE - 1; // 세그먼트 끝 인덱스
+                    int endIndex = Math.min(startIndex + SEGMENT_SIZE, gpsData.size() - 1);; // 세그먼트 끝 인덱스
 
                     // 인덱스 범위 체크 (루프 조건상 안전하지만 추가)
                     if (endIndex >= gpsData.size()) break;
