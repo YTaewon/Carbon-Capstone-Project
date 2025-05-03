@@ -18,6 +18,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.ActivityCompat
+import androidx.core.graphics.toColorInt
 import androidx.fragment.app.Fragment
 import androidx.viewpager2.widget.ViewPager2
 import com.example.myapplication12345.R
@@ -39,7 +40,6 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
-import androidx.core.graphics.toColorInt
 
 class MapFragment : Fragment(), OnMapReadyCallback {
 
@@ -83,8 +83,22 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private lateinit var findnowlocateButton: ImageView
     private lateinit var fusedLocationClient: FusedLocationProviderClient
 
+    private val TRANSPORT_MODES: Array<String> = arrayOf<String>(
+        "WALK",  // 0: 걷기
+        "RUN",  // 1: 달리기
+        "BIKE",  // 2: 자전거
+        "CAR",  // 3: 자동차 (모델이 구분하지 않는 한 택시 포함)
+        "BUS",  // 4: 버스
+        "TRAIN",  // 5: KTX/기차
+        "SUBWAY",  // 6: 지하철
+        "MOTORCYCLE",  // 7: 오토바이
+        "E_BIKE",  // 8: 전기자전거
+        "E_SCOOTER",  // 9: 전동 킥보드
+        "TAXI" // 10: 택시 (명시적으로 추가)
+    )
+
     private val transportModes = listOf("WALK", "BIKE", "BUS", "CAR", "SUBWAY", "ETC")
-    private val selectedModes = mutableSetOf<String>().apply { addAll(transportModes) }
+    private val selectedModes = mutableSetOf<String>().apply { addAll(TRANSPORT_MODES) }
     private var isDistanceInfoVisible = true
     private var isMapInitialized = false
     private var isMyLocationShown = false // 현재 위치 표시 상태 추적
@@ -276,10 +290,10 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             "ETC" to R.id.checkbox_etc
         )
 
-        val checkBoxes = transportModes.map { mode ->
+        val checkBoxes = TRANSPORT_MODES.map { mode ->
             dialogView.findViewById<CheckBox>(checkboxIds[mode] ?: throw IllegalArgumentException("Invalid mode: $mode"))
                 .apply { isChecked = selectedModes.contains(mode) }
-        } + dialogView.findViewById<CheckBox>(R.id.checkbox_all).apply { isChecked = selectedModes.size == transportModes.size }
+        } + dialogView.findViewById<CheckBox>(R.id.checkbox_all).apply { isChecked = selectedModes.size == TRANSPORT_MODES.size }
 
         checkBoxes.last().setOnCheckedChangeListener { _, isChecked ->
             if (isChecked) checkBoxes.dropLast(1).forEach { it.isChecked = true }
@@ -295,7 +309,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             .setView(dialogView)
             .setPositiveButton("확인") { _, _ ->
                 selectedModes.clear()
-                transportModes.forEachIndexed { index, mode ->
+                TRANSPORT_MODES.forEachIndexed { index, mode ->
                     if (checkBoxes[index].isChecked) selectedModes.add(mode)
                 }
                 loadAndDisplayPredictionData(parseDateFromText(dateText.text.toString()))
@@ -355,8 +369,34 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         var firstPoint: LatLng? = null
         var hasData = false
 
-        val validModes = setOf("WALK", "BIKE", "BUS", "CAR", "SUBWAY")
-        val modeNames = mapOf("WALK" to "걷기", "BIKE" to "자전거", "BUS" to "버스", "CAR" to "자동차", "SUBWAY" to "지하철", "ETC" to "나머지")
+        val validModes = setOf(
+            "WALK",        // 0 : 걷기
+            "RUN",         // 1 : 달리기
+            "BIKE",        // 2 : 자전거
+            "CAR",         // 3 : 자동차 (모델이 구분하지 않는 한 택시 포함)
+            "BUS",         // 4 : 버스
+            "TRAIN",       // 5 : KTX/기차
+            "SUBWAY",      // 6 : 지하철
+            "MOTORCYCLE",  // 7 : 오토바이
+            "E_BIKE",      // 8 : 전기 자전거
+            "E_SCOOTER",   // 9 : 전동 킥보드
+            "TAXI",        // 10: 택시 (명시적으로 추가)
+            "ETC"          // 11: 나머지
+        )
+        val modeNames = mapOf(
+            "WALK"          to "걷기",
+            "RUN"           to "달리기",
+            "BIKE"          to "자전거",
+            "CAR"           to "자동차",
+            "BUS"           to "버스",
+            "TRAIN"         to "기차",
+            "SUBWAY"        to "지하철",
+            "MOTORCYCLE"    to "오토바이",
+            "E_BIKE"        to "전기 자전거",
+            "E_SCOOTER"     to "전동 킥보드",
+            "TAXI"          to "택시",
+            "ETC"           to "나머지"
+        )
 
         val filteredData = predictionData.map { data ->
             val mode = data["transport_mode"]?.takeIf { validModes.contains(it) } ?: "ETC"
@@ -419,13 +459,18 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     }
 
     private fun getTransportColor(mode: String): Int = when (mode) {
-        "WALK" -> "#DB4437".toColorInt()
-        "BIKE" -> "#F4B400".toColorInt()
-        "BUS" -> "#0F9D58".toColorInt()
-        "CAR" -> "#4285F4".toColorInt()
-        "SUBWAY" -> "#9933CC".toColorInt()
-        "ETC" -> "#2E2E2E".toColorInt()
-        else -> "#2E2E2E".toColorInt()
+        "WALK"          -> "#DB4437".toColorInt()
+        "RUN"           -> "#E56730".toColorInt()
+        "BIKE"          -> "#F4B400".toColorInt()
+        "CAR"           -> "#0F9D58".toColorInt()
+        "BUS"           -> "#89C17E".toColorInt()
+        "TRAIN"         -> "#4285F4".toColorInt()
+        "SUBWAY"        -> "#03A9F4".toColorInt()
+        "MOTORCYCLE"    -> "#4B0082".toColorInt()
+        "E_BIKE"        -> "#9933CC".toColorInt()
+        "E_SCOOTER"     -> "#7C4700".toColorInt()
+        "TAXI"          -> "#997950".toColorInt()
+        else            -> "#2E2E2E".toColorInt()
     }
 
     private fun isCsvFileExists(date: String): Boolean =

@@ -59,7 +59,10 @@
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_margin="16dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginLeft="16dp"
+        android:layout_marginRight="16dp"
+        android:layout_marginBottom="16dp"
         android:elevation="4dp"
         android:background="@drawable/background_white">
 
@@ -74,6 +77,7 @@
             android:layout_alignParentTop="true"
             android:background="@android:color/transparent">
             <!-- NestedScrollView 내용 생략 (변경 없음) -->
+
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -84,8 +88,7 @@
                     android:layout_height="wrap_content"
                     android:background="#80FFFFFF"
                     android:orientation="horizontal"
-                    android:paddingTop="8dp"
-                    android:paddingBottom="8dp">
+                    android:paddingTop="8dp">
 
                     <LinearLayout
                         android:layout_width="0dp"
@@ -104,6 +107,19 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="걷기 "
+                            android:textColor="#000000"
+                            android:textSize="16dp" />
+
+                        <View
+                            android:layout_width="12dp"
+                            android:layout_height="12dp"
+                            android:backgroundTint="#E56730"
+                            android:background="@drawable/background_radius_white"/>
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="달리기 "
                             android:textColor="#000000"
                             android:textSize="16dp" />
 
@@ -129,19 +145,6 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="버스 "
-                            android:textColor="#000000"
-                            android:textSize="16dp" />
-
-                        <View
-                            android:layout_width="12dp"
-                            android:layout_height="12dp"
-                            android:backgroundTint="#4285F4"
-                            android:background="@drawable/background_radius_white"/>
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
                             android:text="자동차 "
                             android:textColor="#000000"
                             android:textSize="16dp" />
@@ -150,12 +153,109 @@
                             android:layout_width="12dp"
                             android:layout_height="12dp"
                             android:background="@drawable/background_radius_white"
-                            android:backgroundTint="#9933CC" />
+                            android:backgroundTint="#89C17E" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="지하철 "
+                            android:text="버스 "
+                            android:textColor="#000000"
+                            android:textSize="16dp" />
+
+                        <View
+                            android:layout_width="12dp"
+                            android:layout_height="12dp"
+                            android:background="@drawable/background_radius_white"
+                            android:backgroundTint="#4285F4" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="기차 "
+                            android:textColor="#000000"
+                            android:textSize="16dp" />
+
+                        <View
+                            android:layout_width="12dp"
+                            android:layout_height="12dp"
+                            android:backgroundTint="#03A9F4"
+                            android:background="@drawable/background_radius_white"/>
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="지하철"
+                            android:textColor="#000000"
+                            android:textSize="16dp" />
+
+                    </LinearLayout>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="#80FFFFFF"
+                    android:orientation="horizontal"
+                    android:paddingBottom="8dp">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:orientation="horizontal">
+
+
+
+                        <View
+                            android:layout_width="12dp"
+                            android:layout_height="12dp"
+                            android:backgroundTint="#4B0082"
+                            android:background="@drawable/background_radius_white"/>
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="오토바이  "
+                            android:textColor="#000000"
+                            android:textSize="16dp" />
+
+                        <View
+                            android:layout_width="12dp"
+                            android:layout_height="12dp"
+                            android:backgroundTint="#9933CC"
+                            android:background="@drawable/background_radius_white"/>
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="전기자전거  "
+                            android:textColor="#000000"
+                            android:textSize="16dp" />
+
+                        <View
+                            android:layout_width="12dp"
+                            android:layout_height="12dp"
+                            android:backgroundTint="#7C4700"
+                            android:background="@drawable/background_radius_white"/>
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="킥보드  "
+                            android:textColor="#000000"
+                            android:textSize="16dp" />
+
+                        <View
+                            android:layout_width="12dp"
+                            android:layout_height="12dp"
+                            android:background="@drawable/background_radius_white"
+                            android:backgroundTint="#997950" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="택시  "
                             android:textColor="#000000"
                             android:textSize="16dp" />
 
@@ -168,7 +268,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="나머지"
+                            android:text="나머지 "
                             android:textColor="#000000"
                             android:textSize="16dp" />
 
@@ -179,7 +279,6 @@
                             android:layout_gravity="end"
                             android:src="@drawable/ic_drop_up" />
                     </LinearLayout>
-
                 </LinearLayout>
 
                 <LinearLayout
