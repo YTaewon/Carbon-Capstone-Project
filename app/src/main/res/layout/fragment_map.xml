@@ -106,7 +106,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="걷기 "
+                            android:text="걷기"
                             android:textColor="#000000"
                             android:textSize="16dp" />
 
@@ -119,7 +119,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="달리기 "
+                            android:text="달리기"
                             android:textColor="#000000"
                             android:textSize="16dp" />
 
@@ -132,7 +132,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="자전거 "
+                            android:text="자전거"
                             android:textColor="#000000"
                             android:textSize="16dp" />
 
@@ -145,7 +145,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="자동차 "
+                            android:text="자동차"
                             android:textColor="#000000"
                             android:textSize="16dp" />
 
@@ -158,7 +158,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="버스 "
+                            android:text="버스"
                             android:textColor="#000000"
                             android:textSize="16dp" />
 
@@ -196,7 +196,7 @@
                     android:layout_height="wrap_content"
                     android:background="#80FFFFFF"
                     android:orientation="horizontal"
-                    android:paddingBottom="8dp">
+                    android:paddingBottom="4dp">
 
                     <LinearLayout
                         android:layout_width="0dp"
@@ -216,7 +216,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="오토바이  "
+                            android:text="오토바이"
                             android:textColor="#000000"
                             android:textSize="16dp" />
 
@@ -229,7 +229,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="전기자전거  "
+                            android:text="전기자전거 "
                             android:textColor="#000000"
                             android:textSize="16dp" />
 
@@ -242,7 +242,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="킥보드  "
+                            android:text="킥보드"
                             android:textColor="#000000"
                             android:textSize="16dp" />
 
@@ -255,7 +255,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="택시  "
+                            android:text="택시"
                             android:textColor="#000000"
                             android:textSize="16dp" />
 
@@ -268,12 +268,13 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="나머지 "
+                            android:text="나머지"
                             android:textColor="#000000"
                             android:textSize="16dp" />
 
                         <ImageView
                             android:id="@+id/toggle_distance_button"
+                            android:layout_marginLeft="8dp"
                             android:layout_width="30dp"
                             android:layout_height="30dp"
                             android:layout_gravity="end"
