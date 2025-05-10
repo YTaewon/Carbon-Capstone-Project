@@ -1,119 +1,109 @@
-package com.example.myapplication12345.AI.BTS;
+package com.example.myapplication12345.AI.BTS; // 패키지명은 2번 코드 기준
 
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.util.Collections;
+import java.util.LinkedHashMap; // 순서 유지를 위해 LinkedHashMap 사용
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
+// import java.util.HashSet; // 필요시 사용
 
 public class BTSProcessor {
-    private static final int MILLI = 5000; // 5초
-    private static final int STEP = MILLI;
-    private static final int PROCESSING_WINDOW = 60 * 1000; // 1분
+    private static final int MILLI_INTERVAL = 5000;
+    private static final int STEP = MILLI_INTERVAL;
+    private static final int PROCESSING_WINDOW = 60 * 1000;
 
     public static List<Map<String, Object>> processBTS(List<Map<String, Object>> btsData, long startTimestamp) {
-        // 결과 저장할 리스트 - 예상 크기로 초기화
-        int expectedSize = PROCESSING_WINDOW / STEP;
-        List<Map<String, Object>> processedData = new ArrayList<>(expectedSize);
+        List<Map<String, Object>> processedData = new ArrayList<>();
 
-        // 입력 데이터가 없거나 비어 있는 경우 처리
-        if (btsData == null || btsData.isEmpty()) {
-            for (long curTime = startTimestamp; curTime < startTimestamp + PROCESSING_WINDOW; curTime += STEP) {
-                processedData.add(createEmptyResult(curTime));
-            }
-            return processedData;
+        if (btsData == null) {
+            return processedData; // 빈 리스트 반환
         }
 
-        // 시간대별 BTS ID 그룹화 (미리 계산)
-        long endTimestamp = startTimestamp + PROCESSING_WINDOW;
-        Map<Long, Set<String>> timeWindowBtsIds = new HashMap<>(expectedSize);
+        for (long curTime = startTimestamp; curTime < startTimestamp + PROCESSING_WINDOW; curTime += STEP) {
+            final long currentTime = curTime;
 
-        // 각 타임스탬프별 데이터 사전 계산
-        for (Map<String, Object> record : btsData) {
-            long timestamp = (long) record.get("timestamp");
-            if (timestamp < startTimestamp || timestamp >= endTimestamp) {
-                continue; // 범위 밖 데이터 스킵
-            }
+            List<Set<String>> uniqs = btsData.stream()
+                    .filter(record -> {
+                        Object tsObj = record.get("timestamp");
+                        if (!(tsObj instanceof Long)) return false;
+                        long timestampVal = (long) tsObj;
+                        return timestampVal >= currentTime && timestampVal < currentTime + STEP;
+                    })
+                    .collect(Collectors.groupingBy(
+                            record -> (long) record.get("timestamp"),
+                            Collectors.mapping(record -> {
+                                String ci = record.get("ci") == null ? "null_ci" : String.valueOf(record.get("ci"));
+                                String pci = record.get("pci") == null ? "null_pci" : String.valueOf(record.get("pci"));
+                                return ci + "_" + pci;
+                            }, Collectors.toSet())
+                    ))
+                    .values().stream().collect(Collectors.toList());
 
-            // 타임스탬프를 STEP 간격으로 정규화
-            long normalizedTime = startTimestamp + ((timestamp - startTimestamp) / STEP) * STEP;
-
-            // 해당 시간대 BTS ID 세트 가져오기 또는 새로 생성
-            Set<String> btsIds = timeWindowBtsIds.computeIfAbsent(normalizedTime, k -> new HashSet<>());
-
-            // BTS ID 추가 (ci_pci 형식)
-            String btsId = record.get("ci") + "_" + record.get("pci");
-            btsIds.add(btsId);
-        }
-
-        // 각 시간 간격 처리
-        for (long curTime = startTimestamp; curTime < endTimestamp; curTime += STEP) {
-            Set<String> currentBtsIds = timeWindowBtsIds.get(curTime);
-            Set<String> nextBtsIds = timeWindowBtsIds.get(curTime + STEP);
-
-            // 두 개 이상의 데이터 그룹이 있는지 확인
-            if (currentBtsIds == null || nextBtsIds == null) {
-                processedData.add(createEmptyResult(curTime));
+            if (uniqs.size() < 2) {
+                processedData.add(createEmptyResult(currentTime));
                 continue;
             }
 
-            // jerk 계산
-            processedData.add(calculateJerkData(currentBtsIds, nextBtsIds, curTime));
+            processedData.add(processJerkDataInternal(uniqs, currentTime));
         }
 
         return processedData;
     }
 
-    // 빈 결과 생성
+    // 빈 결과 생성 시 float 타입 사용
     private static Map<String, Object> createEmptyResult(long timestamp) {
-        Map<String, Object> result = new HashMap<>(6); // 필요한 필드 수로 초기화
+        Map<String, Object> result = new LinkedHashMap<>();
         result.put("timestamp", timestamp);
-        result.put("total", 0f);
-        result.put("jerk_min", -1f);
-        result.put("jerk_max", -1f);
-        result.put("jerk_mean", -1.0f);
-        result.put("jerk_std", -1.0f);
+        result.put("total", -1f); // float
+        result.put("jerk_min", -1f); // float
+        result.put("jerk_max", -1f); // float
+        result.put("jerk_mean", -1.0f); // float
+        result.put("jerk_std", -1.0f); // float
         return result;
     }
 
-    // jerk 데이터 계산 (최적화 버전)
-    private static Map<String, Object> calculateJerkData(Set<String> currentBtsIds, Set<String> nextBtsIds, long timestamp) {
+    // jerk 데이터 계산 후 결과 Map에 float 타입으로 저장
+    private static Map<String, Object> processJerkDataInternal(List<Set<String>> uniqs, long timestamp) {
+        AtomicReference<Set<String>> before = new AtomicReference<>(null);
         List<Integer> jerkList = new ArrayList<>();
 
-        // 현재와 다음 시간대의 BTS ID 비교
-        int missingInNext = 0;
-        for (String btsId : currentBtsIds) {
-            if (!nextBtsIds.contains(btsId)) {
-                missingInNext++;
+        for (Set<String> uniq : uniqs) {
+            if (before.get() != null) {
+                long missingInUniq = before.get().stream().filter(e -> !uniq.contains(e)).count();
+                long newInUniq = uniq.stream().filter(e -> !before.get().contains(e)).count();
+                jerkList.add((int) (missingInUniq + newInUniq));
             }
+            before.set(uniq);
         }
 
-        int newInNext = 0;
-        for (String btsId : nextBtsIds) {
-            if (!currentBtsIds.contains(btsId)) {
-                newInNext++;
-            }
+        int totalInt = uniqs.stream().flatMap(Set::stream).collect(Collectors.toSet()).size();
+
+        int jerkMinInt = jerkList.isEmpty() ? -1 : Collections.min(jerkList);
+        int jerkMaxInt = jerkList.isEmpty() ? -1 : Collections.max(jerkList);
+        double jerkMeanDouble = jerkList.isEmpty() ? -1.0 : jerkList.stream().mapToInt(Integer::intValue).average().orElse(-1.0);
+
+        double jerkStdDouble;
+        if (jerkList.isEmpty() || jerkMeanDouble == -1.0) { // jerk_mean이 -1.0일때 std도 -1.0으로
+            jerkStdDouble = -1.0;
+        } else {
+            final double finalJerkMean = jerkMeanDouble; // for lambda
+            double variance = jerkList.stream()
+                    .mapToDouble(j -> Math.pow(j - finalJerkMean, 2))
+                    .average()
+                    .orElse(0.0); // If list has one element, variance is 0
+            jerkStdDouble = Math.sqrt(variance);
         }
 
-        int jerkValue = missingInNext + newInNext;
-        jerkList.add(jerkValue);
-
-        // 모든 고유 BTS ID 계산
-        Set<String> allIds = new HashSet<>(currentBtsIds);
-        allIds.addAll(nextBtsIds);
-        float total = allIds.size();
-
-        // 통계 계산
-        float jerk_std = 0.0f; // 표준편차는 샘플이 하나뿐이므로 0
-
-        Map<String, Object> result = new HashMap<>(6);
+        Map<String, Object> result = new LinkedHashMap<>();
         result.put("timestamp", timestamp);
-        result.put("total", total);
-        result.put("jerk_min", (float) jerkValue);
-        result.put("jerk_max", (float) jerkValue);
-        result.put("jerk_mean", (float) jerkValue);
-        result.put("jerk_std", jerk_std);
+        result.put("total", (float) totalInt); // int to float
+        result.put("jerk_min", (float) jerkMinInt); // int to float
+        result.put("jerk_max", (float) jerkMaxInt); // int to float
+        result.put("jerk_mean", (float) jerkMeanDouble); // double to float
+        result.put("jerk_std", (float) jerkStdDouble); // double to float
 
         return result;
     }
