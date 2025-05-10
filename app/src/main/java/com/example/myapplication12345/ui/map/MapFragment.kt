@@ -84,17 +84,18 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private lateinit var fusedLocationClient: FusedLocationProviderClient
 
     private val TRANSPORT_MODES: Array<String> = arrayOf<String>(
-        "WALK",  // 0: 걷기
-        "RUN",  // 1: 달리기
-        "BIKE",  // 2: 자전거
-        "CAR",  // 3: 자동차 (모델이 구분하지 않는 한 택시 포함)
-        "BUS",  // 4: 버스
-        "TRAIN",  // 5: KTX/기차
-        "SUBWAY",  // 6: 지하철
-        "MOTORCYCLE",  // 7: 오토바이
-        "E_BIKE",  // 8: 전기자전거
-        "E_SCOOTER",  // 9: 전동 킥보드
-        "TAXI" // 10: 택시 (명시적으로 추가)
+        "WALK",         // 0: 걷기
+        "RUN",          // 1: 달리기
+        "BIKE",         // 2: 자전거
+        "CAR",          // 3: 자동차 (모델이 구분하지 않는 한 택시 포함)
+        "BUS",          // 4: 버스
+        "TRAIN",        // 5: KTX/기차
+        "SUBWAY",       // 6: 지하철
+        "MOTORCYCLE",   // 7: 오토바이
+        "E_BIKE",       // 8: 전기자전거
+        "E_SCOOTER",    // 9: 전동 킥보드
+        "TAXI",         // 10: 택시 (명시적으로 추가)
+        "ETC"           // 11: 기타
     )
 
     private val transportModes = listOf("WALK", "BIKE", "BUS", "CAR", "SUBWAY", "ETC")
@@ -283,10 +284,16 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         // transportModes와 체크박스 ID 매핑
         val checkboxIds = mapOf(
             "WALK" to R.id.checkbox_walk,
+            "RUN" to R.id.checkbox_run,
             "BIKE" to R.id.checkbox_bike,
-            "BUS" to R.id.checkbox_bus,
             "CAR" to R.id.checkbox_car,
+            "BUS" to R.id.checkbox_bus,
+            "TRAIN" to R.id.checkbox_train,
             "SUBWAY" to R.id.checkbox_subway,
+            "MOTORCYCLE" to R.id.checkbox_motorcycle,
+            "E_BIKE" to R.id.checkbox_e_bike,
+            "E_SCOOTER" to R.id.checkbox_e_scooter,
+            "TAXI" to R.id.checkbox_taxi,
             "ETC" to R.id.checkbox_etc
         )
 

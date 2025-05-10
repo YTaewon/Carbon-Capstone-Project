@@ -13,18 +13,18 @@
         android:text="걷기" />
 
     <CheckBox
+        android:id="@+id/checkbox_run"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:buttonTint="@color/headerBackground"
+        android:text="달리기" />
+
+    <CheckBox
         android:id="@+id/checkbox_bike"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:buttonTint="@color/headerBackground"
         android:text="자전거" />
-
-    <CheckBox
-        android:id="@+id/checkbox_bus"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:buttonTint="@color/headerBackground"
-        android:text="버스" />
 
     <CheckBox
         android:id="@+id/checkbox_car"
@@ -34,11 +34,53 @@
         android:text="자동차" />
 
     <CheckBox
+        android:id="@+id/checkbox_bus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:buttonTint="@color/headerBackground"
+        android:text="버스" />
+
+    <CheckBox
+        android:id="@+id/checkbox_train"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:buttonTint="@color/headerBackground"
+        android:text="KTX/기차" />
+
+    <CheckBox
         android:id="@+id/checkbox_subway"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:buttonTint="@color/headerBackground"
         android:text="지하철" />
+
+    <CheckBox
+        android:id="@+id/checkbox_motorcycle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:buttonTint="@color/headerBackground"
+        android:text="오토바이" />
+
+    <CheckBox
+        android:id="@+id/checkbox_e_bike"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:buttonTint="@color/headerBackground"
+        android:text="전기자전거" />
+
+    <CheckBox
+        android:id="@+id/checkbox_e_scooter"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:buttonTint="@color/headerBackground"
+        android:text="전동 킥보드" />
+
+    <CheckBox
+        android:id="@+id/checkbox_taxi"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:buttonTint="@color/headerBackground"
+        android:text="택시" />
 
     <CheckBox
         android:id="@+id/checkbox_etc"
