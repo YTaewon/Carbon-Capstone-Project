@@ -6,9 +6,19 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myapplication12345.ui.news.NaverNewsApiService
 import com.example.myapplication12345.ui.news.NewsItem
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.MutableData
+import com.google.firebase.database.ValueEventListener
 import kotlinx.coroutines.launch
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import timber.log.Timber
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
 
 class HomeViewModel : ViewModel() {
     // 인사말 텍스트용 LiveData
@@ -32,7 +42,7 @@ class HomeViewModel : ViewModel() {
         "재활용을 철저히 분리배출하여 \n자원을 아껴보세요.",
         "전자책을 이용해 \n종이책 사용을 줄여보세요.",
         "샤워 시간을 5분 줄이면 \n물과 에너지를 절약할 수 있어요.",
-        "집에 단열재를 추가해 냉난방 효율을 높이 세요.\n집 내부가 쾨적 해지고 돈을 아낄수 있어요",
+        "집에 단열재를 추가해 냉난방 효율을 높이 세요.\n집 내부가 쾌적 해지고 돈을 아낄수 있어요",
         "지역 농산물을 구매해 \n운송으로 인한 탄소 배출을 줄이세요.",
         "불필요한 조명을 끄고 \n자연광을 활용해보세요.",
         "에너지 효율이 높은 \n가전제품을 선택하세요.",
@@ -53,8 +63,12 @@ class HomeViewModel : ViewModel() {
     val news: LiveData<NewsItem> get() = _news
 
     // 오늘의 탄소 절약 목표 진행률 LiveData
-    private val _progress = MutableLiveData<Int>(100) // 기본값 50
+    private val _progress = MutableLiveData<Int>(100) // 기본값 100으로 변경 [수정]
     val progress: LiveData<Int> get() = _progress
+
+    // Firebase 관련 변수
+    private val auth = FirebaseAuth.getInstance()
+    private val database = FirebaseDatabase.getInstance()
 
     // Retrofit 설정
     private val retrofit = Retrofit.Builder()
@@ -71,6 +85,56 @@ class HomeViewModel : ViewModel() {
     init {
         showRandomTip()
         fetchNews()
+        loadMonthlyPoints() // 초기화 시 월별 포인트 로드
+    }
+
+    // 현재 월(YYYY-MM) 반환
+    private fun getCurrentMonth(): String {
+        val sdf = SimpleDateFormat("yyyy-MM", Locale.getDefault())
+        return sdf.format(Calendar.getInstance().time)
+    }
+
+    // 월별 포인트 로드 및 진행률 계산
+    private fun loadMonthlyPoints() {
+        val userId = auth.currentUser?.uid ?: return
+        val currentMonth = getCurrentMonth()
+        val monthlyPointRef = database.getReference("users").child(userId).child("monthly_points").child(currentMonth)
+
+        monthlyPointRef.addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(dataSnapshot: DataSnapshot) {
+                val point = dataSnapshot.child("point").getValue(Int::class.java) ?: 0
+                // 진행률 계산: 포인트 0 = 100%, 920 이상 = 0% [수정]
+                val progress = maxOf(100 - ((point.toFloat() / 920) * 100).toInt(), 0)
+                _progress.value = progress
+                Timber.tag("HomeViewModel").d("Monthly points: $point, Progress: $progress%")
+            }
+
+            override fun onCancelled(databaseError: DatabaseError) {
+                Timber.tag("Firebase").w(databaseError.toException(), "loadMonthlyPoints:onCancelled")
+                _progress.value = 100 // Firebase 오류 시 진행률 100% [수정]
+            }
+        })
+    }
+
+    // 포인트 추가 (예: 챌린지 완료 시 호출)
+    fun addPoints(pointsToAdd: Int) {
+        val userId = auth.currentUser?.uid ?: return
+        val currentMonth = getCurrentMonth()
+        val monthlyPointRef = database.getReference("users").child(userId).child("monthly_points").child(currentMonth)
+
+        monthlyPointRef.child("point").runTransaction(object : com.google.firebase.database.Transaction.Handler {
+            override fun doTransaction(currentData: MutableData): com.google.firebase.database.Transaction.Result {
+                val currentPoints = currentData.getValue(Int::class.java) ?: 0
+                currentData.value = currentPoints + pointsToAdd
+                return com.google.firebase.database.Transaction.success(currentData)
+            }
+
+            override fun onComplete(error: DatabaseError?, committed: Boolean, currentData: DataSnapshot?) {
+                if (error != null) {
+                    Timber.tag("Firebase").e(error.toException(), "addPoints:onComplete")
+                }
+            }
+        })
     }
 
     // 랜덤 팁 표시 함수
@@ -86,7 +150,7 @@ class HomeViewModel : ViewModel() {
                     clientId = clientId,
                     clientSecret = clientSecret,
                     query = "탄소 배출 환경",
-                    display = 100 // 10개의 뉴스를 가져오도록 설정 (최대 100까지 가능)
+                    display = 100
                 )
 
                 val newsItems = response.items.map {
@@ -97,13 +161,12 @@ class HomeViewModel : ViewModel() {
                         pubDate = it.pubDate
                     )
                 }.filter {
-                    // "탄소" 또는 "배출" 키워드가 포함된 뉴스만 필터링
                     it.title.contains("탄소") || it.description.contains("탄소") ||
                             it.title.contains("배출") || it.description.contains("배출") ||
                             it.title.contains("환경") || it.description.contains("환경")
                 }
-                _newsList.value = newsItems // 뉴스 리스트 저장
-                _news.value = newsItems.random() // 랜덤으로 하나의 뉴스 선택
+                _newsList.value = newsItems
+                _news.value = newsItems.random()
             } catch (e: Exception) {
                 e.printStackTrace()
                 val errorItem = NewsItem("오류", "뉴스를 불러오지 못했습니다.", "", "")
@@ -118,9 +181,9 @@ class HomeViewModel : ViewModel() {
         _news.value = _newsList.value?.random() ?: NewsItem("뉴스가 없음", "최신 환경 뉴스가 없습니다.", "", "")
     }
 
-    // 진행률 설정 함수
+    // 진행률 설정 함수 (디버깅 또는 수동 설정용)
     fun setProgress(value: Int) {
-        if (value in 1..100) {
+        if (value in 0..100) {
             _progress.value = value
         }
     }

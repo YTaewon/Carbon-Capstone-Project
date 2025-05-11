@@ -11,7 +11,9 @@ import com.google.firebase.database.ServerValue
 import com.google.firebase.database.ValueEventListener
 import kotlinx.coroutines.suspendCancellableCoroutine
 import timber.log.Timber
+import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Locale
 import kotlin.coroutines.resume
 import androidx.core.content.edit
 
@@ -48,6 +50,12 @@ class ServerManager(private val context: Context) {
     // 로컬 캐시에 닉네임 저장하기
     private fun cacheNickname(nickname: String) {
         prefs.edit() { putString("cachedNickname", nickname) }
+    }
+
+    // 날짜 포맷팅 (YYYY-MM-DD)
+    private fun getFormattedDate(date: Calendar): String {
+        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        return sdf.format(date.time)
     }
 
     /**
@@ -138,40 +146,53 @@ class ServerManager(private val context: Context) {
     }
 
     /**
-     * 특정 날짜의 점수를 가져오는 메서드
+     * 특정 날짜의 productEmissions 가져오는 메서드
      */
     fun getScoresForDate(date: Calendar, onScoresRetrieved: (Int) -> Unit) {
         val userRef = getUserReference() ?: run {
             Toast.makeText(context, "로그인이 필요해요.", Toast.LENGTH_SHORT).show()
+            onScoresRetrieved(0)
             return
         }
 
-        val startOfDayMillis = date.apply {
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }.timeInMillis
+        val dateString = getFormattedDate(date)
+        val emissionRef = userRef.child("emissions").child(dateString).child("productEmissions")
 
-        val endOfDayMillis = Calendar.getInstance().apply { timeInMillis = startOfDayMillis }
-            .apply { add(Calendar.DAY_OF_YEAR, 1) }.timeInMillis
-
-        userRef.child("scores").addListenerForSingleValueEvent(object : ValueEventListener {
+        emissionRef.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                val dailyScore = snapshot.children
-                    .mapNotNull { scoreSnapshot ->
-                        val scoreValue = scoreSnapshot.child("value").getValue(Int::class.java) ?: 0
-                        val timestamp = scoreSnapshot.child("timestamp").getValue(Long::class.java) ?: 0
-                        if (timestamp in startOfDayMillis..<endOfDayMillis) scoreValue else null
-                    }
-                    .sum()
-                onScoresRetrieved(dailyScore)
+                val emissions = snapshot.getValue(Int::class.java) ?: 0
+                onScoresRetrieved(emissions)
             }
 
             override fun onCancelled(databaseError: DatabaseError) {
-                handleError(databaseError.toException(), "점수 가져오기")
+                handleError(databaseError.toException(), "배출량 가져오기")
+                onScoresRetrieved(0)
             }
         })
+    }
+
+    /**
+     * 특정 날짜의 productEmissions 업데이트 메서드
+     */
+    fun updateProductEmissions(date: Calendar, emissions: Int, callback: (Boolean) -> Unit) {
+        val userRef = getUserReference() ?: run {
+            Toast.makeText(context, "로그인이 필요해요.", Toast.LENGTH_SHORT).show()
+            callback(false)
+            return
+        }
+
+        val dateString = getFormattedDate(date)
+        val emissionRef = userRef.child("emissions").child(dateString).child("productEmissions")
+
+        emissionRef.setValue(emissions)
+            .addOnSuccessListener {
+                Timber.d("Updated productEmissions for $dateString: $emissions")
+                callback(true)
+            }
+            .addOnFailureListener { e ->
+                handleError(e, "배출량 업데이트")
+                callback(false)
+            }
     }
 
     /**

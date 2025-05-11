@@ -9,13 +9,15 @@ import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.ViewModelProvider
+import androidx.fragment.app.activityViewModels
 import com.example.myapplication12345.R
 import com.example.myapplication12345.ServerManager
 import com.example.myapplication12345.databinding.FragmentCalendarBinding
+import timber.log.Timber
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -36,9 +38,15 @@ class CalendarFragment : Fragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        calendarViewModel = ViewModelProvider(this)[CalendarViewModel::class.java]
-        _binding = FragmentCalendarBinding.inflate(inflater, container, false)
         serverManager = ServerManager(requireContext())
+        calendarViewModel = activityViewModels<CalendarViewModel> {
+            object : androidx.lifecycle.ViewModelProvider.Factory {
+                override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                    return CalendarViewModel(serverManager) as T
+                }
+            }
+        }.value
+        _binding = FragmentCalendarBinding.inflate(inflater, container, false)
         val root: View = binding.root
 
         updateDateText()
@@ -107,16 +115,38 @@ class CalendarFragment : Fragment() {
         }
     }
 
-    private fun fetchScoreForDay(date: Calendar, position: Int) {
+    private fun fetchScoreForDay(date: Calendar, position: Int, retryCount: Int = 0) {
         serverManager.getScoresForDate(date) { score ->
-            if (position < dayList.size) {
-                val day = dayList[position]
-                day.productEmissions = score
-                activity?.runOnUiThread {
+            activity?.runOnUiThread {
+                if (position < dayList.size) {
+                    val day = dayList[position]
+                    day.productEmissions = score
+                    Timber.d("Updated day $position with productEmissions: $score")
                     gridAdapter.notifyDataSetChanged()
+                    // 오늘 날짜가 선택된 경우 결과 텍스트 업데이트
+                    val today = Calendar.getInstance()
+                    if (position == selectedPosition &&
+                        day.date.toIntOrNull() == today.get(Calendar.DAY_OF_MONTH) &&
+                        mCal.get(Calendar.MONTH) == today.get(Calendar.MONTH) &&
+                        mCal.get(Calendar.YEAR) == today.get(Calendar.YEAR)
+                    ) {
+                        showPointVeiw(day)
+                    }
+                } else {
+                    Timber.w("Invalid position $position for dayList size ${dayList.size}")
                 }
             }
+            // 데이터가 0인 경우 최대 2회 재시도
+            if (score == 0 && retryCount < 2) {
+                Timber.w("Zero emissions for ${getFormattedDate(date)}, retrying (${retryCount + 1}/2)")
+                fetchScoreForDay(date, position, retryCount + 1)
+            }
         }
+    }
+
+    private fun getFormattedDate(date: Calendar): String {
+        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        return sdf.format(date.time)
     }
 
     private fun updateCalendar() {
@@ -151,8 +181,8 @@ class CalendarFragment : Fragment() {
             holder.tvPoints.text = if (totalEmissions > 0) totalEmissions.toString() else ""
 
             val today = Calendar.getInstance()
-            holder.tvItemGridView.isSelected = false // 기본적으로 선택 해제
-            holder.tvItemGridView.isPressed = false // 기본적으로 눌림 해제
+            holder.tvItemGridView.isSelected = false
+            holder.tvItemGridView.isPressed = false
 
             if (day.date.isNotEmpty() && day.productEmissions >= 0 && day.date.all { it.isDigit() }) {
                 val tempCal = mCal.clone() as Calendar
@@ -164,18 +194,18 @@ class CalendarFragment : Fragment() {
                         mCal.get(Calendar.MONTH) == today.get(Calendar.MONTH) &&
                         mCal.get(Calendar.YEAR) == today.get(Calendar.YEAR)
                 if (isToday) {
-                    holder.tvItemGridView.isSelected = true // 오늘 날짜: 회색 동그라미
+                    holder.tvItemGridView.isSelected = true
                 }
 
-                // 선택된 날짜 강조 (클릭 시)
+                // 선택된 날짜 강조
                 if (position == selectedPosition) {
-                    holder.tvItemGridView.isPressed = true // 선택 상태: 검정 테두리 추가
+                    holder.tvItemGridView.isPressed = true
                     holder.ivIndicator.visibility = View.VISIBLE
                 } else {
                     holder.ivIndicator.visibility = View.INVISIBLE
                 }
 
-                // 요일별 색상 (오늘 날짜나 선택된 날짜가 아닌 경우에만 적용)
+                // 요일별 색상
                 if (!holder.tvItemGridView.isSelected && !holder.tvItemGridView.isPressed) {
                     when (dayOfWeek) {
                         Calendar.SATURDAY -> holder.tvItemGridView.setTextColor(
@@ -211,16 +241,16 @@ class CalendarFragment : Fragment() {
                 if (day.date.isNotEmpty() && day.productEmissions >= 0 && day.date.all { it.isDigit() }) {
                     hideIndicatorAtPosition(selectedPosition)
                     selectedPosition = position
-                    holder.tvItemGridView.isPressed = true // 선택 상태: 검정 테두리 추가
+                    holder.tvItemGridView.isPressed = true
                     val isTodayInClick = day.date.toInt() == today.get(Calendar.DAY_OF_MONTH) &&
                             mCal.get(Calendar.MONTH) == today.get(Calendar.MONTH) &&
                             mCal.get(Calendar.YEAR) == today.get(Calendar.YEAR)
                     if (isTodayInClick) {
-                        holder.tvItemGridView.isSelected = true // 오늘 날짜 선택 시 회색 배경 유지
+                        holder.tvItemGridView.isSelected = true
                     }
                     holder.ivIndicator.visibility = View.VISIBLE
                     showPointVeiw(day)
-                    gridAdapter.notifyDataSetChanged() // UI 갱신
+                    gridAdapter.notifyDataSetChanged()
                 }
             }
 
@@ -250,6 +280,7 @@ class CalendarFragment : Fragment() {
             이동경로 탄소 배출량: ${day.transportEmissions}
         """.trimIndent()
         binding.tvDayResult.text = resultText
+        Timber.d("Displayed point view for date ${day.date}: productEmissions=${day.productEmissions}")
     }
 
     private fun showPointsPopup(day: Day) {
@@ -258,8 +289,8 @@ class CalendarFragment : Fragment() {
 
         val productLabel = TextView(requireContext()).apply { text = "전기 탄소 배출량" }
         val transportLabel = TextView(requireContext()).apply { text = "이동경로 탄소 배출량" }
-        val productInput = EditText(requireContext()).apply { setText(day.run { productEmissions.toString() }) }
-        val transportInput = EditText(requireContext()).apply { setText(day.run { transportEmissions.toString() }) }
+        val productInput = EditText(requireContext()).apply { setText(day.productEmissions.toString()) }
+        val transportInput = EditText(requireContext()).apply { setText(day.transportEmissions.toString()) }
 
         val layout = LinearLayout(requireContext()).apply {
             orientation = LinearLayout.VERTICAL
@@ -275,7 +306,19 @@ class CalendarFragment : Fragment() {
             val newTransportEmissions = transportInput.text.toString().toIntOrNull() ?: day.transportEmissions
             day.productEmissions = newProductEmissions
             day.transportEmissions = newTransportEmissions
-            gridAdapter.notifyDataSetChanged()
+            val dayCal = Calendar.getInstance().apply {
+                set(mCal.get(Calendar.YEAR), mCal.get(Calendar.MONTH), day.date.toInt())
+            }
+            calendarViewModel.updateProductEmissions(dayCal, newProductEmissions) { success ->
+                activity?.runOnUiThread {
+                    if (success) {
+                        gridAdapter.notifyDataSetChanged()
+                        showPointVeiw(day)
+                    } else {
+                        Toast.makeText(requireContext(), "배출량 업데이트 실패", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
         }
 
         builder.setNegativeButton("취소") { dialog, _ -> dialog.dismiss() }

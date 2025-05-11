@@ -2,6 +2,7 @@ package com.example.myapplication12345.ui.camera
 
 import android.Manifest
 import android.content.Context
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -20,7 +21,12 @@ import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
 import com.example.myapplication12345.databinding.FragmentCameraBinding
+import com.example.myapplication12345.ui.calendar.CalendarViewModel
+import com.example.myapplication12345.ui.home.HomeViewModel
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.FirebaseDatabase
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.korean.KoreanTextRecognizerOptions
@@ -36,6 +42,14 @@ class CameraFragment : Fragment() {
     private var cameraProvider: ProcessCameraProvider? = null
     private val EMISSION_FACTOR = 0.4567
     private var isPermissionRequested = false
+
+    // ViewModel 초기화
+    private val homeViewModel: HomeViewModel by activityViewModels()
+    private val calendarViewModel: CalendarViewModel by activityViewModels()
+
+    // Firebase 관련 변수
+    private val auth = FirebaseAuth.getInstance()
+    private val database = FirebaseDatabase.getInstance()
 
     private val getContent = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         uri?.let {
@@ -110,28 +124,43 @@ class CameraFragment : Fragment() {
         // Pull-to-Refresh 설정
         binding.swipeRefreshLayout.setOnRefreshListener {
             displaySavedResult()
-            binding.swipeRefreshLayout.isRefreshing = false // 새로고침 완료
+            binding.swipeRefreshLayout.isRefreshing = false
         }
+    }
+
+    // 사용자 ID별 SharedPreferences 가져오기
+    private fun getUserPrefs(): SharedPreferences? {
+        val userId = auth.currentUser?.uid ?: run {
+            Timber.w("User not logged in")
+            Toast.makeText(requireContext(), "로그인이 필요합니다.", Toast.LENGTH_SHORT).show()
+            return null
+        }
+        return requireContext().getSharedPreferences("CameraInputPrefs_$userId", Context.MODE_PRIVATE)
     }
 
     // 저장된 결과 표시
     private fun displaySavedResult() {
-        val prefs = requireContext().getSharedPreferences("CameraInputPrefs", Context.MODE_PRIVATE)
-        val lastInputTime = prefs.getLong("lastInputTime", 0L)
+        try {
+            val prefs = getUserPrefs() ?: return
+            val lastInputTime = prefs.getLong("lastInputTime", 0L)
 
-        if (lastInputTime != 0L && isSameMonth(lastInputTime)) {
-            val usage = prefs.getFloat("usage", -1f).toDouble()
-            val carbonEmission = prefs.getFloat("carbonEmission", -1f).toDouble()
-            if (usage >= 0 && carbonEmission >= 0) {
-                binding.resultText.text = buildString {
-                    append("전기 사용량: $usage kWh\n")
-                    append("탄소 배출량: %.2f kg CO2".format(carbonEmission))
+            if (lastInputTime != 0L && isSameMonth(lastInputTime)) {
+                val usage = prefs.getFloat("usage", -1f).toDouble()
+                val carbonEmission = prefs.getFloat("carbonEmission", -1f).toDouble()
+                if (usage >= 0 && carbonEmission >= 0) {
+                    binding.resultText.text = buildString {
+                        append("전기 사용량: $usage kWh\n")
+                        append("탄소 배출량: %.2f kg CO2".format(carbonEmission))
+                    }
+                } else {
+                    binding.resultText.text = "저장된 데이터가 없습니다."
                 }
             } else {
-                binding.resultText.text = "저장된 데이터가 없습니다."
+                binding.resultText.text = "이 달의 데이터가 없습니다."
             }
-        } else {
-            binding.resultText.text = "이 달의 데이터가 없습니다."
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to display saved result")
+            binding.resultText.text = "결과 표시 중 오류 발생"
         }
     }
 
@@ -145,19 +174,32 @@ class CameraFragment : Fragment() {
 
     // 월별 입력 가능 여부 확인
     private fun canInputThisMonth(): Boolean {
-        val prefs = requireContext().getSharedPreferences("CameraInputPrefs", Context.MODE_PRIVATE)
-        val lastInputTime = prefs.getLong("lastInputTime", 0L)
-        return lastInputTime == 0L || !isSameMonth(lastInputTime)
+        try {
+            val prefs = getUserPrefs() ?: return false
+            val lastInputTime = prefs.getLong("lastInputTime", 0L)
+            return lastInputTime == 0L || !isSameMonth(lastInputTime)
+        } catch (e: Exception) {
+            Timber.e(e, "Error checking monthly input")
+            return false
+        }
     }
 
     // 입력 시간과 결과 저장
-    private fun saveInputTimeAndResult(usage: Double, carbonEmission: Double) {
-        val prefs = requireContext().getSharedPreferences("CameraInputPrefs", Context.MODE_PRIVATE)
-        with(prefs.edit()) {
-            putLong("lastInputTime", System.currentTimeMillis())
-            putFloat("usage", usage.toFloat())
-            putFloat("carbonEmission", carbonEmission.toFloat())
-            apply()
+    private fun saveInputTimeAndResult(usage: Double, carbonEmission: Double): Boolean {
+        try {
+            val prefs = getUserPrefs() ?: return false
+            with(prefs.edit()) {
+                putLong("lastInputTime", System.currentTimeMillis())
+                putFloat("usage", usage.toFloat())
+                putFloat("carbonEmission", carbonEmission.toFloat())
+                commit() // 동기 저장
+            }
+            Timber.d("Saved input for user ${auth.currentUser?.uid}: usage=$usage, carbonEmission=$carbonEmission")
+            return true
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to save input time and result")
+            Toast.makeText(requireContext(), "데이터 저장 실패", Toast.LENGTH_SHORT).show()
+            return false
         }
     }
 
@@ -184,7 +226,7 @@ class CameraFragment : Fragment() {
                     Timber.d("Camera successfully bound")
                 } catch (exc: Exception) {
                     Timber.e(exc, "Camera binding failed")
-                    Toast.makeText(requireContext(), "카메라 시작에 실패했습니다: ${exc.message}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(requireContext(), "카메라 시작 실패: ${exc.message}", Toast.LENGTH_LONG).show()
                     binding.startCameraButton.visibility = View.VISIBLE
                 }
             } ?: Timber.w("Binding is null, camera setup skipped")
@@ -198,15 +240,20 @@ class CameraFragment : Fragment() {
             ContextCompat.getMainExecutor(requireContext()),
             object : ImageCapture.OnImageCapturedCallback() {
                 override fun onCaptureSuccess(imageProxy: ImageProxy) {
-                    val bitmap = imageProxy.toBitmap
-                    imageProxy.close()
-                    val inputImage = InputImage.fromBitmap(bitmap, 0)
-                    recognizeText(inputImage)
+                    try {
+                        val bitmap = imageProxy.toBitmap
+                        imageProxy.close()
+                        val inputImage = InputImage.fromBitmap(bitmap, 0)
+                        recognizeText(inputImage)
+                    } catch (e: Exception) {
+                        Timber.e(e, "Error processing captured image")
+                        Toast.makeText(requireContext(), "이미지 처리 오류", Toast.LENGTH_SHORT).show()
+                    }
                 }
 
                 override fun onError(exception: ImageCaptureException) {
                     Timber.e(exception, "Capture failed: ${exception.message}")
-                    Toast.makeText(requireContext(), "사진 캡처에 실패했습니다.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), "사진 캡처 실패", Toast.LENGTH_SHORT).show()
                 }
             }
         )
@@ -230,7 +277,7 @@ class CameraFragment : Fragment() {
             }
         } catch (e: Exception) {
             Timber.e(e, "Image processing error")
-            Toast.makeText(requireContext(), "이미지 처리 중 오류가 발생했습니다.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(requireContext(), "이미지 처리 중 오류 발생", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -239,26 +286,45 @@ class CameraFragment : Fragment() {
 
         recognizer.process(image)
             .addOnSuccessListener { visionText ->
-                val usage = visionText.textBlocks
-                    .asSequence()
-                    .map { it.text }
-                    .filter { it.contains("사용량") || it.contains("당월") }
-                    .mapNotNull { extractUsage(it) }
-                    .firstOrNull() ?: extractUsage(visionText.text)
+                try {
+                    val usage = visionText.textBlocks
+                        .asSequence()
+                        .map { it.text }
+                        .filter { it.contains("사용량") || it.contains("당월") }
+                        .mapNotNull { extractUsage(it) }
+                        .firstOrNull() ?: extractUsage(visionText.text)
 
-                if (usage != null) {
-                    val carbonEmission = usage * EMISSION_FACTOR
-                    calculateAndDisplayCarbon(usage, carbonEmission)
-                    saveInputTimeAndResult(usage, carbonEmission)
-                } else {
-                    binding.resultText.text = buildString {
-                        append("전기 사용량을 찾을 수 없습니다.\n다른 이미지를 시도해보세요.")
+                    if (usage != null) {
+                        val carbonEmission = usage * EMISSION_FACTOR
+                        // 먼저 SharedPreferences 저장
+                        if (saveInputTimeAndResult(usage, carbonEmission)) {
+                            // 저장 성공 시 UI 업데이트 및 데이터 추가
+                            activity?.runOnUiThread {
+                                calculateAndDisplayCarbon(usage, carbonEmission)
+                            }
+                            addCarbonEmissionAndScore(carbonEmission)
+                        } else {
+                            activity?.runOnUiThread {
+                                binding.resultText.text = "데이터 저장 실패. 다시 시도해주세요."
+                            }
+                        }
+                    } else {
+                        activity?.runOnUiThread {
+                            binding.resultText.text = "전기 사용량을 찾을 수 없습니다.\n다른 이미지를 시도해보세요."
+                        }
+                    }
+                } catch (e: Exception) {
+                    Timber.e(e, "Text recognition processing error")
+                    activity?.runOnUiThread {
+                        binding.resultText.text = "텍스트 처리 중 오류 발생"
                     }
                 }
             }
             .addOnFailureListener { e ->
                 Timber.e(e, "Text recognition failed")
-                Toast.makeText(requireContext(), "텍스트 인식에 실패했습니다.", Toast.LENGTH_SHORT).show()
+                activity?.runOnUiThread {
+                    Toast.makeText(requireContext(), "텍스트 인식 실패", Toast.LENGTH_SHORT).show()
+                }
             }
     }
 
@@ -310,6 +376,64 @@ class CameraFragment : Fragment() {
         binding.resultText.text = buildString {
             append("전기 사용량: $usage kWh\n")
             append("탄소 배출량: %.2f kg CO2".format(carbonEmission))
+        }
+    }
+
+    // 탄소 배출량 및 점수 추가
+    private fun addCarbonEmissionAndScore(carbonEmission: Double) {
+        try {
+            val userId = auth.currentUser?.uid
+            if (userId == null) {
+                Timber.w("User not logged in")
+                Toast.makeText(requireContext(), "로그인이 필요합니다.", Toast.LENGTH_SHORT).show()
+                return
+            }
+
+            val userRef = database.getReference("users").child(userId)
+
+            // 1. 탄소 배출량을 포인트로 추가
+            val pointsToAdd = carbonEmission.toInt()
+            homeViewModel.addPoints(pointsToAdd)
+            Timber.d("Added $pointsToAdd points for carbon emission")
+
+            // 2. 점수 50점 추가
+            userRef.child("score").runTransaction(object : com.google.firebase.database.Transaction.Handler {
+                override fun doTransaction(currentData: com.google.firebase.database.MutableData): com.google.firebase.database.Transaction.Result {
+                    val currentScore = currentData.getValue(Int::class.java) ?: 0
+                    currentData.value = currentScore + 50
+                    return com.google.firebase.database.Transaction.success(currentData)
+                }
+
+                override fun onComplete(error: com.google.firebase.database.DatabaseError?, committed: Boolean, currentData: com.google.firebase.database.DataSnapshot?) {
+                    if (error != null || !committed) {
+                        Timber.tag("Firebase").e(error?.toException() ?: Exception("Transaction failed"), "addScore:onComplete")
+                        activity?.runOnUiThread {
+                            Toast.makeText(requireContext(), "점수 추가 실패", Toast.LENGTH_SHORT).show()
+                        }
+                    } else {
+                        activity?.runOnUiThread {
+                            Toast.makeText(requireContext(), "50점 추가! 총 탄소 배출량: ${pointsToAdd}kg CO2", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+            })
+
+            // 3. 오늘 날짜의 productEmissions 업데이트
+            val today = Calendar.getInstance()
+            calendarViewModel.updateProductEmissions(today, pointsToAdd) { success ->
+                activity?.runOnUiThread {
+                    if (success) {
+                        Timber.d("Updated productEmissions for today: $pointsToAdd")
+                    } else {
+                        Toast.makeText(requireContext(), "캘린더 데이터 업데이트 실패", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error in addCarbonEmissionAndScore")
+            activity?.runOnUiThread {
+                Toast.makeText(requireContext(), "데이터 추가 중 오류 발생", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 

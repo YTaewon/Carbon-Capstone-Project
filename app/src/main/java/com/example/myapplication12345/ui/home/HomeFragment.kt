@@ -30,7 +30,9 @@ import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 import com.google.firebase.storage.FirebaseStorage
 import timber.log.Timber
-import java.text.DecimalFormat
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
 
 class HomeFragment : Fragment() {
     private lateinit var homeViewModel: HomeViewModel
@@ -116,11 +118,11 @@ class HomeFragment : Fragment() {
                 }
             })
 
-            // 포인트
-            userRef.child("point").addListenerForSingleValueEvent(object : ValueEventListener {
+            // 포인트 (UI만 업데이트, 진행률 계산은 HomeViewModel에서 처리) [수정]
+            userRef.child("monthly_points").child(getCurrentMonth()).child("point").addValueEventListener(object : ValueEventListener {
                 override fun onDataChange(dataSnapshot: DataSnapshot) {
-                    val point = dataSnapshot.getValue(Int::class.java)
-                    "${point ?: 0}".also { binding.pointsValue.text = it }
+                    val point = dataSnapshot.getValue(Int::class.java) ?: 0
+                    binding.pointsValue.text = "$point"
                 }
                 override fun onCancelled(databaseError: DatabaseError) {
                     Timber.tag("Firebase").w(databaseError.toException(), "loadPoint:onCancelled")
@@ -132,6 +134,7 @@ class HomeFragment : Fragment() {
             binding.greeting.text = "안녕하세요, 익명님!"
             binding.scoreValue.text = "점수: 0"
             binding.pointsValue.text = "탄소 배출량: 0"
+            homeViewModel.setProgress(0)
         }
 
         // 팁 텍스트 관찰
@@ -187,13 +190,10 @@ class HomeFragment : Fragment() {
             pedometerFragment.show(childFragmentManager, "PedometerFragment")
         }
 
-        // 오늘의 탄소 절약 목표 프로그레스 관찰
+        // 오늘의 탄소 절약 목표 프로그레스 관찰 [수정: 포맷만 최적화]
         homeViewModel.progress.observe(viewLifecycleOwner) { progress ->
             binding.progressMonthlyGoal.progress = progress
-            binding.tvMonthlyProgress.text = buildString {
-                append(progress)
-                append("/100%")
-            }
+            binding.tvMonthlyProgress.text = "$progress/100%"
         }
 
         // 프로그레스 테스트용 클릭 리스너
@@ -202,7 +202,42 @@ class HomeFragment : Fragment() {
             homeViewModel.setProgress(newProgress)
             Toast.makeText(context, "목표 진행률: $newProgress%", Toast.LENGTH_SHORT).show()
         }
+
+        // 월별 초기화 확인 (기존 코드 유지)
+        checkAndResetMonthlyProgress()
+
         return view
+    }
+
+    // 현재 월(YYYY-MM) 반환 [추가: HomeViewModel과 동일 메서드]
+    private fun getCurrentMonth(): String {
+        val sdf = SimpleDateFormat("yyyy-MM", Locale.getDefault())
+        return sdf.format(Calendar.getInstance().time)
+    }
+
+    // 월별 진행률 초기화 확인 (기존 코드 유지)
+    private fun checkAndResetMonthlyProgress() {
+        val userId = auth.currentUser?.uid ?: return
+        val currentMonth = getCurrentMonth()
+        val userRef = database.getReference("users").child(userId)
+
+        // 마지막 초기화 날짜 확인
+        userRef.child("last_reset_month").addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val lastResetMonth = snapshot.getValue(String::class.java)
+                if (lastResetMonth != currentMonth) {
+                    // 새로운 달이 시작되었으므로 포인트 초기화
+                    userRef.child("monthly_points").child(currentMonth).child("point").setValue(0)
+                    userRef.child("last_reset_month").setValue(currentMonth)
+                    homeViewModel.setProgress(0)
+                    Timber.tag("HomeFragment").d("Monthly progress reset for $currentMonth")
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Timber.tag("Firebase").w(error.toException(), "checkAndResetMonthlyProgress:onCancelled")
+            }
+        })
     }
 
     // 갤러리 열기
@@ -218,6 +253,7 @@ class HomeFragment : Fragment() {
 
         storageRef.putFile(imageUri)
             .addOnSuccessListener {
+
                 storageRef.downloadUrl.addOnSuccessListener { downloadUrl ->
                     saveImageUrlToDatabase(downloadUrl.toString(), userId)
                     Toast.makeText(context, "프로필 이미지가 업로드되었습니다.", Toast.LENGTH_SHORT).show()

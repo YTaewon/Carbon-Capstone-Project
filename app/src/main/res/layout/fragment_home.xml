@@ -163,7 +163,7 @@
                                     android:id="@+id/points_label"
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="포인트"
+                                    android:text="탄소 배출량"
                                     android:textColor="@color/white"
                                     android:textSize="12sp"
                                     android:alpha="0.8"
@@ -202,22 +202,23 @@
                 </androidx.cardview.widget.CardView>
                 <!-- 오늘의 탄소 절약 목표 -->
 
+                <!-- 오늘의 탄소 절약 팁 -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:background="@drawable/background_white"
-                    android:padding="16dp"
                     android:layout_marginLeft="16dp"
                     android:layout_marginRight="16dp"
+                    android:layout_marginBottom="16dp"
+                    android:background="@drawable/background_white"
                     android:elevation="4dp"
                     android:orientation="vertical"
-                    android:layout_marginBottom="16dp">
+                    android:padding="16dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:layout_marginBottom="8dp">
+                        android:layout_marginBottom="8dp"
+                        android:orientation="horizontal">
 
                         <ImageView
                             android:layout_width="24dp"
@@ -228,28 +229,28 @@
                         <TextView
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
                             android:layout_weight="1"
                             android:text="오늘의 탄소 절약 목표"
+                            android:textColor="@color/black"
                             android:textSize="16sp"
-                            android:textStyle="bold"
-                            android:layout_marginStart="8dp"
-                            android:textColor="@color/black" />
+                            android:textStyle="bold" />
 
                         <TextView
                             android:id="@+id/tv_monthly_progress"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="50/100%"
-                            android:textSize="14sp"
-                            android:textColor="@color/black" />
+                            android:textColor="@color/black"
+                            android:textSize="14sp" />
                     </LinearLayout>
 
                     <!-- Nested LinearLayout to place ProgressBar and ImageView on the same line -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical">
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
 
                         <ProgressBar
                             android:id="@+id/progress_monthly_goal"
@@ -257,16 +258,16 @@
                             android:layout_width="0dp"
                             android:layout_height="10dp"
                             android:layout_weight="1"
-                            android:progressBackgroundTint="#A5D6A7"
-                            android:progressTint="#16A34A"
+                            android:max="100"
                             android:progress="@{homeViewModel.progress}"
-                            android:max="100" />
+                            android:progressBackgroundTint="#A5D6A7"
+                            android:progressTint="#16A34A" />
 
-<!--                        <ImageView-->
-<!--                            android:id="@+id/toggle_distance_button"-->
-<!--                            android:layout_width="25dp"-->
-<!--                            android:layout_height="25dp"-->
-<!--                            android:src="@drawable/ic_drop_up" />-->
+                        <!--                        <ImageView-->
+                        <!--                            android:id="@+id/toggle_distance_button"-->
+                        <!--                            android:layout_width="25dp"-->
+                        <!--                            android:layout_height="25dp"-->
+                        <!--                            android:src="@drawable/ic_drop_up" />-->
 
                     </LinearLayout>
 
@@ -275,13 +276,12 @@
                         android:id="@+id/daily_goals_container"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
                         android:orientation="vertical"
-                        android:visibility="gone"
-                        android:layout_marginTop="8dp" />
+                        android:visibility="gone" />
 
                 </LinearLayout>
 
-                <!-- 오늘의 탄소 절약 팁 -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
