@@ -21,6 +21,8 @@ import com.google.firebase.database.ValueEventListener
 import timber.log.Timber
 
 class RankingFragment : Fragment() {
+    private var fragmentView: View? = null
+
     private lateinit var recyclerView: RecyclerView
     private lateinit var rankingAdapter: RankingAdapter
 
@@ -40,6 +42,7 @@ class RankingFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View? {
         val view = inflater.inflate(R.layout.fragment_ranking, container, false)
+        fragmentView = view
 
         recyclerView = view.findViewById(R.id.rv_profile)
         recyclerView.layoutManager = LinearLayoutManager(requireContext())
@@ -137,7 +140,8 @@ class RankingFragment : Fragment() {
     }
 
     private fun updateTopThree(profileList: ArrayList<Profiles>) {
-        if (!isAdded || activity == null) return
+        val currentView = view
+        if (currentView == null || !isAdded|| activity == null) return
 
         val activityView = requireActivity().findViewById<View>(android.R.id.content)
         val ivProfile1 = activityView.findViewById<ImageView>(R.id.iv_profile1)
@@ -171,7 +175,7 @@ class RankingFragment : Fragment() {
 
         if (profileList.isNotEmpty()) {
             val top1 = profileList[0]
-            loadProfileImage(top1.userId, ivProfile1)
+            ivProfile1?.let { loadProfileImage(top1.userId, it) }
             tvName1?.text = top1.name
             tvScore1?.text = top1.score.toString()
         } else {
@@ -184,7 +188,7 @@ class RankingFragment : Fragment() {
 
         if (profileList.size >= 2) {
             val top2 = profileList[1]
-            loadProfileImage(top2.userId, ivProfile2)
+            ivProfile1?.let { loadProfileImage(top2.userId, it) }
             tvName2?.text = top2.name
             tvScore2?.text = top2.score.toString()
         } else {
@@ -197,7 +201,7 @@ class RankingFragment : Fragment() {
 
         if (profileList.size >= 3) {
             val top3 = profileList[2]
-            loadProfileImage(top3.userId, ivProfile3)
+            ivProfile1?.let { loadProfileImage(top3.userId, it) }
             tvName3?.text = top3.name
             tvScore3?.text = top3.score.toString()
         } else {
@@ -212,5 +216,6 @@ class RankingFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         recyclerView.adapter = null
+        fragmentView = null
     }
 }
