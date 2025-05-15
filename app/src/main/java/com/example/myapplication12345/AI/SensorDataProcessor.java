@@ -237,7 +237,6 @@ public class SensorDataProcessor {
             Timber.tag(TAG).w("정렬/타임스탬프 제거 후 GPS 또는 IMU 데이터가 비어있음.");
             return null; // 텐서 생성 실패 알림
         }
-        Timber.tag(TAG).d(sortedIMU.toString());
 
         List<Map<String, Object>> combinedData = new ArrayList<>();
         final int repetitionsPerGpsRecord = 5; // GPS 레코드당 반복 횟수 (기존 로직 유지)
