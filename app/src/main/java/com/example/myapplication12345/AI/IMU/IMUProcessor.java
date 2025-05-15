@@ -32,7 +32,7 @@ public class IMUProcessor {
         // 타임스탬프별로 그룹화된 데이터 준비
         Map<Long, List<Map<String, Object>>> groupedByTimestamp = groupByTimestamp(imu);
 
-        Map<String, float[][][]> dfs = new HashMap<>(sensors.size());
+        Map<String, double[][][]> dfs = new HashMap<>(sensors.size());
         for (String sensor : sensors) {
             dfs.put(sensor, null);
         }
@@ -42,8 +42,8 @@ public class IMUProcessor {
             if (usingSensorData == null) {
                 usingSensorData = sensor;
             }
-            float[][] cutData = cutImu(usingSensorData, channels.get(usingSensorData), imu);
-            float[][][] reshapedData = reshapeDataByTimestamp(cutData, groupedByTimestamp);
+            double[][] cutData = cutImu(usingSensorData, channels.get(usingSensorData), imu);
+            double[][][] reshapedData = reshapeDataByTimestamp(cutData, groupedByTimestamp);
             dfs.put(sensor, reshapedData);
         }
 
@@ -58,7 +58,7 @@ public class IMUProcessor {
             boolean calculateJerk = IMUConfig.isCalculateJerkEnabled(sensor);
             String process = IMUConfig.getProcessType(sensor);
 
-            Map<String, float[][]> processed = IMUProcessoing.processingImu(
+            Map<String, double[][]> processed = IMUProcessing.processingImu(
                     dfs.get(IMUConfig.getUsingSensorData(sensor)),
                     numChannels,
                     statFeatures,
@@ -70,10 +70,52 @@ public class IMUProcessor {
                     dfs.get("gravity"),
                     sensor
             );
-            calcDfs.putAll(processed);
+
+            calcDfs.putAll(replaceNaNWithZero(processed));
         }
 
         return processData(concatenateAll(calcDfs));
+    }
+
+    /**
+     * Map<String, double[][]> 내의 모든 NaN 값을 0.0으로 변경한 새로운 Map을 반환합니다.
+     * 각 double[][]은 (1, 1) 형태의 스칼라 피처 값을 담고 있다고 가정합니다.
+     *
+     * @param featureMap 원본 피처 맵
+     * @return NaN이 0.0으로 대체된 새로운 피처 맵
+     */
+    public static Map<String, double[][]> replaceNaNWithZero(Map<String, double[][]> featureMap) {
+        if (featureMap == null) {
+            return null; // 또는 new HashMap<>();
+        }
+
+        Map<String, double[][]> newFeatureMap = new HashMap<>();
+
+        for (Map.Entry<String, double[][]> entry : featureMap.entrySet()) {
+            String key = entry.getKey();
+            double[][] originalValues = entry.getValue();
+            double[][] newValues = null;
+
+            if (originalValues != null) {
+                newValues = new double[originalValues.length][];
+                for (int i = 0; i < originalValues.length; i++) {
+                    if (originalValues[i] != null) {
+                        newValues[i] = new double[originalValues[i].length];
+                        for (int j = 0; j < originalValues[i].length; j++) {
+                            if (Double.isNaN(originalValues[i][j])) {
+                                newValues[i][j] = 0.0;
+                            } else {
+                                newValues[i][j] = originalValues[i][j];
+                            }
+                        }
+                    } else {
+                        newValues[i] = null; // 내부 배열이 null이면 그대로 유지
+                    }
+                }
+            }
+            newFeatureMap.put(key, newValues);
+        }
+        return newFeatureMap;
     }
 
     /**
@@ -91,12 +133,12 @@ public class IMUProcessor {
     /**
      * 데이터를 타임스탬프별로 3D 배열로 변환
      */
-    private static float[][][] reshapeDataByTimestamp(float[][] data, Map<Long, List<Map<String, Object>>> groupedByTimestamp) {
+    private static double[][][] reshapeDataByTimestamp(double[][] data, Map<Long, List<Map<String, Object>>> groupedByTimestamp) {
         int numTimestamps = groupedByTimestamp.size();
         int maxSize = groupedByTimestamp.values().stream().mapToInt(List::size).max().orElse(0);
         int cols = data[0].length;
 
-        float[][][] reshaped = new float[numTimestamps][maxSize][cols];
+        double[][][] reshaped = new double[numTimestamps][maxSize][cols];
         int timestampIdx = 0;
         int dataIdx = 0;
 
@@ -114,15 +156,15 @@ public class IMUProcessor {
      */
     private static List<Map<String, Object>> processData(Map<String, Object> dataMap) {
         if (dataMap.isEmpty()) return Collections.emptyList();
-        int numRows = ((float[][]) dataMap.values().iterator().next()).length;
+        int numRows = ((double[][]) dataMap.values().iterator().next()).length;
         List<Map<String, Object>> resultList = new ArrayList<>(numRows);
 
         for (int rowIndex = 0; rowIndex < numRows; rowIndex++) {
             Map<String, Object> entry = new LinkedHashMap<>();
             for (String header : predefinedHeaders) {
                 Object data = dataMap.get(header);
-                if (data instanceof float[][] && rowIndex < ((float[][]) data).length && ((float[][]) data)[rowIndex].length == 1) {
-                    entry.put(header, ((float[][]) data)[rowIndex][0]);
+                if (data instanceof double[][] && rowIndex < ((double[][]) data).length && ((double[][]) data)[rowIndex].length == 1) {
+                    entry.put(header, ((double[][]) data)[rowIndex][0]);
                 } else if (data instanceof long[][] && rowIndex < ((long[][]) data).length && ((long[][]) data)[rowIndex].length == 1) {
                     entry.put(header, ((long[][]) data)[rowIndex][0]);
                 }
@@ -174,12 +216,12 @@ public class IMUProcessor {
     /**
      * 센서 데이터 잘라서 반환
      */
-    private static float[][] cutImu(String sensor, int numChannels, List<Map<String, Object>> imu) {
-        float[][] data = new float[imu.size()][numChannels];
+    private static double[][] cutImu(String sensor, int numChannels, List<Map<String, Object>> imu) {
+        double[][] data = new double[imu.size()][numChannels];
         int row = 0;
 
         for (Map<String, Object> imuEntry : imu) {
-            float[] currentRow = data[row++];
+            double[] currentRow = data[row++];
             int col = 0;
             if (imuEntry.containsKey(sensor + ".x")) currentRow[col++] = getFirstValue(imuEntry.get(sensor + ".x"));
             if (numChannels > 1 && imuEntry.containsKey(sensor + ".y")) currentRow[col++] = getFirstValue(imuEntry.get(sensor + ".y"));
@@ -190,9 +232,9 @@ public class IMUProcessor {
     }
 
     /**
-     * 객체에서 Float 값 추출 - Java 11 호환
+     * 객체에서 double 값 추출 - Java 11 호환
      */
-    private static float getFirstValue(Object obj) {
+    private static double getFirstValue(Object obj) {
         if (obj instanceof List) {
             List<?> list = (List<?>) obj;
             if (!list.isEmpty()) {
@@ -218,8 +260,8 @@ public class IMUProcessor {
         Map<String, Object> sensorDataMap = new HashMap<>(dataMap.size());
         for (Map.Entry<String, Object> entry : dataMap.entrySet()) {
             Object data = entry.getValue();
-            if (data instanceof float[][] && ((float[][]) data).length > 0) {
-                sensorDataMap.put(entry.getKey(), ((float[][]) data).clone());
+            if (data instanceof double[][] && ((double[][]) data).length > 0) {
+                sensorDataMap.put(entry.getKey(), ((double[][]) data).clone());
             } else if (data instanceof long[][] && ((long[][]) data).length > 0) {
                 sensorDataMap.put(entry.getKey(), ((long[][]) data).clone());
             }

@@ -237,6 +237,7 @@ public class SensorDataProcessor {
             Timber.tag(TAG).w("정렬/타임스탬프 제거 후 GPS 또는 IMU 데이터가 비어있음.");
             return null; // 텐서 생성 실패 알림
         }
+        Timber.tag(TAG).d(sortedIMU.toString());
 
         List<Map<String, Object>> combinedData = new ArrayList<>();
         final int repetitionsPerGpsRecord = 5; // GPS 레코드당 반복 횟수 (기존 로직 유지)
@@ -523,16 +524,24 @@ public class SensorDataProcessor {
 
             // --- 예측된 이동 수단 결정 ---
             String predictedMode;
-            float threshold = 0.9f; // 예측 신뢰도 임계값
-            // 확률이 임계값 이상이고 인덱스가 유효 범위 내인 경우
-            if (maxProb >= threshold && maxIndex >= 0 && maxIndex < TRANSPORT_MODES.length) {
-                predictedMode = TRANSPORT_MODES[maxIndex]; // 매핑된 이동 수단 문자열 사용
-                Timber.tag(TAG).d("예측된 이동수단: %s (인덱스: %d), 확률: %.4f", predictedMode, maxIndex, maxProb);
-            } else {
-                // 신뢰도가 낮거나 인덱스가 유효하지 않은 경우
-                predictedMode = DEFAULT_MODE_UNKNOWN; // "ETC" 사용
-                Timber.tag(TAG).w("확률(%.4f)이 임계값(%.1f) 미만이거나 유효하지 않은 인덱스(%d). '%s' 사용", maxProb, threshold, maxIndex, predictedMode);
+            float threshold = 0.1f; // 가장 높은 확률이 이 값 이하이면 "알 수 없음"으로 처리
+
+            // 1. 가장 높은 확률이 낮은_확률_임계값 이하인지 먼저 확인
+            if (maxProb < threshold) {
+                predictedMode = DEFAULT_MODE_UNKNOWN;
+                Timber.tag(TAG).w("가장 높은 확률(%.4f)이 임계값(%.1f) 미만입니다. '%s' 사용", maxProb, threshold, predictedMode);
             }
+            // 2. 그렇지 않고, 인덱스가 유효 범위 내인 경우 해당 이동 수단 사용
+            else if (maxIndex >= 0 && maxIndex < TRANSPORT_MODES.length) {
+                predictedMode = TRANSPORT_MODES[maxIndex]; // 매핑된 이동 수단 문자열 사용
+                Timber.tag(TAG).d("가장 높은 확률의 이동수단: %s (인덱스: %d), 확률: %.4f", predictedMode, maxIndex, maxProb);
+            }
+            // 3. 확률은 임계값 이상이지만, 인덱스가 유효하지 않은 경우 (모델 출력 오류 가능성)
+            else {
+                predictedMode = DEFAULT_MODE_UNKNOWN; // "ETC" 또는 다른 기본값 사용
+                Timber.tag(TAG).e("오류: 유효하지 않은 예측 인덱스(%d) (확률: %.4f). 모델 출력 확인 필요. '%s' 사용", maxIndex, maxProb, predictedMode);
+            }
+            // 이제 predictedMode 변수에 조건에 따라 이동수단 또는 DEFAULT_MODE_UNKNOWN이 할당됩니다.
 
             // 클래스 멤버 변수(마지막 예측 결과) 업데이트
             lastPredictedResult = predictedMode;
