@@ -26,10 +26,6 @@ class RankingFragment : Fragment() {
     private lateinit var recyclerView: RecyclerView
     private lateinit var rankingAdapter: RankingAdapter
 
-    // Top 3 UI 요소들을 멤버 변수로 선언 (선택 사항이지만, 반복적인 findViewById 줄일 수 있음)
-    // 또는 updateTopThree 내에서 매번 findViewById 사용 (현재 방식 유지)
-    // 여기서는 현재 방식을 유지하며 수정합니다.
-
     companion object {
         const val TYPE_NOW = "now"
         const val TYPE_DAILY = "daily"
@@ -50,8 +46,7 @@ class RankingFragment : Fragment() {
 
         recyclerView = view.findViewById(R.id.rv_profile)
         recyclerView.layoutManager = LinearLayoutManager(requireContext())
-        // recyclerView.setHasFixedSize(true) // NestedScrollView와 함께 사용할 때 false가 더 적합할 수 있음
-        recyclerView.isNestedScrollingEnabled = false // XML에서 설정했다면 중복이지만, 명시적으로 추가
+        recyclerView.isNestedScrollingEnabled = false
         recyclerView.visibility = View.VISIBLE
 
         rankingAdapter = RankingAdapter(ArrayList())
