@@ -307,16 +307,16 @@
             android:layout_alignParentBottom="true"
             android:orientation="vertical">
 
-<!--            <androidx.appcompat.widget.AppCompatButton-->
-<!--                android:id="@+id/test_map"-->
-<!--                android:layout_width="wrap_content"-->
-<!--                android:layout_height="wrap_content"-->
-<!--                android:layout_marginBottom="8dp"-->
-<!--                android:background="@drawable/background_green_dark"-->
-<!--                android:text="TEST"-->
-<!--                android:textColor="@color/white"-->
-<!--                android:visibility="visible"-->
-<!--                />-->
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/test_map"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:background="@drawable/background_green_dark"
+                android:text="TEST"
+                android:textColor="@color/white"
+                android:visibility="gone"
+                />
 
             <ImageButton
                 android:id="@+id/find_now_locate_button"
