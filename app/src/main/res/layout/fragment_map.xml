@@ -300,46 +300,29 @@
             </LinearLayout>
         </androidx.core.widget.NestedScrollView>
 
-        <LinearLayout
-            android:layout_width="77dp"
-            android:layout_height="78dp"
-            android:layout_alignParentBottom="true"
-            android:orientation="vertical">
-            <ImageView
-                android:layout_width="52dp"
-                android:layout_height="52dp"
-                android:layout_gravity="center"
-                android:elevation="4dp"
-                android:background="@drawable/background_radius_white"/>
-        </LinearLayout>
-
         <!-- 오른쪽 하단에 버튼 추가 -->
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_alignParentBottom="true"
-            android:orientation="vertical"
-            android:layout_marginBottom="28dp">
+            android:orientation="vertical">
 
-            <!-- 기존 test_map 버튼 -->
-
-            <!-- 새로운 버튼 추가 -->
-            <androidx.appcompat.widget.AppCompatButton
-                android:id="@+id/test_map"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="8dp"
-                android:background="@drawable/background_green_dark"
-                android:text="TEST"
-                android:textColor="@color/white"
-                android:visibility="visible"
-                />
+<!--            <androidx.appcompat.widget.AppCompatButton-->
+<!--                android:id="@+id/test_map"-->
+<!--                android:layout_width="wrap_content"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:layout_marginBottom="8dp"-->
+<!--                android:background="@drawable/background_green_dark"-->
+<!--                android:text="TEST"-->
+<!--                android:textColor="@color/white"-->
+<!--                android:visibility="visible"-->
+<!--                />-->
 
             <ImageButton
                 android:id="@+id/find_now_locate_button"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
-                android:layout_marginLeft="14dp"
+                android:layout_margin="16dp"
                 android:layout_gravity="start"
                 android:textColor="@color/white"
                 android:background="@drawable/ic_location_searching"
