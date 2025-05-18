@@ -2,13 +2,12 @@ package com.example.myapplication12345.AI.BTS; // 패키지명은 2번 코드 �
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedHashMap; // 순서 유지를 위해 LinkedHashMap 사용
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
-// import java.util.HashSet; // 필요시 사용
 
 public class BTSProcessor {
     private static final int MILLI_INTERVAL = 5000;
