@@ -99,7 +99,7 @@ class RankingFragment : Fragment() {
 
                 for (userSnapshot in snapshot.children) {
                     val userId = userSnapshot.key ?: continue
-                    val nickname = userSnapshot.child("nickname").value?.toString() ?: "Unknown"
+                    val nickname = userSnapshot.child("nickname").value?.toString() ?: "익명"
                     var score = 0
 
                     if (rankingType == TYPE_NOW) {
