@@ -40,6 +40,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import androidx.core.view.isVisible
 
 class MapFragment : Fragment(), OnMapReadyCallback {
 
@@ -188,23 +189,22 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         dateText.setOnClickListener { showDatePickerDialog() }
         testMapButton.setOnClickListener { handleTestMapButtonClick() }
         findnowlocateButton.setOnClickListener {
+            //현재 위치 토글
             if (!isMyLocationShown) {
-                // 첫 클릭: 현재 위치 표시 시작
+                findnowlocateButton.setImageResource(R.drawable.ic_location_searching_true)
                 enableMyLocationIfPermitted()
                 setMapToCurrentLocation()
-                isMyLocationShown = true
                 Timber.tag(TAG).d("현재 위치 표시 시작")
             } else {
-                // 두 번째 클릭: 현재 위치 표시 중단
+                findnowlocateButton.setImageResource(R.drawable.ic_location_searching)
                 try {
                     googleMap?.isMyLocationEnabled = false
                 }catch (_:SecurityException){
                     Timber.tag(TAG).d("권환 필요")
                 }
-
-                isMyLocationShown = false
                 Timber.tag(TAG).d("현재 위치 표시 중단")
             }
+            isMyLocationShown = !isMyLocationShown
         }
     }
 
