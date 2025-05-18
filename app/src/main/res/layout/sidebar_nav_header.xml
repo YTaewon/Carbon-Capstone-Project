@@ -8,16 +8,36 @@
     android:background="@color/headerBackground"
     android:gravity="center_vertical">
 
-    <!-- 프로필 이미지 -->
-    <de.hdodenhof.circleimageview.CircleImageView
-        android:id="@+id/profile_image"
-        android:layout_width="80dp"
-        android:layout_height="80dp"
-        android:src="@drawable/user"
-        app:civ_border_color="@color/white"
-        app:civ_border_width="3dp"
-        android:layout_gravity="center_horizontal"
-        android:contentDescription="프로필 이미지" />
+    <FrameLayout
+        android:layout_width="100dp"
+        android:layout_height="100dp"
+        android:layout_gravity="center_horizontal">
+        <!-- 프로필 이미지 -->
+        <de.hdodenhof.circleimageview.CircleImageView
+            android:id="@+id/profile_image"
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:src="@drawable/user"
+            app:civ_border_color="@color/white"
+            app:civ_border_width="3dp"
+            android:layout_gravity="center_horizontal"
+            android:contentDescription="프로필 이미지" />
+
+        <androidx.constraintlayout.utils.widget.MotionButton
+            android:id="@+id/profile_image_change"
+            android:layout_width="wrap_content"
+            android:layout_height="28dp"
+            android:layout_gravity="bottom|center_horizontal"
+            android:paddingLeft="10dp"
+            android:paddingRight="10dp"
+            android:elevation="8dp"
+            android:text="이미지 변경"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:textColor="@color/black"
+            android:background="@drawable/background_white"/>
+
+    </FrameLayout>
 
     <!-- 사용자 이름 -->
     <TextView
@@ -28,7 +48,6 @@
         android:textColor="@color/white"
         android:textSize="18sp"
         android:textStyle="bold"
-        android:layout_marginTop="8dp"
         android:layout_gravity="center_horizontal" />
 
 </LinearLayout>
