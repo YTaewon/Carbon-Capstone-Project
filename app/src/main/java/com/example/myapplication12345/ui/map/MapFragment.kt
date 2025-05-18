@@ -40,7 +40,6 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
-import androidx.core.view.isVisible
 
 class MapFragment : Fragment(), OnMapReadyCallback {
 
@@ -99,7 +98,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         "ETC"           // 11: 기타
     )
 
-    private val transportModes = listOf("WALK", "BIKE", "BUS", "CAR", "SUBWAY", "ETC")
+//    private val transportModes = listOf("WALK", "BIKE", "BUS", "CAR", "SUBWAY", "ETC")
     private val selectedModes = mutableSetOf<String>().apply { addAll(TRANSPORT_MODES) }
     private var isDistanceInfoVisible = true
     private var isMapInitialized = false
