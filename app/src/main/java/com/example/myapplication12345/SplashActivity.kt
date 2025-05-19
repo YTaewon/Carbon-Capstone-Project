@@ -42,9 +42,7 @@ class SplashActivity : AppCompatActivity() {
             insets
         }
 
-        if (BuildConfig.DEBUG) {
-            Timber.plant(Timber.DebugTree())
-        }
+        Timber.plant(Timber.DebugTree())
 
         // 권한 확인 및 즉시 진행
         if (!hasPermissions()) {
