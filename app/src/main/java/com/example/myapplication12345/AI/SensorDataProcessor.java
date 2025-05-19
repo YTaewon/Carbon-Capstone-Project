@@ -157,6 +157,8 @@ public class SensorDataProcessor {
 
         // 거리 먼저 계산
         MovementAnalyzer analyzer = new MovementAnalyzer(gpsData, imuData);
+        float speed = (analyzer.calculateAverageSpeedFromIMU(imuData))* 3.6f;
+        Timber.tag(TAG).d("평균 속도: "+ speed +"Km/s");
         analyzer.analyze();
         float distance = analyzer.getDistance(); // 해당 배치의 총 이동 거리
 
@@ -175,7 +177,7 @@ public class SensorDataProcessor {
             // 예측 불가 시 동작 정의: 마지막 예측 유지 또는 STOP/ETC 설정? -> 안정성을 위해 마지막 유효값 유지 고려.
             // 단, 거리가 매우 작으면 나중에 덮어쓸 수 있음.
             // GPS 데이터가 충분하면, 마지막 모드 또는 STOP으로 세그먼트 저장 시도.
-            saveSegmentsWithFallback(gpsData, distance, DEFAULT_MODE_STOPPED); // 데이터 부족 시 STOP으로 저장
+            saveSegmentsWithFallback(gpsData, distance, DEFAULT_MODE_STOPPED, speed); // 데이터 부족 시 STOP으로 저장
             return;
         }
 
@@ -194,7 +196,7 @@ public class SensorDataProcessor {
         // 전처리 후 데이터 유효성 검사
         if (processedAP.isEmpty() || processedBTS.isEmpty() || processedGPS.isEmpty() || processedIMU.isEmpty()) {
             Timber.tag(TAG).w("데이터 전처리 실패 - 하나 이상의 센서 데이터가 전처리 후 비어 있음");
-            saveSegmentsWithFallback(gpsData, distance, DEFAULT_MODE_STOPPED); // 처리 실패 시 STOP으로 저장
+            saveSegmentsWithFallback(gpsData, distance, DEFAULT_MODE_STOPPED, speed); // 처리 실패 시 STOP으로 저장
             return;
         }
 
@@ -203,14 +205,14 @@ public class SensorDataProcessor {
             Tensor inputTensor = getProcessedFeatureVector(processedAP, processedBTS, processedGPS, processedIMU);
             if (inputTensor == null) {
                 Timber.tag(TAG).e("입력 텐서 생성 실패");
-                saveSegmentsWithFallback(gpsData, distance, DEFAULT_MODE_STOPPED); // 텐서 생성 실패 시 STOP으로 저장
+                saveSegmentsWithFallback(gpsData, distance, DEFAULT_MODE_STOPPED, speed); // 텐서 생성 실패 시 STOP으로 저장
                 return;
             }
             // predictMovingMode 내부에서 lastPredictedResult 업데이트 및 세그먼트 저장
-            predictMovingMode(inputTensor, gpsData, distance);
+            predictMovingMode(inputTensor, gpsData, distance, speed);
         } catch (Exception e) {
             Timber.tag(TAG).e(e, "데이터 처리 또는 예측 중 오류 발생");
-            saveSegmentsWithFallback(gpsData, distance, DEFAULT_MODE_UNKNOWN); // 일반 오류 시 ETC로 저장
+            saveSegmentsWithFallback(gpsData, distance, DEFAULT_MODE_UNKNOWN, speed); // 일반 오류 시 ETC로 저장
         }
     }
 
@@ -233,6 +235,7 @@ public class SensorDataProcessor {
         List<Map<String, Object>> sortedGPS = sortAndRemoveTimestamp(new ArrayList<>(gpsData));
         List<Map<String, Object>> sortedIMU = sortAndRemoveTimestamp(new ArrayList<>(imuData));
 
+        Timber.tag(TAG).d(sortedGPS.toString());
         // 정렬/타임스탬프 제거 후 크기 재확인 (이전 검사가 더 좋음)
         if (sortedGPS.isEmpty() || sortedIMU.isEmpty()) {
             Timber.tag(TAG).w("정렬/타임스탬프 제거 후 GPS 또는 IMU 데이터가 비어있음.");
@@ -263,6 +266,7 @@ public class SensorDataProcessor {
 
             combinedData.add(row); // 완성된 타임스텝 데이터 추가
         }
+
         // Timber.tag(TAG).d("결합된 데이터 행 예시 (0): %s", combinedData.get(0).toString());
         return convertListMapToTensor(combinedData); // 최종 텐서 변환
     }
@@ -386,7 +390,7 @@ public class SensorDataProcessor {
      * @param totalDistance 해당 배치의 총 이동 거리 (STOP 판정 기준)
      * @param fallbackMode 사용할 대체 이동 수단 (예: DEFAULT_MODE_STOPPED, DEFAULT_MODE_UNKNOWN)
      */
-    private void saveSegmentsWithFallback(List<Map<String, Object>> gpsData, float totalDistance, String fallbackMode) {
+    private void saveSegmentsWithFallback(List<Map<String, Object>> gpsData, float totalDistance, String fallbackMode, float speed) {
         // 세그먼트 생성을 위한 최소 GPS 데이터 개수 확인
         if (gpsData == null || gpsData.size() < SEGMENT_SIZE) {
             Timber.tag(TAG).w("GPS 데이터 부족 (%d개)하여 세그먼트 저장 불가 (Fallback)", gpsData != null ? gpsData.size() : 0);
@@ -427,8 +431,16 @@ public class SensorDataProcessor {
                     segmentMode = DEFAULT_MODE_STOPPED;
                 }
 
-                // CSV 저장 함수 호출
-                savePredictionToCSV(segmentMode, distancePerSegment, startTimestamp, startLat, startLon, endLat, endLon);
+                if(!segmentMode.equals(DEFAULT_MODE_STOPPED)){
+                    if(speed < 30){
+                        segmentMode = "WALK";
+                        Timber.tag(TAG).d("평균 속도: "+ speed +"Km/s WALK로 변경");
+                    }
+                    // CSV 파일에 저장
+                    savePredictionToCSV(segmentMode, distancePerSegment, startTimestamp, startLat, startLon, endLat, endLon);
+                }else{
+                    Timber.tag(TAG).d("STOP 무시");
+                }
 
             } catch (NullPointerException e) {
                 Timber.tag(TAG).e(e, "세그먼트 %d 데이터 추출 중 NullPointerException 발생", segment);
@@ -494,7 +506,7 @@ public class SensorDataProcessor {
      * @param gpsData 원본 GPS 데이터 리스트 (세그먼트 분할 및 정보 추출용)
      * @param totalDistance 해당 배치의 총 이동 거리 (STOP 판정용)
      */
-    private void predictMovingMode(Tensor inputTensor, List<Map<String, Object>> gpsData, float totalDistance) {
+    private void predictMovingMode(Tensor inputTensor, List<Map<String, Object>> gpsData, float totalDistance, float speed) {
         // model null 체크는 processSensorData에서 이미 수행됨
 
         try {
@@ -507,7 +519,7 @@ public class SensorDataProcessor {
             if (logits.length != EXPECTED_MODEL_OUTPUT_SIZE) {
                 Timber.tag(TAG).e("모델 출력 크기가 예상(%d)과 다름: %d", EXPECTED_MODEL_OUTPUT_SIZE, logits.length);
                 lastPredictedResult = DEFAULT_MODE_UNKNOWN; // 예상치 못한 출력이면 ETC로 설정
-                saveSegmentsWithFallback(gpsData, totalDistance, lastPredictedResult); // ETC로 세그먼트 저장
+                saveSegmentsWithFallback(gpsData, totalDistance, lastPredictedResult, speed); // ETC로 세그먼트 저장
                 return;
             }
 
@@ -581,13 +593,22 @@ public class SensorDataProcessor {
                         }
 
                         // 최종 결정된 정보 로그 출력
+
+
+                        if(!(predictedMode.equals(DEFAULT_MODE_STOPPED))){
+                            if(speed < 30.0f){
+                                finalTransportMode = "WALK";
+                                Timber.tag(TAG).d("평균 속도: "+ speed +"Km/s WALK로 변경");
+                            }
+                            // CSV 파일에 저장
+                            savePredictionToCSV(finalTransportMode, distancePerSegment, startTimestamp, startLat, startLon, endLat, endLon);
+                        }else{
+                            Timber.tag(TAG).d("STOP 무시");
+                        }
+
                         Timber.tag(TAG).d("세그먼트 %d 최종 모드: %s (거리: %.2fm, 시작: %.6f,%.6f, 종료: %.6f,%.6f)",
                                 segment, finalTransportMode, distancePerSegment, startLat, startLon, endLat, endLon);
 
-                        if(!predictedMode.equals(DEFAULT_MODE_STOPPED)){
-                            // CSV 파일에 저장
-                            savePredictionToCSV(finalTransportMode, distancePerSegment, startTimestamp, startLat, startLon, endLat, endLon);
-                        }
                     } catch (NullPointerException e) {
                         Timber.tag(TAG).e(e, "세그먼트 %d 데이터 추출 중 NullPointerException (예측 후 저장 단계)", segment);
                     } catch (Exception e) {
@@ -604,7 +625,7 @@ public class SensorDataProcessor {
             Timber.tag(TAG).e(e, "예측 또는 세그먼트 저장 중 오류: %s", e.getMessage());
             lastPredictedResult = DEFAULT_MODE_UNKNOWN; // 오류 시 ETC로 설정
             // 예측 실패 시에도 대체 저장 시도
-            saveSegmentsWithFallback(gpsData, totalDistance, DEFAULT_MODE_UNKNOWN);
+            saveSegmentsWithFallback(gpsData, totalDistance, DEFAULT_MODE_UNKNOWN, speed);
         }
     }
 

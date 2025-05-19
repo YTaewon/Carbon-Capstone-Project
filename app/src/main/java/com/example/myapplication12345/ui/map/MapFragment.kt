@@ -374,6 +374,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         val distanceInfo = StringBuilder("이동 거리 합계:\n")
         var firstPoint: LatLng? = null
         var hasData = false
+        var totalOverallDistance = 0.0
+
         val validModes = setOf(
             "WALK",        // 0 : 걷기
 //            "RUN",         // 1 : 달리기
@@ -423,6 +425,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
                 if (startPoint != null && endPoint != null) {
                     totalDistance += distance
+                    totalOverallDistance += distance
                     if (firstPoint == null) firstPoint = startPoint
                     hasData = true
 
