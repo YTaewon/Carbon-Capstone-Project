@@ -83,22 +83,22 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private lateinit var findnowlocateButton: ImageView
     private lateinit var fusedLocationClient: FusedLocationProviderClient
 
-    private val TRANSPORT_MODES: Array<String> = arrayOf<String>(
-        "WALK",         // 0: 걷기
-        "RUN",          // 1: 달리기
-        "BIKE",         // 2: 자전거
-        "CAR",          // 3: 자동차 (모델이 구분하지 않는 한 택시 포함)
-        "BUS",          // 4: 버스
-        "TRAIN",        // 5: KTX/기차
-        "SUBWAY",       // 6: 지하철
-        "MOTORCYCLE",   // 7: 오토바이
-        "E_BIKE",       // 8: 전기자전거
-        "E_SCOOTER",    // 9: 전동 킥보드
-        "TAXI",         // 10: 택시 (명시적으로 추가)
-        "ETC"           // 11: 기타
-    )
+//    private val TRANSPORT_MODES: Array<String> = arrayOf<String>(
+//        "WALK",         // 0: 걷기
+//        "RUN",          // 1: 달리기
+//        "BIKE",         // 2: 자전거
+//        "CAR",          // 3: 자동차 (모델이 구분하지 않는 한 택시 포함)
+//        "BUS",          // 4: 버스
+//        "TRAIN",        // 5: KTX/기차
+//        "SUBWAY",       // 6: 지하철
+//        "MOTORCYCLE",   // 7: 오토바이
+//        "E_BIKE",       // 8: 전기자전거
+//        "E_SCOOTER",    // 9: 전동 킥보드
+//        "TAXI",         // 10: 택시 (명시적으로 추가)
+//        "ETC"           // 11: 기타
+//    )
 
-//    private val transportModes = listOf("WALK", "BIKE", "BUS", "CAR", "SUBWAY", "ETC")
+    private val TRANSPORT_MODES = listOf("WALK", "BIKE", "BUS", "CAR", "SUBWAY", "ETC")
     private val selectedModes = mutableSetOf<String>().apply { addAll(TRANSPORT_MODES) }
     private var isDistanceInfoVisible = true
     private var isMapInitialized = false
@@ -283,16 +283,16 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         // transportModes와 체크박스 ID 매핑
         val checkboxIds = mapOf(
             "WALK" to R.id.checkbox_walk,
-            "RUN" to R.id.checkbox_run,
+//            "RUN" to R.id.checkbox_run,
             "BIKE" to R.id.checkbox_bike,
             "CAR" to R.id.checkbox_car,
             "BUS" to R.id.checkbox_bus,
-            "TRAIN" to R.id.checkbox_train,
+//            "TRAIN" to R.id.checkbox_train,
             "SUBWAY" to R.id.checkbox_subway,
-            "MOTORCYCLE" to R.id.checkbox_motorcycle,
-            "E_BIKE" to R.id.checkbox_e_bike,
-            "E_SCOOTER" to R.id.checkbox_e_scooter,
-            "TAXI" to R.id.checkbox_taxi,
+//            "MOTORCYCLE" to R.id.checkbox_motorcycle,
+//            "E_BIKE" to R.id.checkbox_e_bike,
+//            "E_SCOOTER" to R.id.checkbox_e_scooter,
+//            "TAXI" to R.id.checkbox_taxi,
             "ETC" to R.id.checkbox_etc
         )
 
@@ -374,33 +374,32 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         val distanceInfo = StringBuilder("이동 거리 합계:\n")
         var firstPoint: LatLng? = null
         var hasData = false
-
         val validModes = setOf(
             "WALK",        // 0 : 걷기
-            "RUN",         // 1 : 달리기
+//            "RUN",         // 1 : 달리기
             "BIKE",        // 2 : 자전거
             "CAR",         // 3 : 자동차 (모델이 구분하지 않는 한 택시 포함)
             "BUS",         // 4 : 버스
-            "TRAIN",       // 5 : KTX/기차
+//            "TRAIN",       // 5 : KTX/기차
             "SUBWAY",      // 6 : 지하철
-            "MOTORCYCLE",  // 7 : 오토바이
-            "E_BIKE",      // 8 : 전기 자전거
-            "E_SCOOTER",   // 9 : 전동 킥보드
-            "TAXI",        // 10: 택시 (명시적으로 추가)
+//            "MOTORCYCLE",  // 7 : 오토바이
+//            "E_BIKE",      // 8 : 전기 자전거
+//            "E_SCOOTER",   // 9 : 전동 킥보드
+//            "TAXI",        // 10: 택시 (명시적으로 추가)
             "ETC"          // 11: 나머지
         )
         val modeNames = mapOf(
             "WALK"          to "걷기",
-            "RUN"           to "달리기",
+//            "RUN"           to "달리기",
             "BIKE"          to "자전거",
             "CAR"           to "자동차",
             "BUS"           to "버스",
-            "TRAIN"         to "기차",
+//            "TRAIN"         to "기차",
             "SUBWAY"        to "지하철",
-            "MOTORCYCLE"    to "오토바이",
-            "E_BIKE"        to "전기 자전거",
-            "E_SCOOTER"     to "전동 킥보드",
-            "TAXI"          to "택시",
+//            "MOTORCYCLE"    to "오토바이",
+//            "E_BIKE"        to "전기 자전거",
+//            "E_SCOOTER"     to "전동 킥보드",
+//            "TAXI"          to "택시",
             "ETC"           to "나머지"
         )
 
@@ -464,18 +463,27 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         }
     }
 
+//    private fun getTransportColor(mode: String): Int = when (mode) {
+//        "WALK"          -> "#DB4437".toColorInt()
+//        "RUN"           -> "#E56730".toColorInt()
+//        "BIKE"          -> "#F4B400".toColorInt()
+//        "CAR"           -> "#0F9D58".toColorInt()
+//        "BUS"           -> "#89C17E".toColorInt()
+//        "TRAIN"         -> "#4285F4".toColorInt()
+//        "SUBWAY"        -> "#03A9F4".toColorInt()
+//        "MOTORCYCLE"    -> "#4B0082".toColorInt()
+//        "E_BIKE"        -> "#9933CC".toColorInt()
+//        "E_SCOOTER"     -> "#7C4700".toColorInt()
+//        "TAXI"          -> "#997950".toColorInt()
+//        else            -> "#2E2E2E".toColorInt()
+//    }
+
     private fun getTransportColor(mode: String): Int = when (mode) {
         "WALK"          -> "#DB4437".toColorInt()
-        "RUN"           -> "#E56730".toColorInt()
         "BIKE"          -> "#F4B400".toColorInt()
         "CAR"           -> "#0F9D58".toColorInt()
-        "BUS"           -> "#89C17E".toColorInt()
-        "TRAIN"         -> "#4285F4".toColorInt()
-        "SUBWAY"        -> "#03A9F4".toColorInt()
-        "MOTORCYCLE"    -> "#4B0082".toColorInt()
-        "E_BIKE"        -> "#9933CC".toColorInt()
-        "E_SCOOTER"     -> "#7C4700".toColorInt()
-        "TAXI"          -> "#997950".toColorInt()
+        "BUS"           -> "#4285F4".toColorInt()
+        "SUBWAY"        -> "#7C4700".toColorInt()
         else            -> "#2E2E2E".toColorInt()
     }
 

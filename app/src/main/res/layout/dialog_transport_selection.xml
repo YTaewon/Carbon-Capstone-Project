@@ -17,6 +17,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:buttonTint="@color/headerBackground"
+        android:visibility="gone"
         android:text="달리기" />
 
     <CheckBox
@@ -45,6 +46,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:buttonTint="@color/headerBackground"
+        android:visibility="gone"
         android:text="KTX/기차" />
 
     <CheckBox
@@ -59,6 +61,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:buttonTint="@color/headerBackground"
+        android:visibility="gone"
         android:text="오토바이" />
 
     <CheckBox
@@ -66,6 +69,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:buttonTint="@color/headerBackground"
+        android:visibility="gone"
         android:text="전기자전거" />
 
     <CheckBox
@@ -73,6 +77,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:buttonTint="@color/headerBackground"
+        android:visibility="gone"
         android:text="전동 킥보드" />
 
     <CheckBox
@@ -80,6 +85,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:buttonTint="@color/headerBackground"
+        android:visibility="gone"
         android:text="택시" />
 
     <CheckBox

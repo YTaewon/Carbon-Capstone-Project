@@ -12,15 +12,7 @@
         android:id="@+id/nav_logout"
         android:title="로그아웃" />
 
-    <item android:title="탄소 계산기">
-        <menu>
-            <item
-                android:id="@+id/nav_food"
-                android:title="음식" />
-        </menu>
-    </item>
-
-    <item  android:title="기타">
+    <item  android:title="탄소">
         <menu>
             <item
                 android:id="@+id/nav_quiz"
@@ -29,6 +21,10 @@
             <item
                 android:id="@+id/nav_chatbot"
                 android:title="챗봇" />
+
+            <item
+                android:id="@+id/nav_food"
+                android:title="음식 탄소 계산기" />
         </menu>
     </item>
 

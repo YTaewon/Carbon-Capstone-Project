@@ -32,7 +32,7 @@ import timber.log.Timber;
 
 public class SensorDataProcessor {
     private static final String TAG = "SensorDataProcessor";
-    private static final String MODEL_FILENAME = "model.ptl"; // 모델 파일 이름 (동일하다고 가정)
+    private static final String MODEL_FILENAME = "model_optimized0519.ptl"; // 모델 파일 이름 (동일하다고 가정)
     // 모델 입력 특성 크기 (예: 334 또는 340) - 명확성을 위해 이름 변경, 기존 값 유지
     private static final int MODEL_INPUT_FEATURE_SIZE = 340;
     private static final int MIN_TIMESTAMP_COUNT = 60; // 필요한 최소 타임스탬프 개수 (기존 값 유지)
@@ -42,17 +42,18 @@ public class SensorDataProcessor {
     // 새로운 라벨 명세(인덱스 0-12)에 해당
     private static final String[] TRANSPORT_MODES = {
             "WALK",        // 0: 걷기
-            "RUN",         // 1: 달리기
+            "WALK",         // 1: 달리기 RUN -> WALK
             "BIKE",        // 2: 자전거
             "CAR",         // 3: 차량 (모델이 구분하지 않는 한 택시 포함)
             "BUS",         // 4: 버스
-            "TRAIN",       // 5: KTX/기차
+            "ETC",       // 5: KTX/기차 TRAIN -> ETC
             "SUBWAY",      // 6: 지하철
-            "MOTORCYCLE",  // 7: 오토바이
-            "E_BIKE",      // 8: 전기자전거
-            "E_SCOOTER",   // 9: 전동 킥보드
-            "TAXI"         // 10: 택시 (명시적으로 추가)
+            "ETC",  // 7: 오토바이 MOTORCYCLE -> ETC
+            "BIKE",      // 8: 전기자전거  E_BIKE -> BIKE
+            "ETC",   // 9: 전동 킥보드 E_SCOOTER -> ETC
+            "CAR"         // 10: 택시 (명시적으로 추가) TAXI -> CAR
     };
+
     // 모델에서 예상되는 출력 클래스 개수
     private static final int EXPECTED_MODEL_OUTPUT_SIZE = TRANSPORT_MODES.length; // 13이어야 함
 
@@ -583,9 +584,10 @@ public class SensorDataProcessor {
                         Timber.tag(TAG).d("세그먼트 %d 최종 모드: %s (거리: %.2fm, 시작: %.6f,%.6f, 종료: %.6f,%.6f)",
                                 segment, finalTransportMode, distancePerSegment, startLat, startLon, endLat, endLon);
 
-                        // CSV 파일에 저장
-                        savePredictionToCSV(finalTransportMode, distancePerSegment, startTimestamp, startLat, startLon, endLat, endLon);
-
+                        if(!predictedMode.equals(DEFAULT_MODE_STOPPED)){
+                            // CSV 파일에 저장
+                            savePredictionToCSV(finalTransportMode, distancePerSegment, startTimestamp, startLat, startLon, endLat, endLon);
+                        }
                     } catch (NullPointerException e) {
                         Timber.tag(TAG).e(e, "세그먼트 %d 데이터 추출 중 NullPointerException (예측 후 저장 단계)", segment);
                     } catch (Exception e) {
