@@ -32,8 +32,12 @@ import timber.log.Timber;
 
 public class SensorDataProcessor {
     private static final String TAG = "SensorDataProcessor";
-    private static final String MODEL_FILENAME = "model_optimized0519.ptl"; // 모델 파일 이름 (동일하다고 가정)
-    // 모델 입력 특성 크기 (예: 334 또는 340) - 명확성을 위해 이름 변경, 기존 값 유지
+    private static final String[] MODEL_FILENAMES = {
+            "model/model_default.ptl", // 실제 모델 파일 이름으로 교체하세요
+            "model/epoch=40-step=15949_optimized.ptl",
+            "model/epoch=117-step=91686_optimized.ptl"
+    };
+    private static final int NUM_MODELS = MODEL_FILENAMES.length;
     private static final int MODEL_INPUT_FEATURE_SIZE = 340;
     private static final int MIN_TIMESTAMP_COUNT = 60; // 필요한 최소 타임스탬프 개수 (기존 값 유지)
     private static final int SEGMENT_SIZE = 10; // CSV 저장 시 세그먼트 크기 (기존 값 유지)
@@ -69,9 +73,9 @@ public class SensorDataProcessor {
 
     private static SensorDataProcessor instance;
     private final Context context;
-    private Module model;
+    private final List<Module> models = new ArrayList<>();
     private String lastPredictedResult = DEFAULT_MODE_UNKNOWN; // 마지막 유효 예측 결과 저장
-    private volatile boolean isModelLoaded = false; // 모델 로딩 완료 여부
+    private volatile boolean areModelsLoaded = false;  // 모델 로딩 완료 여부 (하나라도 로드되면 true)
 
     public static synchronized SensorDataProcessor getInstance(Context context) {
         if (instance == null) {
@@ -82,36 +86,65 @@ public class SensorDataProcessor {
 
     private SensorDataProcessor(Context context) {
         this.context = context;
-        loadModelAsync(); // 비동기 모델 로딩 시작
+        loadModelsAsync(); // 비동기 모델 로딩 시작
     }
 
     // 모델 비동기 로딩
-    private void loadModelAsync() {
+    private void loadModelsAsync() {
         new Thread(() -> {
-            try {
-                String modelPath = assetFilePath(context);
-                model = Module.load(modelPath);
-                isModelLoaded = true;
-                Timber.tag(TAG).d("PyTorch 모델 로드 완료: %s", modelPath);
-            } catch (IOException e) {
-                Timber.tag(TAG).e(e, "모델 파일 복사 오류: %s", e.getMessage());
-                // 사용자 알림 또는 나중에 다시 로드 시도 고려
-            } catch (Exception e) {
-                Timber.tag(TAG).e(e, "모델 로드 중 오류: %s", e.getMessage());
-                // 사용자 알림 또는 나중에 다시 로드 시도 고려
+            int loadedCount = 0;
+            for (String modelFilename : MODEL_FILENAMES) {
+                try {
+                    String modelPath = assetFilePath(context, modelFilename); // 파일 이름 전달
+                    Module model = Module.load(modelPath);
+                    models.add(model);
+                    loadedCount++;
+                    Timber.tag(TAG).d("PyTorch 모델 로드 완료: %s", modelPath);
+                } catch (IOException e) {
+                    Timber.tag(TAG).e(e, "모델 파일 복사 오류 (%s): %s", modelFilename, e.getMessage());
+                } catch (Exception e) {
+                    Timber.tag(TAG).e(e, "모델 로드 중 오류 (%s): %s", modelFilename, e.getMessage());
+                }
             }
-            // 여기서 IllegalStateException을 발생시키지 않아 모델 없이도 앱이 실행될 가능성 허용
+            if (loadedCount > 0) {
+                areModelsLoaded = true;
+                Timber.tag(TAG).i("%d개의 모델 중 %d개 로드 완료.", NUM_MODELS, loadedCount);
+            } else {
+                Timber.tag(TAG).e("모든 모델 로드 실패!");
+            }
         }).start();
     }
 
     // Assets 폴더의 모델 파일을 내부 저장소로 복사하고 경로 반환
-    private String assetFilePath(Context context) throws IOException {
-        File file = new File(context.getFilesDir(), SensorDataProcessor.MODEL_FILENAME);
-        // 파일 존재 여부만 확인 (Module.load가 손상된 파일 처리)
-        // 파일이 없으면 항상 assets에서 복사하여 무결성 보장
+    private String assetFilePath(Context context, String modelFilename) throws IOException {
+        // modelFilename이 "model/model_default.ptl"과 같은 경로를 포함할 수 있으므로,
+        // 파일 이름만 추출하고 디렉토리 경로를 따로 처리합니다.
+        File modelFile = new File(modelFilename);
+        String justFileName = modelFile.getName(); // "model_default.ptl"
+        String parentDirectoryPath = modelFile.getParent(); // "model" 또는 null
+
+        File targetDirectory;
+        if (parentDirectoryPath != null) {
+            targetDirectory = new File(context.getFilesDir(), parentDirectoryPath); // /data/user/0/.../files/model
+        } else {
+            targetDirectory = context.getFilesDir(); // /data/user/0/.../files
+        }
+
+        // 대상 디렉토리가 존재하지 않으면 생성합니다.
+        if (!targetDirectory.exists()) {
+            if (!targetDirectory.mkdirs()) { // mkdirs()는 필요한 모든 상위 디렉토리도 생성합니다.
+                Timber.tag(TAG).e("모델 파일을 위한 대상 디렉토리 생성 실패: %s", targetDirectory.getAbsolutePath());
+                throw new IOException("대상 디렉토리 생성 실패: " + targetDirectory.getAbsolutePath());
+            }
+            Timber.tag(TAG).d("모델 파일을 위한 대상 디렉토리 생성 성공: %s", targetDirectory.getAbsolutePath());
+        }
+
+        File file = new File(targetDirectory, justFileName); // /data/user/0/.../files/model/model_default.ptl
+
         if (!file.exists()) {
-            Timber.tag(TAG).d("내부 저장소에 모델 파일 없음, assets에서 복사 시작.");
-            try (InputStream is = context.getAssets().open(SensorDataProcessor.MODEL_FILENAME);
+            Timber.tag(TAG).d("내부 저장소에 모델 파일 없음 (%s), assets에서 복사 시작.", modelFilename);
+            // context.getAssets().open()에는 assets 폴더 내의 전체 경로를 사용해야 합니다.
+            try (InputStream is = context.getAssets().open(modelFilename);
                  FileOutputStream fos = new FileOutputStream(file)) {
                 byte[] buffer = new byte[4096];
                 int read;
@@ -121,8 +154,8 @@ public class SensorDataProcessor {
                 fos.flush();
                 Timber.tag(TAG).d("모델 파일 복사 완료: %s", file.getAbsolutePath());
             } catch (IOException e) {
-                Timber.tag(TAG).e(e, "assets에서 모델 파일 복사 실패.");
-                throw e; // 예외 다시 던지기
+                Timber.tag(TAG).e(e, "assets에서 모델 파일 (%s) 복사 실패.", modelFilename);
+                throw e; // 예외를 다시 던져서 호출한 쪽에서 알 수 있도록 함
             }
         } else {
             Timber.tag(TAG).d("내부 저장소에서 모델 파일 발견: %s", file.getAbsolutePath());
@@ -143,15 +176,19 @@ public class SensorDataProcessor {
                                   List<Map<String, Object>> imuData) {
 
         // 모델 로딩 완료 여부 확인
-        if (!isModelLoaded) {
+        if (!areModelsLoaded) {
             Timber.tag(TAG).w("모델이 아직 로드되지 않음. 데이터 처리 스킵");
-            // lastPredictedResult는 이전 값 또는 기본값 유지
             return;
         }
 
-        // 모델 객체 null 여부 확인
-        if (model == null) {
-            Timber.tag(TAG).e("모델 로딩 시도 후에도 model 객체가 null임. 예측 스킵.");
+        //최소 하나 이상의 모델이 로드 되었는 지 확인
+        if (models.isEmpty()) {
+            Timber.tag(TAG).e("로드된 모델이 없음. 예측 스킵.");
+            MovementAnalyzer tempAnalyzer = new MovementAnalyzer(gpsData, imuData);
+            tempAnalyzer.analyze();
+            float tempDistance = tempAnalyzer.getDistance();
+            float tempSpeed = (tempAnalyzer.calculateAverageSpeedFromIMU(imuData)) * 3.6f;
+            saveSegmentsWithFallback(gpsData, tempDistance, DEFAULT_MODE_UNKNOWN, tempSpeed);
             return;
         }
 
@@ -209,10 +246,188 @@ public class SensorDataProcessor {
                 return;
             }
             // predictMovingMode 내부에서 lastPredictedResult 업데이트 및 세그먼트 저장
-            predictMovingMode(inputTensor, gpsData, distance, speed);
+            predictMovingModeWithEnsemble(inputTensor, gpsData, distance, speed);
         } catch (Exception e) {
             Timber.tag(TAG).e(e, "데이터 처리 또는 예측 중 오류 발생");
             saveSegmentsWithFallback(gpsData, distance, DEFAULT_MODE_UNKNOWN, speed); // 일반 오류 시 ETC로 저장
+        }
+    }
+
+    /**
+     * 여러 모델의 확률 출력을 평균냅니다.
+     * @param allProbabilities 각 모델의 확률 배열 리스트
+     * @return 평균화된 확률 배열, 또는 입력이 비어있거나 일관성이 없으면 null
+     */
+    private float[] averageProbabilities(List<float[]> allProbabilities) {
+        if (allProbabilities == null || allProbabilities.isEmpty()) {
+            Timber.tag(TAG).w("평균할 확률 리스트가 비어있음.");
+            return null;
+        }
+
+        int numClasses = EXPECTED_MODEL_OUTPUT_SIZE;
+        for(float[] probs : allProbabilities) {
+            if (probs.length != numClasses) {
+                Timber.tag(TAG).e("일치하지 않는 확률 배열 크기 발견. 예상: %d, 실제: %d", numClasses, probs.length);
+                return null;
+            }
+        }
+
+        float[] averagedProbs = new float[numClasses];
+        for (float[] probs : allProbabilities) {
+            for (int i = 0; i < numClasses; i++) {
+                averagedProbs[i] += probs[i];
+            }
+        }
+
+        int numValidModels = allProbabilities.size();
+        for (int i = 0; i < numClasses; i++) {
+            averagedProbs[i] /= numValidModels;
+        }
+        return averagedProbs;
+    }
+
+    /**
+     * --- 새로운 앙상블 예측 메소드 ---
+     * (기존 predictMovingMode 메소드를 대체하거나 수정하여 이 형태로 만듦)
+     * 입력 텐서를 사용하여 모든 로드된 모델로 추론을 수행하고, 결과를 앙상블하여 이동 수단을 결정한 후,
+     * GPS 데이터를 세그먼트로 나누어 각 세그먼트 정보를 CSV 파일에 저장합니다.
+     * @param inputTensor 모델 입력 텐서
+     * @param gpsData 원본 GPS 데이터 리스트 (세그먼트 분할 및 정보 추출용)
+     * @param totalDistance 해당 배치의 총 이동 거리 (STOP 판정용)
+     * @param speed 평균 속도 (Km/h)
+     */
+    private void predictMovingModeWithEnsemble(Tensor inputTensor, List<Map<String, Object>> gpsData, float totalDistance, float speed) {
+        if (models.isEmpty()) {
+            Timber.tag(TAG).e("앙상블 예측 시도 중 로드된 모델 없음.");
+            saveSegmentsWithFallback(gpsData, totalDistance, DEFAULT_MODE_UNKNOWN, speed);
+            return;
+        }
+
+        List<float[]> allModelProbabilities = new ArrayList<>();
+
+        try {
+            // --- 각 모델에 대해 추론 실행 ---
+            for (int i = 0; i < models.size(); i++) { // 모델 인덱스 로깅을 위해 for-i 사용
+                Module model = models.get(i);
+                try {
+                    IValue output = model.forward(IValue.from(inputTensor));
+                    Tensor outputTensor = output.toTensor();
+                    float[] logits = outputTensor.getDataAsFloatArray();
+
+                    if (logits.length != EXPECTED_MODEL_OUTPUT_SIZE) {
+                        Timber.tag(TAG).e("모델 %d의 출력 크기가 예상(%d)과 다름: %d. 이 모델의 예측은 건너뜁니다.",
+                                i, EXPECTED_MODEL_OUTPUT_SIZE, logits.length);
+                        continue;
+                    }
+                    allModelProbabilities.add(softmax(logits));
+                } catch (Exception e) {
+                    Timber.tag(TAG).e(e, "개별 모델(모델 %d) 추론 중 오류. 이 모델의 예측은 건너뜁니다.", i);
+                }
+            }
+
+            if (allModelProbabilities.isEmpty()) {
+                Timber.tag(TAG).e("모든 모델에서 유효한 예측을 얻지 못함.");
+                lastPredictedResult = DEFAULT_MODE_UNKNOWN;
+                saveSegmentsWithFallback(gpsData, totalDistance, lastPredictedResult, speed);
+                return;
+            }
+
+            // --- 예측 집계 (확률 평균화) ---
+            float[] finalProbabilities = averageProbabilities(allModelProbabilities);
+            if (finalProbabilities == null) {
+                Timber.tag(TAG).e("확률 평균화 실패.");
+                lastPredictedResult = DEFAULT_MODE_UNKNOWN;
+                saveSegmentsWithFallback(gpsData, totalDistance, lastPredictedResult, speed);
+                return;
+            }
+
+            // --- 평균화된 확률로부터 최종 예측 결정 ---
+            int maxIndex = 0;
+            float maxProb = finalProbabilities[0];
+            for (int i = 1; i < finalProbabilities.length; i++) {
+                if (finalProbabilities[i] > maxProb) {
+                    maxProb = finalProbabilities[i];
+                    maxIndex = i;
+                }
+            }
+
+            String predictedMode;
+            float threshold = 0.1f;
+
+            if (maxProb < threshold) {
+                predictedMode = DEFAULT_MODE_UNKNOWN;
+                Timber.tag(TAG).w("앙상블: 가장 높은 평균 확률(%.4f)이 임계값(%.1f) 미만. '%s' 사용", maxProb, threshold, predictedMode);
+            } else if (maxIndex >= 0 && maxIndex < TRANSPORT_MODES.length) {
+                predictedMode = TRANSPORT_MODES[maxIndex];
+                Timber.tag(TAG).d("앙상블: 가장 높은 확률의 이동수단: %s (인덱스: %d), 평균 확률: %.4f", predictedMode, maxIndex, maxProb);
+            } else {
+                predictedMode = DEFAULT_MODE_UNKNOWN;
+                Timber.tag(TAG).e("앙상블 오류: 유효하지 않은 예측 인덱스(%d) (평균 확률: %.4f). '%s' 사용", maxIndex, maxProb, predictedMode);
+            }
+
+            lastPredictedResult = predictedMode;
+
+            // --- 세그먼트 저장 로직 (기존과 유사하나, 앙상블의 predictedMode 사용) ---
+            // (이 부분의 코드는 이전 답변의 predictMovingModeWithEnsemble 메소드 내 세그먼트 저장 로직과 동일)
+            if (gpsData != null && gpsData.size() >= MIN_TIMESTAMP_COUNT) {
+                int totalSegments = gpsData.size() / SEGMENT_SIZE;
+                double distancePerSegment = (totalSegments > 0) ? (double)totalDistance / totalSegments : 0.0;
+
+                Timber.tag(TAG).d("앙상블 배치 총 이동 거리: %.2f m. %d개 세그먼트 저장 시작.", totalDistance, totalSegments);
+
+                for (int segment = 0; segment < totalSegments; segment++) {
+                    int startIndex = segment * SEGMENT_SIZE;
+                    int endIndex = Math.min(startIndex + SEGMENT_SIZE - 1, gpsData.size());
+
+                    if (startIndex > endIndex) {
+                        Timber.tag(TAG).w("앙상블 세그먼트 %d: 유효하지 않은 인덱스 범위 (시작: %d, 끝: %d). 건너뜁니다.", segment, startIndex, endIndex);
+                        continue;
+                    }
+
+                    Map<String, Object> startData = gpsData.get(startIndex);
+                    Map<String, Object> endData = gpsData.get(endIndex);
+
+                    try {
+                        long startTimestamp = ((Number) Objects.requireNonNull(startData.get("timestamp"))).longValue();
+                        double startLat = ((Number) Objects.requireNonNull(startData.get("latitude"))).doubleValue();
+                        double startLon = ((Number) Objects.requireNonNull(startData.get("longitude"))).doubleValue();
+                        double endLat = ((Number) Objects.requireNonNull(endData.get("latitude"))).doubleValue();
+                        double endLon = ((Number) Objects.requireNonNull(endData.get("longitude"))).doubleValue();
+
+                        String finalTransportMode = predictedMode;
+                        if (totalDistance <= 0.05) {
+                            finalTransportMode = DEFAULT_MODE_STOPPED;
+                        }
+
+                        if (!finalTransportMode.equals(DEFAULT_MODE_STOPPED)) {
+                            if (speed < 30.0f) {
+                                String originalMode = finalTransportMode;
+                                finalTransportMode = "WALK";
+                                Timber.tag(TAG).d("앙상블 - 평균 속도: %.1fKm/h. 예측된 모드 '%s'를 '%s'로 변경.", speed, originalMode, finalTransportMode);
+                                // Toast.makeText(context, String.format(Locale.getDefault(), "속도: %dKm/h -> WALK로 변경", (int) speed), Toast.LENGTH_SHORT).show();
+                            }
+                            savePredictionToCSV(finalTransportMode, distancePerSegment, startTimestamp, startLat, startLon, endLat, endLon);
+                        } else {
+                            Timber.tag(TAG).d("앙상블 - STOP이므로 세그먼트 저장 무시");
+                        }
+
+                        Timber.tag(TAG).d("앙상블 세그먼트 %d 최종 모드: %s (거리: %.2fm, 시작: %.6f,%.6f, 종료: %.6f,%.6f)",
+                                segment, finalTransportMode, distancePerSegment, startLat, startLon, endLat, endLon);
+
+                    } catch (NullPointerException e) {
+                        Timber.tag(TAG).e(e, "앙상블 세그먼트 %d 데이터 추출 중 NullPointerException", segment);
+                    } catch (Exception e) {
+                        Timber.tag(TAG).e(e, "앙상블 세그먼트 %d 처리 중 예외 발생", segment);
+                    }
+                }
+            } else {
+                Timber.tag(TAG).w("앙상블: GPS 데이터 부족 (%d개)하여 세그먼트 저장 불가", gpsData != null ? gpsData.size() : 0);
+            }
+
+        } catch (Exception e) {
+            Timber.tag(TAG).e(e, "앙상블 예측 또는 세그먼트 저장 중 최상위 오류: %s", e.getMessage());
+            lastPredictedResult = DEFAULT_MODE_UNKNOWN;
+            saveSegmentsWithFallback(gpsData, totalDistance, DEFAULT_MODE_UNKNOWN, speed);
         }
     }
 
@@ -235,8 +450,6 @@ public class SensorDataProcessor {
         List<Map<String, Object>> sortedGPS = sortAndRemoveTimestamp(new ArrayList<>(gpsData));
         List<Map<String, Object>> sortedIMU = sortAndRemoveTimestamp(new ArrayList<>(imuData));
 
-        Timber.tag(TAG).d(sortedGPS.toString());
-        // 정렬/타임스탬프 제거 후 크기 재확인 (이전 검사가 더 좋음)
         if (sortedGPS.isEmpty() || sortedIMU.isEmpty()) {
             Timber.tag(TAG).w("정렬/타임스탬프 제거 후 GPS 또는 IMU 데이터가 비어있음.");
             return null; // 텐서 생성 실패 알림
@@ -498,137 +711,6 @@ public class SensorDataProcessor {
             Timber.tag(TAG).e(e, "예측 결과 CSV 저장 실패: %s", e.getMessage());
         }
     }
-
-    /**
-     * 입력 텐서를 사용하여 모델 추론을 수행하고, 결과를 처리하여 이동 수단을 결정한 후,
-     * GPS 데이터를 세그먼트로 나누어 각 세그먼트 정보를 CSV 파일에 저장합니다.
-     * @param inputTensor 모델 입력 텐서
-     * @param gpsData 원본 GPS 데이터 리스트 (세그먼트 분할 및 정보 추출용)
-     * @param totalDistance 해당 배치의 총 이동 거리 (STOP 판정용)
-     */
-    private void predictMovingMode(Tensor inputTensor, List<Map<String, Object>> gpsData, float totalDistance, float speed) {
-        // model null 체크는 processSensorData에서 이미 수행됨
-
-        try {
-            // --- 모델 추론 ---
-            IValue output = model.forward(IValue.from(inputTensor));
-            Tensor outputTensor = output.toTensor();
-            float[] logits = outputTensor.getDataAsFloatArray();
-
-            // --- 출력 유효성 검증 ---
-            if (logits.length != EXPECTED_MODEL_OUTPUT_SIZE) {
-                Timber.tag(TAG).e("모델 출력 크기가 예상(%d)과 다름: %d", EXPECTED_MODEL_OUTPUT_SIZE, logits.length);
-                lastPredictedResult = DEFAULT_MODE_UNKNOWN; // 예상치 못한 출력이면 ETC로 설정
-                saveSegmentsWithFallback(gpsData, totalDistance, lastPredictedResult, speed); // ETC로 세그먼트 저장
-                return;
-            }
-
-            // --- 출력 처리 (Softmax 및 최대 확률 인덱스 찾기) ---
-            float[] probabilities = softmax(logits);
-            int maxIndex = 0; // 최대 확률을 가진 클래스의 인덱스
-            float maxProb = probabilities[0]; // 최대 확률 값
-            for (int i = 1; i < probabilities.length; i++) {
-                if (probabilities[i] > maxProb) {
-                    maxProb = probabilities[i];
-                    maxIndex = i;
-                }
-            }
-
-            // --- 예측된 이동 수단 결정 ---
-            String predictedMode;
-            float threshold = 0.1f; // 가장 높은 확률이 이 값 이하이면 "알 수 없음"으로 처리
-
-            // 1. 가장 높은 확률이 낮은_확률_임계값 이하인지 먼저 확인
-            if (maxProb < threshold) {
-                predictedMode = DEFAULT_MODE_UNKNOWN;
-                Timber.tag(TAG).w("가장 높은 확률(%.4f)이 임계값(%.1f) 미만입니다. '%s' 사용", maxProb, threshold, predictedMode);
-            }
-            // 2. 그렇지 않고, 인덱스가 유효 범위 내인 경우 해당 이동 수단 사용
-            else if (maxIndex >= 0 && maxIndex < TRANSPORT_MODES.length) {
-                predictedMode = TRANSPORT_MODES[maxIndex]; // 매핑된 이동 수단 문자열 사용
-                Timber.tag(TAG).d("가장 높은 확률의 이동수단: %s (인덱스: %d), 확률: %.4f", predictedMode, maxIndex, maxProb);
-            }
-            // 3. 확률은 임계값 이상이지만, 인덱스가 유효하지 않은 경우 (모델 출력 오류 가능성)
-            else {
-                predictedMode = DEFAULT_MODE_UNKNOWN; // "ETC" 또는 다른 기본값 사용
-                Timber.tag(TAG).e("오류: 유효하지 않은 예측 인덱스(%d) (확률: %.4f). 모델 출력 확인 필요. '%s' 사용", maxIndex, maxProb, predictedMode);
-            }
-            // 이제 predictedMode 변수에 조건에 따라 이동수단 또는 DEFAULT_MODE_UNKNOWN이 할당됩니다.
-
-            // 클래스 멤버 변수(마지막 예측 결과) 업데이트
-            lastPredictedResult = predictedMode;
-
-            // --- 세그먼트 저장 로직 ---
-            // GPS 데이터가 세그먼트화하기에 충분한지 확인
-            if (gpsData != null && gpsData.size() >= MIN_TIMESTAMP_COUNT) { // 혹은 SEGMENT_SIZE 기준으로 체크? 여기선 MIN_TIMESTAMP_COUNT 사용
-                int totalSegments = gpsData.size() / SEGMENT_SIZE;
-                // 세그먼트당 대략적인 이동 거리
-                double distancePerSegment = (totalSegments > 0) ? (double)totalDistance / totalSegments : 0.0;
-
-                Timber.tag(TAG).d("배치 총 이동 거리: %.2f m. %d개 세그먼트 저장 시작.", totalDistance, totalSegments);
-
-                for (int segment = 0; segment < totalSegments; segment++) {
-                    int startIndex = segment * SEGMENT_SIZE;
-                    int endIndex = Math.min(startIndex + SEGMENT_SIZE, gpsData.size() - 1);; // 세그먼트 끝 인덱스
-
-                    // 인덱스 범위 체크 (루프 조건상 안전하지만 추가)
-                    if (endIndex >= gpsData.size()) break;
-
-                    Map<String, Object> startData = gpsData.get(startIndex);
-                    Map<String, Object> endData = gpsData.get(endIndex);
-
-                    try {
-                        long startTimestamp = ((Number) Objects.requireNonNull(startData.get("timestamp"))).longValue();
-                        double startLat = ((Number) Objects.requireNonNull(startData.get("latitude"))).doubleValue();
-                        double startLon = ((Number) Objects.requireNonNull(startData.get("longitude"))).doubleValue();
-                        double endLat = ((Number) Objects.requireNonNull(endData.get("latitude"))).doubleValue();
-                        double endLon = ((Number) Objects.requireNonNull(endData.get("longitude"))).doubleValue();
-
-                        // --- 세그먼트 최종 이동 수단 결정 ---
-                        String finalTransportMode = predictedMode; // 모델 예측 결과로 시작
-                        // 전체 배치의 거리가 매우 작으면 STOP으로 덮어쓰기
-                        if (totalDistance <= 0.05) {
-                            finalTransportMode = DEFAULT_MODE_STOPPED;
-                            // Timber.tag(TAG).v("세그먼트 %d: 이동 거리 미미(%.2fm), %s로 변경", segment, totalDistance, finalTransportMode);
-                        }
-
-                        // 최종 결정된 정보 로그 출력
-
-
-                        if(!(predictedMode.equals(DEFAULT_MODE_STOPPED))){
-                            if(speed < 30.0f){
-                                finalTransportMode = "WALK";
-                                Timber.tag(TAG).d("평균 속도: "+ speed +"Km/s WALK로 변경");
-                            }
-                            // CSV 파일에 저장
-                            savePredictionToCSV(finalTransportMode, distancePerSegment, startTimestamp, startLat, startLon, endLat, endLon);
-                        }else{
-                            Timber.tag(TAG).d("STOP 무시");
-                        }
-
-                        Timber.tag(TAG).d("세그먼트 %d 최종 모드: %s (거리: %.2fm, 시작: %.6f,%.6f, 종료: %.6f,%.6f)",
-                                segment, finalTransportMode, distancePerSegment, startLat, startLon, endLat, endLon);
-
-                    } catch (NullPointerException e) {
-                        Timber.tag(TAG).e(e, "세그먼트 %d 데이터 추출 중 NullPointerException (예측 후 저장 단계)", segment);
-                    } catch (Exception e) {
-                        Timber.tag(TAG).e(e, "세그먼트 %d 처리 중 예외 발생 (예측 후 저장 단계)", segment);
-                    }
-                }
-            } else {
-                // GPS 데이터 부족으로 세그먼트 저장 불가
-                Timber.tag(TAG).w("GPS 데이터 부족 (%d개)하여 세그먼트 저장 불가 (예측 후)", gpsData != null ? gpsData.size() : 0);
-            }
-
-        } catch (Exception e) {
-            // 예측 또는 세그먼트 저장 과정에서 예외 발생 시
-            Timber.tag(TAG).e(e, "예측 또는 세그먼트 저장 중 오류: %s", e.getMessage());
-            lastPredictedResult = DEFAULT_MODE_UNKNOWN; // 오류 시 ETC로 설정
-            // 예측 실패 시에도 대체 저장 시도
-            saveSegmentsWithFallback(gpsData, totalDistance, DEFAULT_MODE_UNKNOWN, speed);
-        }
-    }
-
 
     // Softmax 함수 구현 (변경 없음)
     private float[] softmax(float[] logits) {
