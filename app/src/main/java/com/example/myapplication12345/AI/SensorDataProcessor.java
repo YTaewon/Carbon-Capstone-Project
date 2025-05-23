@@ -400,7 +400,7 @@ public class SensorDataProcessor {
                         }
 
                         if (!finalTransportMode.equals(DEFAULT_MODE_STOPPED)) {
-                            if (speed < 15.0f) {
+                            if (speed < 20.0f) {
                                 String originalMode = finalTransportMode;
                                 finalTransportMode = "WALK";
                                 Timber.tag(TAG).d("앙상블 - 평균 속도: %.1fKm/h. 예측된 모드 '%s'를 '%s'로 변경.", speed, originalMode, finalTransportMode);
