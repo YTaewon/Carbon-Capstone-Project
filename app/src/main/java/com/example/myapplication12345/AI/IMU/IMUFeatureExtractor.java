@@ -1,167 +1,105 @@
 package com.example.myapplication12345.AI.IMU;
 
-import org.apache.commons.math3.stat.StatUtils;
-import org.apache.commons.math3.stat.descriptive.moment.Kurtosis;
-import org.apache.commons.math3.stat.descriptive.moment.Skewness;
-import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation;
-import org.apache.commons.math3.stat.descriptive.rank.Max;
-import org.apache.commons.math3.stat.descriptive.rank.Min;
-import org.apache.commons.math3.stat.descriptive.rank.Percentile;
-import org.apache.commons.math3.stat.descriptive.rank.Percentile.EstimationType;
 import org.apache.commons.math3.complex.Complex;
 import org.apache.commons.math3.transform.DftNormalization;
 import org.apache.commons.math3.transform.FastFourierTransformer;
 import org.apache.commons.math3.transform.TransformType;
+import org.apache.commons.math3.stat.StatUtils;
+import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation;
+import org.apache.commons.math3.stat.descriptive.rank.Percentile;
+import org.apache.commons.math3.stat.descriptive.rank.Percentile.EstimationType;
 
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 public class IMUFeatureExtractor {
 
-    /**
-     * 벡터 크기(매그니튜드) 계산 (double 사용)
-     */
-    public static double[][] magnitude(double[][] x, double[][] y, double[][] z) {
-        if (x == null || y == null || z == null) throw new IllegalArgumentException("Input arrays cannot be null for magnitude.");
-        int rows = x.length;
-        if (rows == 0) return new double[0][0];
-        int cols = (x[0] != null) ? x[0].length : 0;
-        if (cols == 0 && rows > 0) return new double[rows][0];
-
-        if (!(y.length == rows && z.length == rows)) {
-            throw new IllegalArgumentException("Input arrays must have the same number of rows for magnitude.");
+    // --- 통계 피처 계산 함수들 ---
+    public static Map<String, double[][]> calculateStatFeatures(double[][] dataWindows, String prefix) {
+        if (dataWindows == null || dataWindows.length == 0) {
+            return new HashMap<>();
         }
-        for(int i=0; i<rows; ++i) {
-            if (x[i] == null || y[i] == null || z[i] == null ||
-                    x[i].length != cols || y[i].length != cols || z[i].length != cols) {
-                throw new IllegalArgumentException("Window sizes must be consistent across all input arrays for window " + i + " in magnitude.");
-            }
-        }
+        int numWindows = dataWindows.length;
+        Map<String, double[][]> result = new HashMap<>();
 
-        double[][] result = new double[rows][cols];
-        for (int i = 0; i < rows; i++) {
-            for (int j = 0; j < cols; j++) {
-                double xVal = x[i][j];
-                double yVal = y[i][j];
-                double zVal = z[i][j];
-                result[i][j] = Math.sqrt(xVal * xVal + yVal * yVal + zVal * zVal);
-            }
-        }
-        return result;
-    }
-
-    /**
-     * 통계 특징 계산 - 파이썬 방식에 맞춤 (MAD 스케일링 제거, IQR EstimationType R-7)
-     */
-    public static Map<String, double[][]> calculateStatFeatures(double[][] magnitudeData, String prefix) {
-        if (magnitudeData == null) throw new IllegalArgumentException("magnitudeData cannot be null.");
-        int rows = magnitudeData.length;
-        Map<String, double[][]> result = new HashMap<>(10);
-
-        double[][] mean = new double[rows][1];
-        double[][] std = new double[rows][1];
-        double[][] max = new double[rows][1];
-        double[][] min = new double[rows][1];
-        double[][] mad = new double[rows][1];
-        double[][] iqr = new double[rows][1];
-        double[][] maxCorr = new double[rows][1];
-        double[][] argmaxCorr = new double[rows][1];
-        double[][] zcr = new double[rows][1];
-        double[][] fzc = new double[rows][1];
+        double[][] mean = new double[numWindows][1];
+        double[][] std = new double[numWindows][1];
+        double[][] max = new double[numWindows][1];
+        double[][] min = new double[numWindows][1];
+        double[][] mad = new double[numWindows][1];
+        double[][] iqr = new double[numWindows][1];
+        double[][] maxCorr = new double[numWindows][1];
+        double[][] idxMaxCorr = new double[numWindows][1];
+        double[][] zcr = new double[numWindows][1];
+        double[][] fzc = new double[numWindows][1];
 
         StandardDeviation stdDevCalc = new StandardDeviation(false);
-        Max maxCalc = new Max();
-        Min minCalc = new Min();
-        Percentile percentileCalc = new Percentile().withEstimationType(EstimationType.R_7);
+        Percentile percentileCalcR7 = new Percentile().withEstimationType(EstimationType.R_7);
 
-
-        for (int i = 0; i < rows; i++) {
-            if (magnitudeData[i] == null) {
-                Arrays.fill(mean[i], Double.NaN); Arrays.fill(std[i], Double.NaN);
-                Arrays.fill(max[i], Double.NaN); Arrays.fill(min[i], Double.NaN);
-                Arrays.fill(mad[i], Double.NaN); Arrays.fill(iqr[i], Double.NaN);
-                Arrays.fill(maxCorr[i], Double.NaN); Arrays.fill(argmaxCorr[i], Double.NaN);
-                Arrays.fill(zcr[i], Double.NaN); Arrays.fill(fzc[i], Double.NaN);
-                continue;
-            }
-            double[] row = magnitudeData[i];
-            double[] cleanRow = new double[row.length];
-            for (int k = 0; k < row.length; k++) {
-                cleanRow[k] = Double.isNaN(row[k]) ? 0.0 : row[k];
-            }
-
-            if (cleanRow.length == 0) {
-                mean[i][0] = Double.NaN; std[i][0] = Double.NaN; max[i][0] = Double.NaN; min[i][0] = Double.NaN;
-                mad[i][0] = Double.NaN; iqr[i][0] = Double.NaN; maxCorr[i][0] = Double.NaN; argmaxCorr[i][0] = Double.NaN;
-                zcr[i][0] = Double.NaN; fzc[i][0] = Double.NaN;
+        for (int i = 0; i < numWindows; i++) {
+            double[] currentWindow = dataWindows[i];
+            if (currentWindow == null || currentWindow.length == 0) {
+                mean[i][0] = std[i][0] = max[i][0] = min[i][0] = mad[i][0] = iqr[i][0] = Double.NaN;
+                maxCorr[i][0] = idxMaxCorr[i][0] = zcr[i][0] = fzc[i][0] = Double.NaN;
                 continue;
             }
 
-            mean[i][0] = StatUtils.mean(cleanRow);
-            std[i][0] = stdDevCalc.evaluate(cleanRow);
-            max[i][0] = maxCalc.evaluate(cleanRow);
-            min[i][0] = minCalc.evaluate(cleanRow);
-            mad[i][0] = computeRawMAD(cleanRow);
-            iqr[i][0] = percentileCalc.evaluate(cleanRow, 75.0) - percentileCalc.evaluate(cleanRow, 25.0);
+            boolean hasOnlyNaN = true;
+            for(double val : currentWindow) { if (!Double.isNaN(val)) { hasOnlyNaN = false; break; } }
+            if (hasOnlyNaN) {
+                mean[i][0] = std[i][0] = max[i][0] = min[i][0] = mad[i][0] = iqr[i][0] = Double.NaN;
+                maxCorr[i][0] = idxMaxCorr[i][0] = zcr[i][0] = fzc[i][0] = Double.NaN;
+                continue;
+            }
 
-            double[] autocorrData = computeAutocorrelationPythonStyle(cleanRow);
-            double[] autocorrResult = findMaxAndArgMax(autocorrData);
-            maxCorr[i][0] = autocorrResult[0];
-            argmaxCorr[i][0] = autocorrResult[1];
+            mean[i][0] = StatUtils.mean(currentWindow);
+            std[i][0] = stdDevCalc.evaluate(currentWindow);
+            max[i][0] = StatUtils.max(currentWindow);
+            min[i][0] = StatUtils.min(currentWindow);
+            mad[i][0] = computeRawMAD(currentWindow);
+            iqr[i][0] = (currentWindow.length > 0) ? (percentileCalcR7.evaluate(currentWindow, 75.0) - percentileCalcR7.evaluate(currentWindow, 25.0)) : Double.NaN;
 
-            zcr[i][0] = computeZCRPythonStyle(autocorrData);
-            fzc[i][0] = computeFZCPythonStyle(autocorrData);
+            double[] autocorrData = computeAutocorrelationPythonStyle(currentWindow);
+            if (autocorrData.length > 0) {
+                double[] autocorrResult = findMaxAndArgMax(autocorrData);
+                maxCorr[i][0] = autocorrResult[0];
+                idxMaxCorr[i][0] = autocorrResult[1];
+                zcr[i][0] = computeZCRPythonStyle(autocorrData);
+                fzc[i][0] = computeFZCPythonStyle(autocorrData);
+            } else {
+                maxCorr[i][0] = idxMaxCorr[i][0] = zcr[i][0] = fzc[i][0] = Double.NaN;
+            }
         }
-
-        result.put(prefix + "_mean", mean);
-        result.put(prefix + "_std", std);
-        result.put(prefix + "_max", max);
-        result.put(prefix + "_min", min);
-        result.put(prefix + "_mad", mad);
-        result.put(prefix + "_iqr", iqr);
-        result.put(prefix + "_max.corr", maxCorr);
-        result.put(prefix + "_idx.max.corr", argmaxCorr);
-        result.put(prefix + "_zcr", zcr);
-        result.put(prefix + "_fzc", fzc);
-
+        result.put(prefix + "_mean", mean); result.put(prefix + "_std", std); result.put(prefix + "_max", max);
+        result.put(prefix + "_min", min); result.put(prefix + "_mad", mad); result.put(prefix + "_iqr", iqr);
+        result.put(prefix + "_max.corr", maxCorr); result.put(prefix + "_idx.max.corr", idxMaxCorr);
+        result.put(prefix + "_zcr", zcr); result.put(prefix + "_fzc", fzc);
         return result;
     }
 
     private static double computeRawMAD(double[] data) {
         if (data == null || data.length == 0) return Double.NaN;
-        double[] sortedData = Arrays.copyOf(data, data.length);
-        Arrays.sort(sortedData);
-        double median;
-        if (sortedData.length % 2 == 0) {
-            median = (sortedData[sortedData.length / 2 - 1] + sortedData[sortedData.length / 2]) / 2.0;
-        } else {
-            median = sortedData[sortedData.length / 2];
-        }
-
-        double[] absDeviations = new double[data.length];
-        for (int i = 0; i < data.length; i++) {
-            absDeviations[i] = Math.abs(data[i] - median);
-        }
-        Arrays.sort(absDeviations);
-        if (absDeviations.length % 2 == 0) {
-            return (absDeviations[absDeviations.length / 2 - 1] + absDeviations[absDeviations.length / 2]) / 2.0;
-        } else {
-            return absDeviations[absDeviations.length / 2];
-        }
+        double[] cleanData = Arrays.stream(data).filter(d -> !Double.isNaN(d)).toArray();
+        if (cleanData.length == 0) return Double.NaN;
+        double median = new Percentile().withEstimationType(EstimationType.R_7).evaluate(cleanData, 50.0);
+        if (Double.isNaN(median)) return Double.NaN;
+        double[] absDeviations = new double[cleanData.length];
+        for (int i = 0; i < cleanData.length; i++) absDeviations[i] = Math.abs(cleanData[i] - median);
+        return new Percentile().withEstimationType(EstimationType.R_7).evaluate(absDeviations, 50.0);
     }
 
     private static double[] computeAutocorrelationPythonStyle(double[] x) {
-        int n = x.length;
-        if (n == 0) return new double[0];
+        int n = x.length; if (n == 0) return new double[0];
+        double[] xClean = Arrays.stream(x).map(val -> Double.isNaN(val) ? 0.0 : val).toArray();
         double[] fullCorr = new double[2 * n - 1];
         for (int lag = 0; lag < 2 * n - 1; lag++) {
             double sum = 0;
             for (int i = 0; i < n; i++) {
                 int j = i - (lag - (n - 1));
-                if (j >= 0 && j < n) {
-                    sum += x[i] * x[j];
-                }
+                if (j >= 0 && j < n) sum += xClean[i] * xClean[j];
             }
             fullCorr[lag] = sum;
         }
@@ -170,271 +108,285 @@ public class IMUFeatureExtractor {
 
     private static double[] findMaxAndArgMax(double[] data) {
         if (data == null || data.length == 0) return new double[]{Double.NaN, Double.NaN};
-        double maxValue = data[0]; // 초기값을 첫 번째 요소로 설정
-        int maxIndex = 0;
+        double maxValue = data[0]; int maxIndex = 0; boolean allNaN = true;
+        if (!Double.isNaN(data[0])) allNaN = false;
         for (int i = 1; i < data.length; i++) {
-            if (data[i] > maxValue) {
-                maxValue = data[i];
-                maxIndex = i;
+            if (!Double.isNaN(data[i])) {
+                allNaN = false;
+                if (data[i] > maxValue) { maxValue = data[i]; maxIndex = i;}
             }
         }
-        return new double[]{maxValue, (double)maxIndex};
+        return allNaN ? new double[]{Double.NaN, Double.NaN} : new double[]{maxValue, (double)maxIndex};
     }
 
     private static double computeZCRPythonStyle(double[] data) {
         if (data == null || data.length < 2) return 0.0;
-        int crossings = 0;
-        for (int i = 0; i < data.length - 1; i++) {
-            if (Math.signum(data[i]) * Math.signum(data[i + 1]) < 0) {
-                crossings++;
-            }
-        }
-        return (double) crossings / data.length;
+        double[] dataClean = Arrays.stream(data).map(val -> Double.isNaN(val) ? 0.0 : val).toArray();
+        int[] signs = new int[dataClean.length];
+        for (int i = 0; i < dataClean.length; i++) signs[i] = (dataClean[i] >= 0) ? 1 : -1;
+        int S = 0; for (int i = 1; i < signs.length; i++) S += Math.abs(signs[i] - signs[i-1]);
+        return (dataClean.length == 0) ? 0.0 : (0.5 * S) / dataClean.length;
     }
 
     private static double computeFZCPythonStyle(double[] data) {
         if (data == null || data.length < 2) return 0.0;
-        for (int i = 0; i < data.length - 1; i++) {
-            if (Math.signum(data[i]) != Math.signum(data[i+1])) {
-                if (Math.signum(data[i]) == 0 && Math.signum(data[i+1]) == 0) continue;
-                return i + 1;
-            }
+        double[] dataClean = Arrays.stream(data).map(val -> Double.isNaN(val) ? 0.0 : val).toArray();
+        for (int i = 0; i < dataClean.length - 1; i++) {
+            if (Math.signum(dataClean[i]) != Math.signum(dataClean[i+1])) return i + 1;
         }
         return 0;
     }
 
-    /**
-     * 주파수 특징 계산 - 파이썬 방식에 맞춤 (Detrending, PSD 스케일링, 엔트로피, 주파수 중심 수정)
-     */
-    public static Map<String, double[][]> calculateSpectralFeatures(double[][] magnitudeData, String prefix) {
-        if (magnitudeData == null) throw new IllegalArgumentException("magnitudeData cannot be null for spectral features.");
-        int rows = magnitudeData.length;
-        int fs = 100; // Sampling frequency
-        Map<String, double[][]> result = new HashMap<>(5);
+    // --- 스펙트럼 피처 계산 함수들 ---
+    public static Map<String, double[][]> calculateSpectralFeatures(
+            double[][] magnitudeData2D, String prefix, int fs, String detrendType) {
+        if (magnitudeData2D == null || magnitudeData2D.length == 0) return new HashMap<>();
+        int numWindows = magnitudeData2D.length;
 
-        double[][] maxPSD = new double[rows][1];
-        double[][] entropy = new double[rows][1];
-        double[][] freqCenter = new double[rows][1];
-        double[][] kurtosis = new double[rows][1];
-        double[][] skewness = new double[rows][1];
+        double[][] maxPSD_res_all = new double[numWindows][1];
+        double[][] entropy_res_all = new double[numWindows][1];
+        double[][] fc_res_all = new double[numWindows][1];
+        double[][] kurt_res_all = new double[numWindows][1];
+        double[][] skew_res_all = new double[numWindows][1];
 
-        Kurtosis kurtosisCalc = new Kurtosis();
-        Skewness skewnessCalc = new Skewness();
-
-        for (int i = 0; i < rows; i++) {
-            if (magnitudeData[i] == null || magnitudeData[i].length == 0) {
-                maxPSD[i][0] = Double.NaN; entropy[i][0] = Double.NaN; freqCenter[i][0] = Double.NaN;
-                kurtosis[i][0] = Double.NaN; skewness[i][0] = Double.NaN;
+        for (int i = 0; i < numWindows; i++) {
+            double[] singleWindowMagnitude = magnitudeData2D[i];
+            if (singleWindowMagnitude == null || singleWindowMagnitude.length == 0) {
+                maxPSD_res_all[i][0] = entropy_res_all[i][0] = fc_res_all[i][0] = kurt_res_all[i][0] = skew_res_all[i][0] = Double.NaN;
                 continue;
             }
-            double[] data = magnitudeData[i];
-            double[] psd = computeWelchPSDPythonStyle(data, fs, data.length, "hann");
+            int nperseg = singleWindowMagnitude.length;
+            int nfftForWelch;
+            if (nperseg == 0) nfftForWelch = getNextPowerOfTwo(1);
+            else if ((nperseg & (nperseg - 1)) == 0) nfftForWelch = nperseg;
+            else nfftForWelch = getNextPowerOfTwo(nperseg);
+            if (nfftForWelch < 2) nfftForWelch = 2;
 
-            if (psd.length == 0) {
-                maxPSD[i][0] = Double.NaN; entropy[i][0] = Double.NaN; freqCenter[i][0] = Double.NaN;
-                kurtosis[i][0] = Double.NaN; skewness[i][0] = Double.NaN;
-                continue;
-            }
+            double[] psd = computeWelchPSDPythonStyle(singleWindowMagnitude, fs, nperseg, "hann", detrendType);
 
-            maxPSD[i][0] = findMax(psd);
-            entropy[i][0] = computeEntropyPythonStyle(psd);
-            freqCenter[i][0] = computeFrequencyCenterPythonStyle(psd, fs, data.length);
+            if (psd == null || psd.length == 0) { /* ... NaN 처리 ... */ continue; }
 
-            double[] cleanPsd = Arrays.stream(psd).filter(val -> !Double.isNaN(val)).toArray();
-            if (cleanPsd.length > 3) {
-                kurtosis[i][0] = kurtosisCalc.evaluate(cleanPsd);
-                skewness[i][0] = skewnessCalc.evaluate(cleanPsd);
-            } else {
-                kurtosis[i][0] = Double.NaN;
-                skewness[i][0] = Double.NaN;
-            }
+            maxPSD_res_all[i][0] = findMax(psd);
+            entropy_res_all[i][0] = computeEntropyPythonStyle(psd);
+            fc_res_all[i][0] = computeFrequencyCenterPythonStyle(psd, fs, nfftForWelch);
+
+            double[] cleanPsdForStats = Arrays.stream(psd).filter(val -> !Double.isNaN(val) && Double.isFinite(val)).toArray();
+            kurt_res_all[i][0] = (cleanPsdForStats.length > 0) ? calculateKurtosisSciPyStyle(cleanPsdForStats) : Double.NaN;
+            skew_res_all[i][0] = (cleanPsdForStats.length > 0) ? calculateSkewnessSciPyStyle(cleanPsdForStats) : Double.NaN;
         }
-
-        result.put(prefix + "_max.psd", maxPSD);
-        result.put(prefix + "_entropy", entropy);
-        result.put(prefix + "_fc", freqCenter);
-        result.put(prefix + "_kurt", kurtosis);
-        result.put(prefix + "_skew", skewness);
-
+        Map<String, double[][]> result = new HashMap<>();
+        result.put(prefix + "_max.psd", maxPSD_res_all); result.put(prefix + "_entropy", entropy_res_all);
+        result.put(prefix + "_fc", fc_res_all); result.put(prefix + "_kurt", kurt_res_all);
+        result.put(prefix + "_skew", skew_res_all);
         return result;
     }
 
-    private static double[] computeWelchPSDPythonStyle(double[] dataInput, int fs, int npersegInput, String windowType) {
+    // Welch PSD (BigDecimal 디트렌딩 및 로깅 정리 버전)
+    public static double[] computeWelchPSDPythonStyle(double[] dataInput, int fs, int npersegInput, String windowType, String detrendType) {
         int n = dataInput.length;
-        int nperseg = npersegInput;
 
         if (n == 0) {
-            int tempNfftForEmpty = getNextPowerOfTwo(nperseg > 0 ? nperseg : 1);
-            double[] emptyPsd = new double[tempNfftForEmpty / 2 + 1];
-            Arrays.fill(emptyPsd, 0.0); return emptyPsd;
-        }
-        if (nperseg == 0) {
-            int tempNfftForZeroNperseg = getNextPowerOfTwo(1);
-            double[] emptyPsd = new double[tempNfftForZeroNperseg / 2 + 1];
-            Arrays.fill(emptyPsd, 0.0); return emptyPsd;
+            int nfftForEmpty = npersegInput;
+            if (nfftForEmpty <= 0) nfftForEmpty = 256;
+            if ((nfftForEmpty & (nfftForEmpty - 1)) != 0 || nfftForEmpty == 0) {
+                nfftForEmpty = getNextPowerOfTwo(nfftForEmpty > 0 ? nfftForEmpty : 1);
+            }
+            if (nfftForEmpty < 2) nfftForEmpty = 2;
+            return new double[nfftForEmpty / 2 + 1];
         }
 
-        double meanVal = 0;
-        for (double v : dataInput) meanVal += v;
-        meanVal /= n;
         double[] data = new double[n];
-        for (int i = 0; i < n; i++) { data[i] = dataInput[i] - meanVal; }
-
-        if (n < nperseg) nperseg = n;
-        int nfft = getNextPowerOfTwo(nperseg);
-
-        double[] window;
-        if ("hanning".equalsIgnoreCase(windowType) || "hann".equalsIgnoreCase(windowType)) {
-            window = new double[nperseg];
-            if (nperseg > 1) {
-                for (int i = 0; i < nperseg; i++) {
-                    window[i] = 0.5 * (1.0 - Math.cos(2.0 * Math.PI * i / (double)nperseg)); // fftbins=True
+        if ("mean".equalsIgnoreCase(detrendType) || "constant".equalsIgnoreCase(detrendType)) {
+            if (n > 0) {
+                BigDecimal sumBd = BigDecimal.ZERO;
+                for (int k=0; k < n; k++) {
+                    sumBd = sumBd.add(new BigDecimal(String.valueOf(dataInput[k])));
                 }
-            } else if (nperseg == 1) { window[0] = 1.0; }
-            else { window = new double[0]; } // nperseg가 0인 경우 (위에서 이미 처리됨)
+                BigDecimal meanBd = sumBd.divide(new BigDecimal(n), 30, RoundingMode.HALF_UP);
+                for (int k = 0; k < n; k++) {
+                    data[k] = new BigDecimal(String.valueOf(dataInput[k])).subtract(meanBd).doubleValue();
+                }
+            }
+        } else if ("linear".equalsIgnoreCase(detrendType)) {
+            if (n > 1) {
+                double sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
+                for (int k = 0; k < n; ++k) { sumX += k; sumY += dataInput[k]; sumXY += (double)k * dataInput[k]; sumXX += (double)k * k; }
+                double slopeDeno = (double)n * sumXX - sumX * sumX;
+                double slope = (slopeDeno == 0) ? 0 : ((double)n * sumXY - sumX * sumY) / slopeDeno;
+                if (Double.isNaN(slope) || Double.isInfinite(slope)) slope = 0;
+                double intercept = (sumY - slope * sumX) / n;
+                if (Double.isNaN(intercept) || Double.isInfinite(intercept)) intercept = (n > 0) ? sumY / n : 0;
+                for (int k = 0; k < n; k++) data[k] = dataInput[k] - (slope * k + intercept);
+            } else { data[0] = 0.0; }
         } else {
-            window = new double[nperseg];
-            Arrays.fill(window, 1.0);
+            System.arraycopy(dataInput, 0, data, 0, n);
         }
 
-        double sumSqWindow = 0;
-        for (double v : window) sumSqWindow += v * v;
-        if (sumSqWindow == 0 && nperseg > 0) sumSqWindow = 1e-12; // nperseg가 0이면 window도 비어있음
-        else if (sumSqWindow == 0 && nperseg == 0) sumSqWindow = 1.0; // 0으로 나누는 것 방지, 또는 다른 처리
+        int nperseg = npersegInput; if (nperseg <= 0 || nperseg > n) nperseg = n;
+        int nfft; if (nperseg == 0) nfft = getNextPowerOfTwo(1); else if ((nperseg & (nperseg - 1)) == 0) nfft = nperseg; else nfft = getNextPowerOfTwo(nperseg); if (nfft < 2) nfft = 2;
 
-
-        int noverlap = nperseg / 2;
-        int step = nperseg - noverlap;
-        if (step <= 0) step = (nperseg > 0) ? nperseg : 1;
-
-        int numSegments;
-        if (n < nperseg) numSegments = 1;
-        else if (n < noverlap) numSegments = 1; // 이 조건은 n < nperseg에 포함될 수 있음
-        else numSegments = (n - noverlap) / step;
-
-        if (numSegments <= 0 && n >= nperseg) numSegments = 1;
-        if (numSegments <= 0 && n < nperseg && n > 0) numSegments = 1;
-        if (n == 0) numSegments = 0;
-
-        if (numSegments == 0) {
-            double[] emptyPsd = new double[nfft / 2 + 1];
-            Arrays.fill(emptyPsd, 0.0); return emptyPsd;
+        double[] window = new double[nperseg];
+        if (nperseg > 0) {
+            if ("hann".equalsIgnoreCase(windowType)) { // SciPy hann(M, sym=False) => 분모 M
+                if (nperseg == 1) window[0] = 1.0;
+                else { for (int k = 0; k < nperseg; k++) window[k] = 0.5 * (1.0 - Math.cos(2.0 * Math.PI * k / (double)nperseg)); }
+            } else Arrays.fill(window, 1.0);
         }
 
-        double[] avgPsd = new double[nfft / 2 + 1];
-        FastFourierTransformer fft = new FastFourierTransformer(DftNormalization.STANDARD);
+        double sumSqWindow = 0; for (double v : window) sumSqWindow += v * v; if (sumSqWindow == 0) sumSqWindow = 1.0;
 
-        int actualSegmentsProcessed = 0;
-        for (int i = 0; i < numSegments; i++) {
-            int currentSegmentStart = i * step;
-            int currentSegmentLength = Math.min(nperseg, n - currentSegmentStart);
+        double[] segmentDataForFFT = new double[nfft];
+        for (int j = 0; j < nperseg; j++) segmentDataForFFT[j] = data[j] * window[j];
 
-            if (currentSegmentLength <= 0) continue;
-            // SciPy는 nperseg보다 짧은 마지막 세그먼트를 detrend 후 제로패딩하여 nperseg로 만듦.
-            // 현재 로직은 currentSegmentLength 만큼만 window를 적용하고 나머지는 0으로 패딩하여 nfft로 만듦.
+        FastFourierTransformer fftTransformer = new FastFourierTransformer(DftNormalization.STANDARD);
+        Complex[] fftResult = fftTransformer.transform(segmentDataForFFT, TransformType.FORWARD);
 
-            double[] segmentForFFT = new double[nfft];
-            for (int j = 0; j < currentSegmentLength; j++) {
-                segmentForFFT[j] = data[currentSegmentStart + j] * window[j];
+        int psdLen = (nfft / 2) + 1;
+        double[] psd = new double[psdLen];
+        for (int k = 0; k < psdLen; k++) {
+            psd[k] = fftResult[k].getReal() * fftResult[k].getReal() + fftResult[k].getImaginary() * fftResult[k].getImaginary();
+        }
+
+        if (nfft > 0) {
+            for (int k = 1; k < psdLen; k++) {
+                if (nfft % 2 == 0 && k == psdLen - 1) { /* Nyquist: No doubling */ }
+                else { psd[k] *= 2.0; }
             }
-
-            Complex[] fftResult = fft.transform(segmentForFFT, TransformType.FORWARD);
-            for (int k = 0; k < avgPsd.length; k++) {
-                double real = fftResult[k].getReal();
-                double imag = fftResult[k].getImaginary();
-                avgPsd[k] += (real * real + imag * imag);
-            }
-            actualSegmentsProcessed++;
         }
 
-        if (actualSegmentsProcessed == 0) {
-            Arrays.fill(avgPsd, 0.0); return avgPsd;
+        double scaleFactor = fs * sumSqWindow;
+        if (scaleFactor == 0) {
+            scaleFactor = (sumSqWindow > 0) ? sumSqWindow : 1.0;
+            if (fs > 0 && sumSqWindow == 0) scaleFactor = fs;
         }
 
-        double scale = 1.0 / (fs * sumSqWindow);
-
-        for (int k = 0; k < avgPsd.length; k++) {
-            avgPsd[k] /= actualSegmentsProcessed;
-            if (k > 0 && k < avgPsd.length - 1) {
-                avgPsd[k] *= 2.0;
-            }
-            avgPsd[k] *= scale;
+        for (int k = 0; k < psdLen; k++) {
+            if (scaleFactor != 0) psd[k] /= scaleFactor;
+            else psd[k] = Double.NaN;
         }
-        return avgPsd;
+
+        return psd;
     }
 
-    private static int getNextPowerOfTwo(int number) {
-        if (number <= 0) return 1;
+    public static int getNextPowerOfTwo(int number) {
+        if (number <= 0) return 2;
         int power = 1;
-        while (power < number) {
-            power *= 2;
-            if (power <= 0) {
-                throw new IllegalArgumentException("Number is too large to find next power of two: " + number);
-            }
-        }
+        while (power < number) { power <<= 1; if (power <= 0) throw new IllegalArgumentException("Number too large"); }
         return power;
     }
 
-    private static double findMax(double[] psd) {
-        if (psd == null || psd.length == 0) return Double.NaN;
-        double maxVal = Double.NEGATIVE_INFINITY;
-        boolean allNaN = true;
-        for (double v : psd) {
-            if (!Double.isNaN(v)) {
-                allNaN = false;
-                if (v > maxVal) {
-                    maxVal = v;
-                }
-            }
-        }
-        return allNaN ? Double.NaN : maxVal;
-    }
-
-    private static double computeEntropyPythonStyle(double[] psd) {
-        if (psd == null || psd.length == 0) return Double.NaN;
-        double sumPk = 0;
-        int positiveCount = 0;
+    public static double computeEntropyPythonStyle(double[] psd) {
+        if (psd == null || psd.length == 0) return 0.0;
+        double sumPk = 0; for (double p_val : psd) if (!Double.isNaN(p_val) && p_val > 0) sumPk += p_val;
+        double safeSumPk = (sumPk == 0.0) ? 1e-6 : sumPk; double entropy = 0.0;
         for (double p_val : psd) {
-            if (!Double.isNaN(p_val) && p_val > 0) {
-                sumPk += p_val;
-                positiveCount++;
-            }
-        }
-        if (positiveCount == 0 || sumPk == 0) return 0.0;
-
-        double entropy = 0;
-        for (double p_val : psd) {
-            if (!Double.isNaN(p_val) && p_val > 0) {
-                double pk_norm = p_val / sumPk;
-                entropy -= pk_norm * Math.log(pk_norm);
-            }
+            if (Double.isNaN(p_val) || p_val <= 0) continue;
+            double pk_norm = p_val / safeSumPk;
+            if (pk_norm > 1e-15) entropy -= pk_norm * Math.log(pk_norm); // Math.log is natural log
         }
         return entropy;
     }
 
-    private static double computeFrequencyCenterPythonStyle(double[] psd, int fs, int npersegOriginalWindowSize) {
-        if (psd == null || psd.length == 0 || npersegOriginalWindowSize == 0) return Double.NaN;
-
-        int nfft = getNextPowerOfTwo(npersegOriginalWindowSize);
-        if (psd.length != (nfft / 2 + 1)) {
+    public static double computeFrequencyCenterPythonStyle(double[] psd, int fs, int nfftUsedForPsd) {
+        if (psd == null || psd.length == 0) return Double.NaN;
+        int nfft = nfftUsedForPsd;
+        if (nfft <= 0 || psd.length != (nfft / 2 + 1)) {
             if (psd.length > 1) nfft = (psd.length - 1) * 2;
-            else if (psd.length == 1) nfft = (nfft == 1 || nfft == 2 || nfft==0) ? (nfft==0?2:nfft) : 2; // DC만, nfft=0이면 기본 2
-            else return Double.NaN;
+            else if (psd.length == 1) nfft = 2; else return Double.NaN;
         }
-        if (nfft == 0) nfft = 2; // 최소 nfft=2 (DC, Nyquist) 가정 (psd.length=2 일때)
-
-
-        double sumPsd = 0;
-        double weightedSum = 0;
-        double freqStep = (double) fs / nfft;
-
+        if (nfft < 1) return Double.NaN;
+        double sumPsdRaw = 0; double weightedSumRaw = 0;
+        double freqStep = (nfft == 0 || fs == 0) ? 0 : (double) fs / nfft;
         for (int k = 0; k < psd.length; k++) {
-            if (!Double.isNaN(psd[k])) {
-                sumPsd += psd[k];
-                weightedSum += (k * freqStep) * psd[k];
+            if (!Double.isNaN(psd[k]) && psd[k] >=0) { sumPsdRaw += psd[k]; weightedSumRaw += (k * freqStep) * psd[k]; }
+        }
+        double denominatorForFc = (sumPsdRaw == 0.0) ? 1e-6 : sumPsdRaw;
+        return (denominatorForFc == 0.0) ? 0.0 : (weightedSumRaw / denominatorForFc);
+    }
+
+    public static double calculateKurtosisSciPyStyle(double[] data) {
+        double[] cleanData = Arrays.stream(data).filter(d -> !Double.isNaN(d) && Double.isFinite(d)).toArray();
+        int n = cleanData.length;
+        if (n == 0) return Double.NaN;
+        if (n == 1) return -3.0; // SciPy: fisher=True, bias=True
+        // For n < 4, SciPy kurtosis with bias=True, fisher=True might return NaN if variance is not well-defined or zero.
+
+        double mean = 0; for (double v : cleanData) mean += v; mean /= n;
+        double m2 = 0, m4 = 0;
+        for (double v : cleanData) { double d = v - mean; m2 += d * d; m4 += d * d * d * d; }
+        m2 /= n; m4 /= n;
+
+        // Python의 gravity-like PSD 분산이 ~e-32 였고, 그때 값을 반환했음.
+        // Java의 PSD 분산도 이와 유사하게 매우 작을 수 있음.
+        // SciPy는 분산이 "정확히 0"일 때 NaN을 반환. "매우 작은 값"에 대한 처리는 내부적일 수 있음.
+        if (Math.abs(m2) < 1e-40) { // 매우 작은 분산 (거의 0) -> Python도 NaN일 가능성 높음
+            return Double.NaN;
+        }
+        double denom = m2 * m2;
+        if (Math.abs(denom) < 1e-80) { // 분모가 극도로 작음
+            return Double.NaN;
+        }
+        double kurt = (m4 / denom) - 3.0;
+        return Double.isFinite(kurt) ? kurt : Double.NaN; // 최종 결과가 유한한지 확인
+    }
+
+    public static double calculateSkewnessSciPyStyle(double[] data) {
+        double[] cleanData = Arrays.stream(data).filter(d -> !Double.isNaN(d) && Double.isFinite(d)).toArray();
+        int n = cleanData.length;
+        if (n == 0) return Double.NaN;
+        if (n == 1) return 0.0; // SciPy: bias=True
+        // For n < 3, SciPy skew with bias=True might return NaN.
+
+        double mean = 0; for (double v : cleanData) mean += v; mean /= n;
+        double m2 = 0, m3 = 0;
+        for (double v : cleanData) { double d = v - mean; m2 += d * d; m3 += d * d * d; }
+        m2 /= n; m3 /= n;
+
+        if (Math.abs(m2) < 1e-40) { // 위와 동일한 논리
+            return Double.NaN;
+        }
+        double m2_pow_1_5 = Math.pow(m2, 1.5);
+        if (Double.isNaN(m2_pow_1_5) || Math.abs(m2_pow_1_5) < 1e-60) {
+            return (Math.abs(m3) < 1e-60 && m3 != 0) ? Double.NaN : 0.0; // m3도 0에 가까우면 0, 아니면 NaN
+        }
+        double skew = m3 / m2_pow_1_5;
+        return Double.isFinite(skew) ? skew : Double.NaN;
+    }
+
+    public static double findMax(double[] data) {
+        if (data == null || data.length == 0) return Double.NaN;
+        double maxVal = Double.NEGATIVE_INFINITY;
+        boolean foundNumeric = false;
+        for (double v : data) {
+            if (!Double.isNaN(v) && Double.isFinite(v)) {
+                foundNumeric = true;
+                if (v > maxVal) maxVal = v;
             }
         }
-        if (Math.abs(sumPsd) < 1e-12) return 0.0;
-        return weightedSum / sumPsd;
+        return foundNumeric ? maxVal : Double.NaN;
+    }
+
+    public static double[][] magnitude(double[][] x, double[][] y, double[][] z) {
+        if (x == null || y == null || z == null || x.length == 0 || y.length == 0 || z.length == 0) {
+            return new double[0][0];
+        }
+        int numWindows = x.length;
+        if (numWindows == 0) return new double[0][0];
+        int windowSize = x[0].length;
+
+        if (y.length != numWindows || z.length != numWindows || (windowSize > 0 && (y[0].length != windowSize || z[0].length != windowSize))) {
+            throw new IllegalArgumentException("Input arrays must have the same dimensions for magnitude calculation.");
+        }
+
+        double[][] result = new double[numWindows][windowSize];
+        for (int i = 0; i < numWindows; i++) {
+            if (x[i] == null || y[i] == null || z[i] == null || x[i].length != windowSize || y[i].length != windowSize || z[i].length != windowSize) {
+                throw new IllegalArgumentException("Inconsistent window size or null window at index " + i + " for magnitude.");
+            }
+            for (int j = 0; j < windowSize; j++) {
+                result[i][j] = Math.sqrt(x[i][j] * x[i][j] + y[i][j] * y[i][j] + z[i][j] * z[i][j]);
+            }
+        }
+        return result;
     }
 }
