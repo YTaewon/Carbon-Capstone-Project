@@ -182,9 +182,6 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                 if (isMyLocationShown) { // "내 위치" 기능 활성 중 사용자가 지도 조작 시
                     Timber.tag(TAG).d("사용자 지도 제스처 감지. 지속적인 추적 일시 중단.")
                     userInteractedWithMap = true // 사용자가 지도 조작했음을 표시
-                    // 선택 사항: findnowlocateButton 아이콘을 "일시 중단" 상태로 변경 가능
-                    // 예: findnowlocateButton.setImageResource(R.drawable.ic_location_paused)
-                    // 현재는 아이콘은 ic_location_searching_true로 유지하고, userInteractedWithMap 플래그로 동작 제어
                 }
             }
         }

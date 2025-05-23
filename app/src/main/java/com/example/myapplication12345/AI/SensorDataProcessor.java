@@ -377,7 +377,7 @@ public class SensorDataProcessor {
 
                 for (int segment = 0; segment < totalSegments; segment++) {
                     int startIndex = segment * SEGMENT_SIZE;
-                    int endIndex = Math.min(startIndex + SEGMENT_SIZE - 1, gpsData.size());
+                    int endIndex = Math.min(startIndex + SEGMENT_SIZE, gpsData.size() - 1);
 
                     if (startIndex > endIndex) {
                         Timber.tag(TAG).w("앙상블 세그먼트 %d: 유효하지 않은 인덱스 범위 (시작: %d, 끝: %d). 건너뜁니다.", segment, startIndex, endIndex);
@@ -400,7 +400,7 @@ public class SensorDataProcessor {
                         }
 
                         if (!finalTransportMode.equals(DEFAULT_MODE_STOPPED)) {
-                            if (speed < 30.0f) {
+                            if (speed < 15.0f) {
                                 String originalMode = finalTransportMode;
                                 finalTransportMode = "WALK";
                                 Timber.tag(TAG).d("앙상블 - 평균 속도: %.1fKm/h. 예측된 모드 '%s'를 '%s'로 변경.", speed, originalMode, finalTransportMode);
