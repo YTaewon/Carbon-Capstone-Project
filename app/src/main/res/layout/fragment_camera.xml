@@ -39,7 +39,21 @@
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintEnd_toEndOf="parent" />
 
-
+                <!-- 카메라 활성화 버튼 (스타일 변경) -->
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/startCameraButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="카메라 시작"
+                    android:background="@drawable/background_green_dark"
+                    android:textColor="@color/white"
+                    android:padding="12dp"
+                    android:textSize="16sp"
+                    android:elevation="4dp"
+                    app:layout_constraintTop_toTopOf="@id/cameraPreview"
+                    app:layout_constraintBottom_toBottomOf="@id/cameraPreview"
+                    app:layout_constraintStart_toStartOf="@id/cameraPreview"
+                    app:layout_constraintEnd_toEndOf="@id/cameraPreview" />
 
                 <LinearLayout
                     android:id="@+id/bottomContainer"

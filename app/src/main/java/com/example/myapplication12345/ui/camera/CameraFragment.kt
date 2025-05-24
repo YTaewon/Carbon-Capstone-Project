@@ -84,10 +84,13 @@ class CameraFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
-            startCamera()
-        } else {
-            requestPermissionLauncher.launch(Manifest.permission.CAMERA)
+        binding.startCameraButton.setOnClickListener {
+            if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                startCamera()
+                binding.startCameraButton.visibility = View.GONE
+            } else {
+                Toast.makeText(requireContext(), "카메라 권한이 필요합니다.", Toast.LENGTH_SHORT).show()
+            }
         }
 
         binding.captureButton.setOnClickListener {
