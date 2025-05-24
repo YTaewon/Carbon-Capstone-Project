@@ -29,6 +29,10 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            buildConfigField("String", "OPENAI_API_KEY", "\"${localProperty("OPENAI_API_KEY", "")}\"")
+        }
+        debug {
+            buildConfigField("String", "OPENAI_API_KEY", "\"${localProperty("OPENAI_API_KEY", "")}\"")
         }
     }
     compileOptions {
@@ -156,6 +160,14 @@ dependencies {
 
     // ML Kit 텍스트 인식 (한글 지원)
     implementation("com.google.mlkit:text-recognition-korean:16.0.1")
+
+    // ML Kit 텍스트 인식
+    implementation ("com.google.mlkit:text-recognition:16.0.0")
+
+    //mlkit 이미지인식
+    implementation ("com.google.mlkit:image-labeling:17.0.7")
+    implementation ("com.google.mlkit:image-labeling-common:17.0.0")
+    implementation ("com.google.mlkit:vision-common:17.2.0")
 
     //math
     implementation("org.apache.commons:commons-math3:3.6.1")
