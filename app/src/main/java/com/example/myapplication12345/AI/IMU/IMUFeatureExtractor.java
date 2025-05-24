@@ -60,15 +60,15 @@ public class IMUFeatureExtractor {
             max[i][0] = StatUtils.max(currentWindow);
             min[i][0] = StatUtils.min(currentWindow);
             mad[i][0] = computeRawMAD(currentWindow);
-            iqr[i][0] = (currentWindow.length > 0) ? (percentileCalcR7.evaluate(currentWindow, 75.0) - percentileCalcR7.evaluate(currentWindow, 25.0)) : Double.NaN;
+            iqr[i][0] = percentileCalcR7.evaluate(currentWindow, 75.0) - percentileCalcR7.evaluate(currentWindow, 25.0);
 
-            double[] autocorrData = computeAutocorrelationPythonStyle(currentWindow);
+            double[] autocorrData = computeAutocorrelation(currentWindow);
             if (autocorrData.length > 0) {
                 double[] autocorrResult = findMaxAndArgMax(autocorrData);
                 maxCorr[i][0] = autocorrResult[0];
                 idxMaxCorr[i][0] = autocorrResult[1];
-                zcr[i][0] = computeZCRPythonStyle(autocorrData);
-                fzc[i][0] = computeFZCPythonStyle(autocorrData);
+                zcr[i][0] = computeZCR(autocorrData);
+                fzc[i][0] = computeFZC(autocorrData);
             } else {
                 maxCorr[i][0] = idxMaxCorr[i][0] = zcr[i][0] = fzc[i][0] = Double.NaN;
             }
@@ -91,7 +91,7 @@ public class IMUFeatureExtractor {
         return new Percentile().withEstimationType(EstimationType.R_7).evaluate(absDeviations, 50.0);
     }
 
-    private static double[] computeAutocorrelationPythonStyle(double[] x) {
+    private static double[] computeAutocorrelation(double[] x) {
         int n = x.length; if (n == 0) return new double[0];
         double[] xClean = Arrays.stream(x).map(val -> Double.isNaN(val) ? 0.0 : val).toArray();
         double[] fullCorr = new double[2 * n - 1];
@@ -108,8 +108,7 @@ public class IMUFeatureExtractor {
 
     private static double[] findMaxAndArgMax(double[] data) {
         if (data == null || data.length == 0) return new double[]{Double.NaN, Double.NaN};
-        double maxValue = data[0]; int maxIndex = 0; boolean allNaN = true;
-        if (!Double.isNaN(data[0])) allNaN = false;
+        double maxValue = data[0]; int maxIndex = 0; boolean allNaN = Double.isNaN(data[0]);
         for (int i = 1; i < data.length; i++) {
             if (!Double.isNaN(data[i])) {
                 allNaN = false;
@@ -119,7 +118,7 @@ public class IMUFeatureExtractor {
         return allNaN ? new double[]{Double.NaN, Double.NaN} : new double[]{maxValue, (double)maxIndex};
     }
 
-    private static double computeZCRPythonStyle(double[] data) {
+    private static double computeZCR(double[] data) {
         if (data == null || data.length < 2) return 0.0;
         double[] dataClean = Arrays.stream(data).map(val -> Double.isNaN(val) ? 0.0 : val).toArray();
         int[] signs = new int[dataClean.length];
@@ -128,7 +127,7 @@ public class IMUFeatureExtractor {
         return (dataClean.length == 0) ? 0.0 : (0.5 * S) / dataClean.length;
     }
 
-    private static double computeFZCPythonStyle(double[] data) {
+    private static double computeFZC(double[] data) {
         if (data == null || data.length < 2) return 0.0;
         double[] dataClean = Arrays.stream(data).map(val -> Double.isNaN(val) ? 0.0 : val).toArray();
         for (int i = 0; i < dataClean.length - 1; i++) {
@@ -157,18 +156,17 @@ public class IMUFeatureExtractor {
             }
             int nperseg = singleWindowMagnitude.length;
             int nfftForWelch;
-            if (nperseg == 0) nfftForWelch = getNextPowerOfTwo(1);
-            else if ((nperseg & (nperseg - 1)) == 0) nfftForWelch = nperseg;
+            if ((nperseg & (nperseg - 1)) == 0) nfftForWelch = nperseg;
             else nfftForWelch = getNextPowerOfTwo(nperseg);
             if (nfftForWelch < 2) nfftForWelch = 2;
 
-            double[] psd = computeWelchPSDPythonStyle(singleWindowMagnitude, fs, nperseg, "hann", detrendType);
+            double[] psd = computeWelchPSD(singleWindowMagnitude, fs, nperseg, "hann", detrendType);
 
-            if (psd == null || psd.length == 0) { /* ... NaN 처리 ... */ continue; }
+            if (psd.length == 0) { continue; }
 
             maxPSD_res_all[i][0] = findMax(psd);
-            entropy_res_all[i][0] = computeEntropyPythonStyle(psd);
-            fc_res_all[i][0] = computeFrequencyCenterPythonStyle(psd, fs, nfftForWelch);
+            entropy_res_all[i][0] = computeEntropy(psd);
+            fc_res_all[i][0] = computeFrequencyCenter(psd, fs, nfftForWelch);
 
             double[] cleanPsdForStats = Arrays.stream(psd).filter(val -> !Double.isNaN(val) && Double.isFinite(val)).toArray();
             kurt_res_all[i][0] = (cleanPsdForStats.length > 0) ? calculateKurtosisSciPyStyle(cleanPsdForStats) : Double.NaN;
@@ -182,14 +180,14 @@ public class IMUFeatureExtractor {
     }
 
     // Welch PSD (BigDecimal 디트렌딩 및 로깅 정리 버전)
-    public static double[] computeWelchPSDPythonStyle(double[] dataInput, int fs, int npersegInput, String windowType, String detrendType) {
+    public static double[] computeWelchPSD(double[] dataInput, int fs, int npersegInput, String windowType, String detrendType) {
         int n = dataInput.length;
 
         if (n == 0) {
             int nfftForEmpty = npersegInput;
             if (nfftForEmpty <= 0) nfftForEmpty = 256;
-            if ((nfftForEmpty & (nfftForEmpty - 1)) != 0 || nfftForEmpty == 0) {
-                nfftForEmpty = getNextPowerOfTwo(nfftForEmpty > 0 ? nfftForEmpty : 1);
+            if ((nfftForEmpty & nfftForEmpty - 1) != 0) {
+                nfftForEmpty = getNextPowerOfTwo(nfftForEmpty);
             }
             if (nfftForEmpty < 2) nfftForEmpty = 2;
             return new double[nfftForEmpty / 2 + 1];
@@ -197,15 +195,16 @@ public class IMUFeatureExtractor {
 
         double[] data = new double[n];
         if ("mean".equalsIgnoreCase(detrendType) || "constant".equalsIgnoreCase(detrendType)) {
-            if (n > 0) {
-                BigDecimal sumBd = BigDecimal.ZERO;
-                for (int k=0; k < n; k++) {
-                    sumBd = sumBd.add(new BigDecimal(String.valueOf(dataInput[k])));
-                }
-                BigDecimal meanBd = sumBd.divide(new BigDecimal(n), 30, RoundingMode.HALF_UP);
-                for (int k = 0; k < n; k++) {
-                    data[k] = new BigDecimal(String.valueOf(dataInput[k])).subtract(meanBd).doubleValue();
-                }
+            BigDecimal sumBd = BigDecimal.ZERO;
+            for (double v : dataInput) {
+                sumBd = sumBd.add(BigDecimal.valueOf(v)); // 수정: String.valueOf 대신 BigDecimal.valueOf
+            }
+            // 나눗셈의 정밀도를 매우 높게 설정 (예: 소수점 50자리 이상)
+            BigDecimal meanBd = sumBd.divide(new BigDecimal(n), 50, RoundingMode.HALF_UP);
+            // System.out.printf(Locale.US, "WELCH_JAVA_DEBUG: Detrend 'mean', BigDecimal mean = %s%n", meanBd.toPlainString());
+
+            for (int k = 0; k < n; k++) {
+                data[k] = BigDecimal.valueOf(dataInput[k]).subtract(meanBd).doubleValue(); // 수정
             }
         } else if ("linear".equalsIgnoreCase(detrendType)) {
             if (n > 1) {
@@ -215,7 +214,7 @@ public class IMUFeatureExtractor {
                 double slope = (slopeDeno == 0) ? 0 : ((double)n * sumXY - sumX * sumY) / slopeDeno;
                 if (Double.isNaN(slope) || Double.isInfinite(slope)) slope = 0;
                 double intercept = (sumY - slope * sumX) / n;
-                if (Double.isNaN(intercept) || Double.isInfinite(intercept)) intercept = (n > 0) ? sumY / n : 0;
+                if (Double.isNaN(intercept) || Double.isInfinite(intercept)) intercept = sumY / n;
                 for (int k = 0; k < n; k++) data[k] = dataInput[k] - (slope * k + intercept);
             } else { data[0] = 0.0; }
         } else {
@@ -223,15 +222,18 @@ public class IMUFeatureExtractor {
         }
 
         int nperseg = npersegInput; if (nperseg <= 0 || nperseg > n) nperseg = n;
-        int nfft; if (nperseg == 0) nfft = getNextPowerOfTwo(1); else if ((nperseg & (nperseg - 1)) == 0) nfft = nperseg; else nfft = getNextPowerOfTwo(nperseg); if (nfft < 2) nfft = 2;
+        int nfft;
+        if ((nperseg & (nperseg - 1)) == 0) nfft = nperseg; else nfft = getNextPowerOfTwo(nperseg);
+        if (nfft < 2) nfft = 2;
 
         double[] window = new double[nperseg];
-        if (nperseg > 0) {
-            if ("hann".equalsIgnoreCase(windowType)) { // SciPy hann(M, sym=False) => 분모 M
-                if (nperseg == 1) window[0] = 1.0;
-                else { for (int k = 0; k < nperseg; k++) window[k] = 0.5 * (1.0 - Math.cos(2.0 * Math.PI * k / (double)nperseg)); }
-            } else Arrays.fill(window, 1.0);
-        }
+        if ("hann".equalsIgnoreCase(windowType)) { // SciPy hann(M, sym=False) => 분모 M
+            if (nperseg == 1) window[0] = 1.0;
+            else {
+                for (int k = 0; k < nperseg; k++)
+                    window[k] = 0.5 * (1.0 - Math.cos(2.0 * Math.PI * k / (double) nperseg));
+            }
+        } else Arrays.fill(window, 1.0);
 
         double sumSqWindow = 0; for (double v : window) sumSqWindow += v * v; if (sumSqWindow == 0) sumSqWindow = 1.0;
 
@@ -247,22 +249,19 @@ public class IMUFeatureExtractor {
             psd[k] = fftResult[k].getReal() * fftResult[k].getReal() + fftResult[k].getImaginary() * fftResult[k].getImaginary();
         }
 
-        if (nfft > 0) {
-            for (int k = 1; k < psdLen; k++) {
-                if (nfft % 2 == 0 && k == psdLen - 1) { /* Nyquist: No doubling */ }
-                else { psd[k] *= 2.0; }
+        for (int k = 1; k < psdLen; k++) {
+            if (!(nfft % 2 == 0 && k == psdLen - 1)) {
+                psd[k] *= 2.0;
             }
         }
 
         double scaleFactor = fs * sumSqWindow;
         if (scaleFactor == 0) {
             scaleFactor = (sumSqWindow > 0) ? sumSqWindow : 1.0;
-            if (fs > 0 && sumSqWindow == 0) scaleFactor = fs;
         }
 
         for (int k = 0; k < psdLen; k++) {
-            if (scaleFactor != 0) psd[k] /= scaleFactor;
-            else psd[k] = Double.NaN;
+            psd[k] /= scaleFactor;
         }
 
         return psd;
@@ -275,7 +274,7 @@ public class IMUFeatureExtractor {
         return power;
     }
 
-    public static double computeEntropyPythonStyle(double[] psd) {
+    public static double computeEntropy(double[] psd) {
         if (psd == null || psd.length == 0) return 0.0;
         double sumPk = 0; for (double p_val : psd) if (!Double.isNaN(p_val) && p_val > 0) sumPk += p_val;
         double safeSumPk = (sumPk == 0.0) ? 1e-6 : sumPk; double entropy = 0.0;
@@ -287,21 +286,21 @@ public class IMUFeatureExtractor {
         return entropy;
     }
 
-    public static double computeFrequencyCenterPythonStyle(double[] psd, int fs, int nfftUsedForPsd) {
+    public static double computeFrequencyCenter(double[] psd, int fs, int nfftUsedForPsd) {
         if (psd == null || psd.length == 0) return Double.NaN;
         int nfft = nfftUsedForPsd;
         if (nfft <= 0 || psd.length != (nfft / 2 + 1)) {
             if (psd.length > 1) nfft = (psd.length - 1) * 2;
-            else if (psd.length == 1) nfft = 2; else return Double.NaN;
+            else nfft = 2;
         }
         if (nfft < 1) return Double.NaN;
         double sumPsdRaw = 0; double weightedSumRaw = 0;
-        double freqStep = (nfft == 0 || fs == 0) ? 0 : (double) fs / nfft;
+        double freqStep = fs == 0 ? 0 : (double) fs / nfft;
         for (int k = 0; k < psd.length; k++) {
             if (!Double.isNaN(psd[k]) && psd[k] >=0) { sumPsdRaw += psd[k]; weightedSumRaw += (k * freqStep) * psd[k]; }
         }
         double denominatorForFc = (sumPsdRaw == 0.0) ? 1e-6 : sumPsdRaw;
-        return (denominatorForFc == 0.0) ? 0.0 : (weightedSumRaw / denominatorForFc);
+        return weightedSumRaw / denominatorForFc;
     }
 
     public static double calculateKurtosisSciPyStyle(double[] data) {
@@ -371,7 +370,6 @@ public class IMUFeatureExtractor {
             return new double[0][0];
         }
         int numWindows = x.length;
-        if (numWindows == 0) return new double[0][0];
         int windowSize = x[0].length;
 
         if (y.length != numWindows || z.length != numWindows || (windowSize > 0 && (y[0].length != windowSize || z[0].length != windowSize))) {

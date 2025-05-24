@@ -4,13 +4,9 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 
 public class IMUProcessing {
-
-    /**
-     * IMU 센서 데이터를 처리하여 통계 및 스펙트럼 피처를 추출합니다.
-     * 이 함수는 입력된 3D 센서 데이터의 모든 윈도우에 대해 피처를 계산합니다.
-     */
     public static Map<String, double[][]> processingImu(
             double[][][] sensorInput3D,            // 대상 센서 데이터 [num_windows][window_size][num_channels]
             int numChannelsForSensor,              // sensorInput3D의 채널 수
@@ -29,7 +25,7 @@ public class IMUProcessing {
         }
 
         int numWindows = sensorInput3D.length;
-        int windowSize = (numWindows > 0 && sensorInput3D[0] != null) ? sensorInput3D[0].length : 0;
+        int windowSize = sensorInput3D[0] != null ? sensorInput3D[0].length : 0;
 
         if (windowSize == 0) {
             System.err.printf(Locale.US, "PROC_IMU WARN [%s]: Input sensor data has zero window size.%n", featureSetPrefix);
@@ -92,14 +88,14 @@ public class IMUProcessing {
             // 현재 윈도우의 회전 및 중력 데이터 (3D 배치 형태 [1][window_size][channels])
             double[][][] currentRotation3DBatch = null;
             if (rotationQuaternionData3D != null && i < rotationQuaternionData3D.length && rotationQuaternionData3D[i] != null) {
-                if (rotationQuaternionData3D[i].length != windowSize || (windowSize > 0 && rotationQuaternionData3D[i][0].length != 4)) {
+                if (rotationQuaternionData3D[i].length != windowSize || rotationQuaternionData3D[i][0].length != 4) {
                     System.err.printf(Locale.US, "PROC_IMU WARN [%s] Win %d: Rotation data dim mismatch. Expected [%d][4]. Got [%d][%d]. Using null.%n",
                             featureSetPrefix, i, windowSize, rotationQuaternionData3D[i].length, (rotationQuaternionData3D[i].length > 0 ? rotationQuaternionData3D[i][0].length : -1));
                 } else { currentRotation3DBatch = new double[][][]{rotationQuaternionData3D[i]}; }
             }
             double[][][] currentGravity3DBatch = null;
             if (gravityVectorData3D != null && i < gravityVectorData3D.length && gravityVectorData3D[i] != null) {
-                if (gravityVectorData3D[i].length != windowSize || (windowSize > 0 && gravityVectorData3D[i][0].length != 3)) {
+                if (gravityVectorData3D[i].length != windowSize || gravityVectorData3D[i][0].length != 3) {
                     System.err.printf(Locale.US, "PROC_IMU WARN [%s] Win %d: Gravity data dim mismatch. Expected [%d][3]. Got [%d][%d]. Using null.%n",
                             featureSetPrefix, i, windowSize, gravityVectorData3D[i].length, (gravityVectorData3D[i].length > 0 ? gravityVectorData3D[i][0].length : -1));
                 } else { currentGravity3DBatch = new double[][][]{gravityVectorData3D[i]}; }
@@ -149,11 +145,11 @@ public class IMUProcessing {
                 }
 
                 if (calculateJerkConfig) {
-                    if (currentMagnitudeSource2D == null || currentMagnitudeSource2D.length == 0 || currentMagnitudeSource2D[0].length < 2) {
+                    if (currentMagnitudeSource2D.length == 0 || currentMagnitudeSource2D[0].length < 2) {
                         currentMagnitudeSource2D = new double[1][0]; // 빈 배열 [1][0]
                     } else {
                         Map<String, double[][]> jerkResult = IMUUtils.diff(currentMagnitudeSource2D);
-                        currentMagnitudeSource2D = (jerkResult != null && jerkResult.containsKey("difference") && jerkResult.get("difference") != null) ?
+                        currentMagnitudeSource2D = jerkResult.containsKey("difference") && jerkResult.get("difference") != null ?
                                 jerkResult.get("difference") : new double[1][0];
                     }
                 }
@@ -163,7 +159,6 @@ public class IMUProcessing {
             } catch (Exception e) {
                 System.err.printf(Locale.US, "PROC_IMU ERROR [%s] Win %d: Exception during magnitudeSource/jerk: %s. Filling with NaN.%n",
                         featureSetPrefix, i, e.getMessage());
-                e.printStackTrace(); // 상세 오류 확인
                 int len = calculateJerkConfig ? Math.max(0, windowSize - 1) : windowSize;
                 magnitudeSourceForFeatures[i] = new double[len]; Arrays.fill(magnitudeSourceForFeatures[i], Double.NaN);
                 Arrays.fill(x_processed_win_1d_temp, Double.NaN);
@@ -198,18 +193,18 @@ public class IMUProcessing {
         if (statFeaturesEnabled) {
             // calculateStatFeatures는 double[numWindows][samplesPerWindow]를 받음
             Map<String, double[][]> statM = IMUFeatureExtractor.calculateStatFeatures(magnitudeSourceForFeatures, featureSetPrefix + "M");
-            if (statM != null) combinedFeatures.putAll(statM);
+            combinedFeatures.putAll(statM);
 
             if (processEachAxisConfig && numChannelsForSensor > 1 && !calculateJerkConfig) {
                 Map<String, double[][]> statX = IMUFeatureExtractor.calculateStatFeatures(xProcessedForAxisFeatures, featureSetPrefix + "X");
-                if (statX != null) combinedFeatures.putAll(statX);
+                combinedFeatures.putAll(statX);
                 if (yProcessedForAxisFeatures != null){
                     Map<String, double[][]> statY = IMUFeatureExtractor.calculateStatFeatures(yProcessedForAxisFeatures, featureSetPrefix + "Y");
-                    if (statY != null) combinedFeatures.putAll(statY);
+                    combinedFeatures.putAll(statY);
                 }
                 if (zProcessedForAxisFeatures != null){
                     Map<String, double[][]> statZ = IMUFeatureExtractor.calculateStatFeatures(zProcessedForAxisFeatures, featureSetPrefix + "Z");
-                    if (statZ != null) combinedFeatures.putAll(statZ);
+                    combinedFeatures.putAll(statZ);
                 }
             }
         }
@@ -224,18 +219,18 @@ public class IMUProcessing {
                     constFs,
                     detrendTypeForWelch
             );
-            if (spectralM != null) combinedFeatures.putAll(spectralM);
+            combinedFeatures.putAll(spectralM);
 
             if (processEachAxisConfig && numChannelsForSensor > 1 && !calculateJerkConfig) {
                 Map<String, double[][]> spectralX = IMUFeatureExtractor.calculateSpectralFeatures(xProcessedForAxisFeatures, featureSetPrefix + "X", constFs, detrendTypeForWelch);
-                if (spectralX != null) combinedFeatures.putAll(spectralX);
+                combinedFeatures.putAll(spectralX);
                 if (yProcessedForAxisFeatures != null){
                     Map<String, double[][]> spectralY = IMUFeatureExtractor.calculateSpectralFeatures(yProcessedForAxisFeatures, featureSetPrefix + "Y", constFs, detrendTypeForWelch);
-                    if (spectralY != null) combinedFeatures.putAll(spectralY);
+                    combinedFeatures.putAll(spectralY);
                 }
                 if (zProcessedForAxisFeatures != null){
                     Map<String, double[][]> spectralZ = IMUFeatureExtractor.calculateSpectralFeatures(zProcessedForAxisFeatures, featureSetPrefix + "Z", constFs, detrendTypeForWelch);
-                    if (spectralZ != null) combinedFeatures.putAll(spectralZ);
+                    combinedFeatures.putAll(spectralZ);
                 }
             }
         }
@@ -272,11 +267,11 @@ public class IMUProcessing {
 
         // 회전 및 중력 데이터도 3D 배치 형태로 ([1][window_size][channels])
         double[][][] rotation3D_batch = (rotationDataWin != null) ? new double[][][]{rotationDataWin} : null;
-        if (rotationDataWin != null && (rotation3D_batch == null || rotationDataWin[0].length != currentWindowSize || rotationDataWin[0].length != 4)){
+        if (rotationDataWin != null && (rotationDataWin[0].length != currentWindowSize || rotationDataWin[0].length != 4)){
             throw new IllegalArgumentException("Rotation data has incorrect dimensions. Expected: [1]["+currentWindowSize+"][4]");
         }
         double[][][] gravity3D_batch = (gravityDataWin != null) ? new double[][][]{gravityDataWin} : null;
-        if (gravityDataWin != null && (gravity3D_batch == null || gravityDataWin[0].length != currentWindowSize || gravityDataWin[0].length != 3)){
+        if (gravityDataWin != null && (gravityDataWin[0].length != currentWindowSize || gravityDataWin[0].length != 3)){
             throw new IllegalArgumentException("Gravity data has incorrect dimensions. Expected: [1]["+currentWindowSize+"][3]");
         }
 
@@ -315,9 +310,9 @@ public class IMUProcessing {
         }
 
         if (calculateJerk) {
-            if (magnitudeSource_2d == null || magnitudeSource_2d.length == 0 || magnitudeSource_2d[0].length < 2) return new double[0];
+            if (magnitudeSource_2d.length == 0 || magnitudeSource_2d[0].length < 2) return new double[0];
             Map<String, double[][]> jerkResult = IMUUtils.diff(magnitudeSource_2d);
-            if (jerkResult != null && jerkResult.containsKey("difference") && jerkResult.get("difference") != null && jerkResult.get("difference").length > 0) {
+            if (jerkResult.containsKey("difference") && jerkResult.get("difference") != null && Objects.requireNonNull(jerkResult.get("difference")).length > 0) {
                 magnitudeSource_2d = jerkResult.get("difference");
             } else return new double[0];
         }

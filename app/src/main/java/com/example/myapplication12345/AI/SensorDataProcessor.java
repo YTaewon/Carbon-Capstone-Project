@@ -52,7 +52,7 @@ public class SensorDataProcessor {
             "BUS",         // 4: 버스
             "ETC",       // 5: KTX/기차 TRAIN -> ETC
             "SUBWAY",      // 6: 지하철
-            "ETC",  // 7: 오토바이 MOTORCYCLE -> ETC
+            "CAR",  // 7: 오토바이 MOTORCYCLE -> CAR
             "BIKE",      // 8: 전기자전거  E_BIKE -> BIKE
             "ETC",   // 9: 전동 킥보드 E_SCOOTER -> ETC
             "CAR"         // 10: 택시 (명시적으로 추가) TAXI -> CAR
