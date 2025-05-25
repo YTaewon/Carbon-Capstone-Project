@@ -46,6 +46,11 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import androidx.core.view.isVisible
+import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import com.example.myapplication12345.ServerManager
+import com.example.myapplication12345.ui.calendar.CalendarViewModel
 
 class MapFragment : Fragment(), OnMapReadyCallback {
 
@@ -116,6 +121,14 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private lateinit var locationCallback: LocationCallback // 위치 업데이트 수신 콜백
     private lateinit var locationRequest: LocationRequest   // 위치 업데이트 요청 객체
     private var userInteractedWithMap = false // 사용자가 "내 위치" 기능 활성 중 지도를 수동으로 조작했는지 여부 (조작 시 자동 추적 중단)
+
+    private val calendarViewModel: CalendarViewModel by activityViewModels {
+        object : ViewModelProvider.Factory {
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                return CalendarViewModel(ServerManager(requireContext())) as T
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -489,33 +502,40 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         return predictionData
     }
 
+    private fun getEmissionFactor(mode: String): Double = when (mode.uppercase(Locale.ROOT)) {
+        "WALK" -> 0.0    // 걷기: 탄소 배출 없음
+        "BIKE" -> 0.0    // 자전거: 탄소 배출 없음
+        "CAR" -> 12.0    // 자동차: 12g/100m
+        "BUS" -> 6.0     // 버스: 6g/100m
+        "SUBWAY" -> 4.0  // 지하철: 4g/100m
+        else -> 8.0      // 기타: 8g/100m
+    }
+
     // 로드된 예측 데이터를 지도에 폴리라인 등으로 표시
     @SuppressLint("DefaultLocale") // String.format에서 Locale.KOREAN 사용
     private fun displayPredictionOnMap(predictionData: List<Map<String, String>>) {
-        if (!isAdded || googleMap == null) { // Fragment attach 및 지도 준비 상태 확인
+        if (!isAdded || googleMap == null) {
             Timber.tag(TAG).w("displayPredictionOnMap 중 Fragment가 attach되지 않았거나 GoogleMap이 준비되지 않음.")
             return
         }
 
-        val distanceInfo = StringBuilder("이동 거리 합계:\n") // 거리 정보 표시용 StringBuilder
-        var firstPoint: LatLng? = null // 첫 번째 데이터의 시작점으로 카메라 이동하기 위함
-        var hasData = false            // 표시할 데이터가 있는지 여부
-        var totalOverallDistance = 0.0 // 모든 이동수단의 총 이동 거리
+        val distanceInfo = StringBuilder("이동 거리 합계:\n")
+        var firstPoint: LatLng? = null
+        var hasData = false
+        var totalOverallDistance = 0.0
+        var totalTransportEmissions = 0.0 // 총 이동경로 탄소 배출량
 
-        val definedTransportModes = TRANSPORT_MODES.toSet() // 정의된 이동수단 집합
-        // 이동수단 영문명을 한글명으로 매핑
+        val definedTransportModes = TRANSPORT_MODES.toSet()
         val modeNames = mapOf("WALK" to "걷기", "BIKE" to "자전거", "CAR" to "자동차", "BUS" to "버스", "SUBWAY" to "지하철", "ETC" to "기타")
 
-        // 1. 데이터 전처리: transport_mode 유효성 검사 (정의되지 않은 모드는 "ETC"로)
-        // 2. 필터링: 현재 선택된 이동수단(selectedModes)에 해당하는 데이터만 필터링
+        // 데이터 전처리 및 필터링
         val processedAndFilteredData = predictionData.map { data ->
             val originalMode = data["transport_mode"]?.uppercase(Locale.ROOT)
-            // 정의된 이동수단 목록에 있으면 해당 모드 사용, 없으면 "ETC"로 처리
             val validatedMode = if (originalMode != null && definedTransportModes.contains(originalMode)) originalMode else "ETC"
-            data.toMutableMap().apply { put("transport_mode", validatedMode) } // transport_mode 업데이트
-        }.filter { selectedModes.contains(it["transport_mode"]) } // 선택된 이동수단만 필터링
+            data.toMutableMap().apply { put("transport_mode", validatedMode) }
+        }.filter { selectedModes.contains(it["transport_mode"]) }
 
-        if (processedAndFilteredData.isEmpty()) { // 필터링 후 데이터가 없으면
+        if (processedAndFilteredData.isEmpty()) {
             textDistanceInfo.text = if (selectedModes.isEmpty()) "선택된 이동수단 없음" else "선택된 이동수단에 대한 데이터 없음"
             googleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(35.177306, 128.567773), 15f))
             return
@@ -523,8 +543,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
         // 이동수단별로 그룹화하여 처리
         processedAndFilteredData.groupBy { it["transport_mode"]!! }.forEach { (mode, dataList) ->
-            var totalDistanceForMode = 0.0 // 해당 이동수단의 총 이동 거리
-            // 시작 시간(timestamp) 기준으로 정렬
+            var totalDistanceForMode = 0.0
             val sortedData = dataList.sortedBy { it["start_timestamp"]?.toLongOrNull() ?: 0L }
 
             sortedData.forEach { data ->
@@ -534,38 +553,70 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                 val endLat = data["end_latitude"]?.toDoubleOrNull()
                 val endLon = data["end_longitude"]?.toDoubleOrNull()
 
-                // 좌표값이 모두 유효하면 폴리라인 추가
                 if (startLat != null && startLon != null && endLat != null && endLon != null) {
                     val startPoint = LatLng(startLat, startLon)
                     val endPoint = LatLng(endLat, endLon)
 
-                    totalDistanceForMode += distance   // 해당 모드의 거리 누적
-                    totalOverallDistance += distance   // 전체 거리 누적
-                    if (firstPoint == null) firstPoint = startPoint // 첫 번째 데이터의 시작점 저장
-                    hasData = true                     // 표시할 데이터가 있음을 표시
+                    totalDistanceForMode += distance
+                    totalOverallDistance += distance
+                    if (firstPoint == null) firstPoint = startPoint
+                    hasData = true
 
-                    // 지도에 폴리라인 추가
                     googleMap?.addPolyline(
                         PolylineOptions()
-                            .add(startPoint, endPoint)              // 시작점과 끝점
-                            .color(getTransportColor(mode))         // 이동수단별 색상
-                            .width(8f)                              // 선 두께
+                            .add(startPoint, endPoint)
+                            .color(getTransportColor(mode))
+                            .width(8f)
                     )
                 }
             }
-            if (totalDistanceForMode > 0) { // 해당 이동수단의 이동 거리가 있으면 정보 추가
-                distanceInfo.append(String.format(Locale.KOREAN, "%s: %.2f m\n", modeNames[mode] ?: mode, totalDistanceForMode))
+
+            if (totalDistanceForMode > 0) {
+                // 이동수단별 탄소 배출량 계산 (g CO₂)
+                val emissionsForMode = (totalDistanceForMode / 100.0) * getEmissionFactor(mode)
+                totalTransportEmissions += emissionsForMode
+                distanceInfo.append(String.format(Locale.KOREAN, "%s: %.2f m (%.2f g CO₂)\n", modeNames[mode] ?: mode, totalDistanceForMode, emissionsForMode))
             }
         }
 
-        if (hasData) { // 표시된 데이터가 있으면
+        if (hasData) {
             distanceInfo.append("--------------------\n")
-            distanceInfo.append(String.format(Locale.KOREAN, "총 이동거리: %.2f m", totalOverallDistance))
-            textDistanceInfo.text = distanceInfo.toString() // 거리 정보 텍스트뷰 업데이트
-            firstPoint?.let { // 첫 번째 데이터 지점으로 카메라 이동
+            distanceInfo.append(String.format(Locale.KOREAN, "총 이동거리: %.2f m\n", totalOverallDistance))
+            distanceInfo.append(String.format(Locale.KOREAN, "총 탄소 배출량: %.2f g CO₂", totalTransportEmissions))
+            textDistanceInfo.text = distanceInfo.toString()
+            firstPoint?.let {
                 googleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(it, 17f))
             }
-        } else { // 필터링 결과 표시할 데이터가 없으면
+
+            // 캘린더에 총 이동경로 탄소 배출량 업데이트
+            val parsedDateStr = parseDateFromText(dateText.text.toString()) // "yyyyMMdd"
+            try {
+                val dateObj = dateFormat.parse(parsedDateStr)
+                if (dateObj != null) {
+                    val calendar = Calendar.getInstance().apply { time = dateObj }
+                    calendarViewModel.updateTransportEmissions(calendar, totalTransportEmissions.toInt()) { success ->
+                        if (success) {
+                            Timber.tag(TAG).d("캘린더에 이동경로 탄소 배출량 업데이트 완료: ${totalTransportEmissions.toInt()} g CO₂ for $parsedDateStr")
+                            // 월별 포인트 업데이트
+                            val serverManager = ServerManager(requireContext())
+                            serverManager.updateMonthlyPointsForMonth(
+                                SimpleDateFormat("yyyy-MM", Locale.getDefault()).format(dateObj)
+                            ) { updateSuccess ->
+                                if (updateSuccess) {
+                                    Timber.tag(TAG).d("월별 포인트 업데이트 성공: $parsedDateStr")
+                                } else {
+                                    Timber.tag(TAG).e("월별 포인트 업데이트 실패: $parsedDateStr")
+                                }
+                            }
+                        } else {
+                            Timber.tag(TAG).e("캘린더에 이동경로 탄소 배출량 업데이트 실패: $parsedDateStr")
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.tag(TAG).e(e, "날짜 파싱 오류로 캘린더 업데이트 실패: $parsedDateStr")
+            }
+        } else {
             textDistanceInfo.text = "표시할 데이터 없음 (필터링 후)"
             googleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(35.177306, 128.567773), 15f))
         }
@@ -607,6 +658,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private fun updateTestMapButtonState(date: String) {
         testMapButton.isEnabled = !isCsvFileExists(date) // 파일이 없으면 버튼 활성화, 있으면 비활성화
     }
+
 
     // --- Fragment 생명주기 콜백 ---
     @SuppressLint("MissingPermission") // 권한 확인은 hasLocationPermission()에서 수행

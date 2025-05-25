@@ -111,35 +111,40 @@ class CalendarFragment : Fragment() {
                 set(mCal.get(Calendar.YEAR), mCal.get(Calendar.MONTH), i)
             }
             dayList.add(Day(i.toString(), 0, 0))
-            fetchScoreForDay(dayCal, i - 1 + dayNum - 1 + daysOfWeek.size)
+            fetchEmissionsForDay(dayCal, i - 1 + dayNum - 1 + daysOfWeek.size)
         }
     }
 
-    private fun fetchScoreForDay(date: Calendar, position: Int, retryCount: Int = 0) {
-        serverManager.getScoresForDate(date) { score ->
-            activity?.runOnUiThread {
-                if (position < dayList.size) {
-                    val day = dayList[position]
-                    day.productEmissions = score
-                    Timber.d("Updated day $position with productEmissions: $score")
-                    gridAdapter.notifyDataSetChanged()
-                    // 오늘 날짜가 선택된 경우 결과 텍스트 업데이트
-                    val today = Calendar.getInstance()
-                    if (position == selectedPosition &&
-                        day.date.toIntOrNull() == today.get(Calendar.DAY_OF_MONTH) &&
-                        mCal.get(Calendar.MONTH) == today.get(Calendar.MONTH) &&
-                        mCal.get(Calendar.YEAR) == today.get(Calendar.YEAR)
-                    ) {
-                        showPointVeiw(day)
+    private fun fetchEmissionsForDay(date: Calendar, position: Int, retryCount: Int = 0) {
+        // 제품 탄소 배출량 가져오기
+        serverManager.getScoresForDate(date) { productScore ->
+            // 이동경로 탄소 배출량 가져오기
+            serverManager.getTransportEmissionsForDate(date) { transportScore ->
+                activity?.runOnUiThread {
+                    if (position < dayList.size) {
+                        val day = dayList[position]
+                        day.productEmissions = productScore
+                        day.transportEmissions = transportScore
+                        Timber.d("Updated day $position with productEmissions: $productScore, transportEmissions: $transportScore")
+                        gridAdapter.notifyDataSetChanged()
+                        // 선택된 날짜에 대해 UI 업데이트
+                        val today = Calendar.getInstance()
+                        if (position == selectedPosition &&
+                            day.date.toIntOrNull() == today.get(Calendar.DAY_OF_MONTH) &&
+                            mCal.get(Calendar.MONTH) == today.get(Calendar.MONTH) &&
+                            mCal.get(Calendar.YEAR) == today.get(Calendar.YEAR)
+                        ) {
+                            showPointVeiw(day)
+                        }
+                    } else {
+                        Timber.w("Invalid position $position for dayList size ${dayList.size}")
                     }
-                } else {
-                    Timber.w("Invalid position $position for dayList size ${dayList.size}")
                 }
-            }
-            // 데이터가 0인 경우 최대 2회 재시도
-            if (score == 0 && retryCount < 2) {
-                Timber.w("Zero emissions for ${getFormattedDate(date)}, retrying (${retryCount + 1}/2)")
-                fetchScoreForDay(date, position, retryCount + 1)
+                // 배출량이 0인 경우 최대 2회 재시도
+                if ((productScore == 0 || transportScore == 0) && retryCount < 2) {
+                    Timber.w("Zero emissions for ${getFormattedDate(date)}, retrying (${retryCount + 1}/2)")
+                    fetchEmissionsForDay(date, position, retryCount + 1)
+                }
             }
         }
     }
@@ -312,8 +317,22 @@ class CalendarFragment : Fragment() {
             calendarViewModel.updateProductEmissions(dayCal, newProductEmissions) { success ->
                 activity?.runOnUiThread {
                     if (success) {
-                        gridAdapter.notifyDataSetChanged()
-                        showPointVeiw(day)
+                        calendarViewModel.updateTransportEmissions(dayCal, newTransportEmissions) { transportSuccess ->
+                            if (transportSuccess) {
+                                gridAdapter.notifyDataSetChanged()
+                                showPointVeiw(day)
+                                // 월별 포인트 업데이트
+                                serverManager.updateMonthlyPointsForMonth(getFormattedMonth(dayCal)) { updateSuccess ->
+                                    if (updateSuccess) {
+                                        Timber.d("월별 포인트 업데이트 성공: ${getFormattedMonth(dayCal)}")
+                                    } else {
+                                        Toast.makeText(requireContext(), "월별 포인트 업데이트 실패", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            } else {
+                                Toast.makeText(requireContext(), "이동경로 배출량 업데이트 실패", Toast.LENGTH_SHORT).show()
+                            }
+                        }
                     } else {
                         Toast.makeText(requireContext(), "배출량 업데이트 실패", Toast.LENGTH_SHORT).show()
                     }
@@ -323,6 +342,12 @@ class CalendarFragment : Fragment() {
 
         builder.setNegativeButton("취소") { dialog, _ -> dialog.dismiss() }
         builder.show()
+    }
+
+    // Helper method to get formatted month (yyyy-MM)
+    private fun getFormattedMonth(date: Calendar): String {
+        val sdf = SimpleDateFormat("yyyy-MM", Locale.getDefault())
+        return sdf.format(date.time)
     }
 
     override fun onDestroyView() {

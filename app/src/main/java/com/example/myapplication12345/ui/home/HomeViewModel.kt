@@ -88,6 +88,14 @@ class HomeViewModel : ViewModel() {
         loadMonthlyPoints() // 초기화 시 월별 포인트 로드
     }
 
+    fun setProgressFromEmissions(emissions: Int) {
+        // 배출량을 0-100%로 매핑 (최대값 조정 필요)
+        val maxEmissions = 10000 // 예: 최대 배출량 10000g
+        val progressValue = (emissions * 100 / maxEmissions).coerceIn(0, 100)
+        _progress.value = progressValue
+        Timber.tag("HomeViewModel").d("진행률 업데이트: $progressValue% (배출량: $emissions)")
+    }
+
     // 현재 월(YYYY-MM) 반환
     private fun getCurrentMonth(): String {
         val sdf = SimpleDateFormat("yyyy-MM", Locale.getDefault())

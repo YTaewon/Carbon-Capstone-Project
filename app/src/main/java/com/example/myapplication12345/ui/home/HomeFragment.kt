@@ -19,6 +19,7 @@ import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.ViewModelProvider
 import com.bumptech.glide.Glide
 import com.example.myapplication12345.R
+import com.example.myapplication12345.ServerManager
 import com.example.myapplication12345.chatbot.ChatbotUi
 import com.example.myapplication12345.databinding.FragmentHomeBinding
 import com.example.myapplication12345.ui.pedometer.PedometerFragment
@@ -37,6 +38,7 @@ import java.util.Locale
 class HomeFragment : Fragment() {
     private lateinit var homeViewModel: HomeViewModel
     private lateinit var profileImage: ImageView
+    private lateinit var serverManager: ServerManager
 
     private var _binding: FragmentHomeBinding? = null
     private val binding get() = _binding!!

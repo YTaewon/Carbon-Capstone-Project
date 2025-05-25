@@ -41,7 +41,7 @@ class ServerManager(private val context: Context) {
 
     // 로컬 캐시에 점수 저장하기
     private fun cacheScore(score: Int) {
-        prefs.edit() { putInt("cachedScore", score) }
+        prefs.edit { putInt("cachedScore", score) }
     }
 
     // 로컬 캐시에서 닉네임 가져오기
@@ -49,13 +49,59 @@ class ServerManager(private val context: Context) {
 
     // 로컬 캐시에 닉네임 저장하기
     private fun cacheNickname(nickname: String) {
-        prefs.edit() { putString("cachedNickname", nickname) }
+        prefs.edit { putString("cachedNickname", nickname) }
     }
 
     // 날짜 포맷팅 (YYYY-MM-DD)
     private fun getFormattedDate(date: Calendar): String {
         val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
         return sdf.format(date.time)
+    }
+
+    fun getScoresForDate(date: Calendar, onScoresRetrieved: (Int) -> Unit) {
+        getProductEmissions(date, onScoresRetrieved)
+    }
+
+    fun getTransportEmissionsForDate(date: Calendar, onScoresRetrieved: (Int) -> Unit) {
+        getTransportEmissions(date, onScoresRetrieved)
+    }
+
+    fun updateMonthlyPointsForMonth(month: String, callback: (Boolean) -> Unit) {
+        val userRef = getUserReference() ?: run {
+            Toast.makeText(context, "로그인이 필요해요.", Toast.LENGTH_SHORT).show()
+            callback(false)
+            return
+        }
+
+        // emissions 노드에서 해당 월의 모든 날짜 데이터를 조회
+        val emissionsRef = userRef.child("emissions")
+        emissionsRef.orderByKey().startAt("$month-01").endAt("$month-31").addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                var totalEmissions = 0
+                snapshot.children.forEach { dateSnapshot ->
+                    val productEmissions = dateSnapshot.child("productEmissions").getValue(Int::class.java) ?: 0
+                    val transportEmissions = dateSnapshot.child("transportEmissions").getValue(Int::class.java) ?: 0
+                    totalEmissions += productEmissions + transportEmissions
+                }
+
+                // monthly_points 노드에 총합 저장
+                val monthlyPointRef = userRef.child("monthly_points").child(month).child("point")
+                monthlyPointRef.setValue(totalEmissions)
+                    .addOnSuccessListener {
+                        Timber.tag("ServerManager").d("월별 포인트 업데이트 완료: $month, 총 배출량: $totalEmissions")
+                        callback(true)
+                    }
+                    .addOnFailureListener { e ->
+                        handleError(e, "월별 포인트 업데이트")
+                        callback(false)
+                    }
+            }
+
+            override fun onCancelled(databaseError: DatabaseError) {
+                handleError(databaseError.toException(), "월별 배출량 조회")
+                callback(false)
+            }
+        })
     }
 
     /**
@@ -67,13 +113,11 @@ class ServerManager(private val context: Context) {
             return
         }
 
-        // push 키를 트랜잭션 외부에서 생성
         val newScoreKey = userRef.child("scores").push().key ?: run {
             handleError(Exception("Failed to generate push key"), "점수 추가")
             return
         }
 
-        // 트랜잭션을 사용해 점수 추가와 업데이트를 원자적으로 처리
         userRef.runTransaction(object : com.google.firebase.database.Transaction.Handler {
             override fun doTransaction(currentData: com.google.firebase.database.MutableData): com.google.firebase.database.Transaction.Result {
                 val currentScore = currentData.child("score").getValue(Int::class.java) ?: getCachedScore()
@@ -123,11 +167,11 @@ class ServerManager(private val context: Context) {
      */
     fun getScore(onScoreRetrieved: (Int) -> Unit) {
         val cachedScore = getCachedScore()
-        onScoreRetrieved(cachedScore) // 캐시된 점수를 먼저 반환
+        onScoreRetrieved(cachedScore)
 
         val userRef = getUserReference()
         if (userRef == null) {
-            onScoreRetrieved(0) // 로그인되지 않은 경우 0 반환
+            onScoreRetrieved(0)
             return
         }
 
@@ -135,12 +179,12 @@ class ServerManager(private val context: Context) {
             override fun onDataChange(dataSnapshot: DataSnapshot) {
                 val score = dataSnapshot.getValue(Int::class.java) ?: cachedScore
                 cacheScore(score)
-                onScoreRetrieved(score) // 최신 점수로 콜백 다시 호출
+                onScoreRetrieved(score)
             }
 
             override fun onCancelled(databaseError: DatabaseError) {
                 handleError(databaseError.toException(), "점수 가져오기")
-                onScoreRetrieved(cachedScore) // 에러 시 캐시된 값 반환
+                onScoreRetrieved(cachedScore)
             }
         })
     }
@@ -148,7 +192,7 @@ class ServerManager(private val context: Context) {
     /**
      * 특정 날짜의 productEmissions 가져오는 메서드
      */
-    fun getScoresForDate(date: Calendar, onScoresRetrieved: (Int) -> Unit) {
+    fun getProductEmissions(date: Calendar, onScoresRetrieved: (Int) -> Unit) {
         val userRef = getUserReference() ?: run {
             Toast.makeText(context, "로그인이 필요해요.", Toast.LENGTH_SHORT).show()
             onScoresRetrieved(0)
@@ -158,14 +202,42 @@ class ServerManager(private val context: Context) {
         val dateString = getFormattedDate(date)
         val emissionRef = userRef.child("emissions").child(dateString).child("productEmissions")
 
-        emissionRef.addValueEventListener(object : ValueEventListener {
+        emissionRef.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val emissions = snapshot.getValue(Int::class.java) ?: 0
+                Timber.tag("ServerManager").d("제품 배출량 가져오기 성공: $dateString, 값: $emissions")
                 onScoresRetrieved(emissions)
             }
 
             override fun onCancelled(databaseError: DatabaseError) {
-                handleError(databaseError.toException(), "배출량 가져오기")
+                handleError(databaseError.toException(), "제품 배출량 가져오기")
+                onScoresRetrieved(0)
+            }
+        })
+    }
+
+    /**
+     * 특정 날짜의 transportEmissions 가져오는 메서드
+     */
+    fun getTransportEmissions(date: Calendar, onScoresRetrieved: (Int) -> Unit) {
+        val userRef = getUserReference() ?: run {
+            Toast.makeText(context, "로그인이 필요해요.", Toast.LENGTH_SHORT).show()
+            onScoresRetrieved(0)
+            return
+        }
+
+        val dateString = getFormattedDate(date)
+        val emissionRef = userRef.child("emissions").child(dateString).child("transportEmissions")
+
+        emissionRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val emissions = snapshot.getValue(Int::class.java) ?: 0
+                Timber.tag("ServerManager").d("이동경로 배출량 가져오기 성공: $dateString, 값: $emissions")
+                onScoresRetrieved(emissions)
+            }
+
+            override fun onCancelled(databaseError: DatabaseError) {
+                handleError(databaseError.toException(), "이동경로 배출량 가져오기")
                 onScoresRetrieved(0)
             }
         })
@@ -186,11 +258,35 @@ class ServerManager(private val context: Context) {
 
         emissionRef.setValue(emissions)
             .addOnSuccessListener {
-                Timber.d("Updated productEmissions for $dateString: $emissions")
+                Timber.tag("ServerManager").d("제품 배출량 업데이트 완료: $dateString}, emissions: $emissions")
                 callback(true)
             }
             .addOnFailureListener { e ->
-                handleError(e, "배출량 업데이트")
+                handleError(e, "제품 배출량 업데이트")
+                callback(false)
+            }
+    }
+
+    /**
+     * 특정 날짜의 transportEmissions 업데이트 메서드
+     */
+    fun updateTransportEmissions(date: Calendar, emissions: Int, callback: (Boolean) -> Unit) {
+        val userRef = getUserReference() ?: run {
+            Toast.makeText(context, "로그인이 필요해요.", Toast.LENGTH_SHORT).show()
+            callback(false)
+            return
+        }
+
+        val dateString = getFormattedDate(date)
+        val emissionRef = userRef.child("emissions").child(dateString).child("transportEmissions")
+
+        emissionRef.setValue(emissions)
+            .addOnSuccessListener {
+                Timber.tag("ServerManager").d("이동경로 배출량 업데이트 완료: $dateString, emissions: $emissions")
+                callback(true)
+            }
+            .addOnFailureListener { e ->
+                handleError(e, "이동경로 배출량 업데이트")
                 callback(false)
             }
     }
@@ -203,7 +299,7 @@ class ServerManager(private val context: Context) {
         val userRef = getUserReference()
 
         if (userRef == null) {
-            continuation.resume("익명") // 로그인 없으면 "익명" 반환
+            continuation.resume("익명")
             return@suspendCancellableCoroutine
         }
 
@@ -211,12 +307,12 @@ class ServerManager(private val context: Context) {
             override fun onDataChange(dataSnapshot: DataSnapshot) {
                 val nickname = dataSnapshot.getValue(String::class.java) ?: cachedNickname
                 cacheNickname(nickname)
-                continuation.resume(nickname) // 성공 시 닉네임 반환
+                continuation.resume(nickname)
             }
 
             override fun onCancelled(databaseError: DatabaseError) {
                 handleError(databaseError.toException(), "닉네임 가져오기")
-                continuation.resume(cachedNickname) // 에러 시 캐시된 값 반환
+                continuation.resume(cachedNickname)
             }
         })
     }
