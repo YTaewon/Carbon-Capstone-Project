@@ -39,8 +39,8 @@ public class SensorDataProcessor {
     };
     private static final int NUM_MODELS = MODEL_FILENAMES.length;
     private static final int MODEL_INPUT_FEATURE_SIZE = 340;
-    private static final int MIN_TIMESTAMP_COUNT = 60; // 필요한 최소 타임스탬프 개수 (기존 값 유지)
-    private static final int SEGMENT_SIZE = 10; // CSV 저장 시 세그먼트 크기 (기존 값 유지)
+    private static final int MIN_TIMESTAMP_COUNT = 60; // 필요한 최소 타임스탬프 개수 (1분 = 60초)
+    private static final int SEGMENT_SIZE = 10; // CSV 저장 시 세그먼트 크기 (10초 단위)
 
     // --- 업데이트된 이동 수단 매핑 ---
     // 새로운 라벨 명세(인덱스 0-12)에 해당
@@ -63,7 +63,18 @@ public class SensorDataProcessor {
 
     // --- 기본값 ---
     private static final String DEFAULT_MODE_UNKNOWN = "ETC"; // 낮은 신뢰도 또는 오류 시 사용
-    private static final String DEFAULT_MODE_STOPPED = "STOP"; // 움직임이 거의 없을 때 사용
+    private static final String DEFAULT_MODE_STOPPED = "STOP"; // 움직임이 거의 없을 때 사용 (저장 스킵)
+
+    // --- 이동 감지 및 필터링 임계값 ---
+    // 1분(MIN_TIMESTAMP_COUNT) 동안의 총 이동 거리가 이 값보다 작으면 STOP으로 간주하고 데이터를 저장하지 않음.
+    // 이는 GPS 드리프트(튀는 현상)를 효과적으로 필터링하는 데 사용됩니다.
+    // 30m는 실내/불량 GPS 환경에서 가만히 있어도 튀는 정도를 고려한 값일 수 있습니다.
+    // 더 보수적으로 10m 등으로 낮출 수도 있습니다.
+    private static final float STOP_DISTANCE_THRESHOLD_METER = 20.0f; // 30m 이하 이동 시 STOP으로 간주
+
+    // 평균 속도가 이 값보다 낮으면 (STOP 제외) 예측된 모드를 WALK로 강제 변경 (Km/h)
+    // 7 km/h는 일반적인 걷기 속도의 상한선 또는 조깅 초반 속도에 해당.
+    private static final float WALK_SPEED_THRESHOLD_KMPH = 7.0f;
 
     private static final SimpleDateFormat dateFormat;
 
@@ -185,19 +196,19 @@ public class SensorDataProcessor {
         if (models.isEmpty()) {
             Timber.tag(TAG).e("로드된 모델이 없음. 예측 스킵.");
             MovementAnalyzer tempAnalyzer = new MovementAnalyzer(gpsData, imuData);
+            float tempSpeed = (tempAnalyzer.calculateAverageSpeedFromIMU(imuData)) * 3.6f; // Km/h
             tempAnalyzer.analyze();
-            float tempDistance = tempAnalyzer.getDistance();
-            float tempSpeed = (tempAnalyzer.calculateAverageSpeedFromIMU(imuData)) * 3.6f;
+            float tempDistance = tempAnalyzer.getDistance(); // 이 배치의 총 이동 거리 (m)
             saveSegmentsWithFallback(gpsData, tempDistance, DEFAULT_MODE_UNKNOWN, tempSpeed);
             return;
         }
 
-        // 거리 먼저 계산
+        // 거리와 속도 먼저 계산 (1분(MIN_TIMESTAMP_COUNT) 동안의 데이터 기준)
         MovementAnalyzer analyzer = new MovementAnalyzer(gpsData, imuData);
-        float speed = (analyzer.calculateAverageSpeedFromIMU(imuData))* 3.6f;
-        Timber.tag(TAG).d("평균 속도: "+ speed +"Km/s");
+        float speed = (analyzer.calculateAverageSpeedFromIMU(imuData))* 3.6f; // IMU 기반 속도 (Km/h)
+        Timber.tag(TAG).d("평균 속도: "+ speed +"Km/h");
         analyzer.analyze();
-        float distance = analyzer.getDistance(); // 해당 배치의 총 이동 거리
+        float distance = analyzer.getDistance(); // 이 배치의 총 이동 거리 (m)
 
         Timber.tag(TAG).d("수신된 데이터 크기 - GPS: %d, AP: %d, BTS: %d, IMU: %d",
                 (gpsData != null ? gpsData.size() : 0),
@@ -205,16 +216,13 @@ public class SensorDataProcessor {
                 (btsData != null ? btsData.size() : 0),
                 (imuData != null ? imuData.size() : 0));
 
-        // 데이터 유효성 검사 (null 또는 최소 개수 미만) *처리 전* 수행
+        // 데이터 유효성 검사 (null 또는 최소 개수 미만)
         if (gpsData == null || gpsData.size() < MIN_TIMESTAMP_COUNT ||
                 apData == null || apData.isEmpty() || // AP/BTS는 모델 요구사항에 따라 선택적일 수 있음
                 btsData == null || btsData.isEmpty() ||
                 imuData == null || imuData.size() < MIN_TIMESTAMP_COUNT) {
             Timber.tag(TAG).w("필요한 최소 데이터 요구사항 충족되지 않음 (GPS >= %d, IMU >= %d, AP/BTS 비어있지 않아야 함)", MIN_TIMESTAMP_COUNT, MIN_TIMESTAMP_COUNT);
-            // 예측 불가 시 동작 정의: 마지막 예측 유지 또는 STOP/ETC 설정? -> 안정성을 위해 마지막 유효값 유지 고려.
-            // 단, 거리가 매우 작으면 나중에 덮어쓸 수 있음.
-            // GPS 데이터가 충분하면, 마지막 모드 또는 STOP으로 세그먼트 저장 시도.
-            saveSegmentsWithFallback(gpsData, distance, DEFAULT_MODE_STOPPED, speed); // 데이터 부족 시 STOP으로 저장
+            saveSegmentsWithFallback(gpsData, distance, DEFAULT_MODE_UNKNOWN, speed); // 데이터 부족 시 예측 없이 fallback
             return;
         }
 
@@ -233,7 +241,7 @@ public class SensorDataProcessor {
         // 전처리 후 데이터 유효성 검사
         if (processedAP.isEmpty() || processedBTS.isEmpty() || processedGPS.isEmpty() || processedIMU.isEmpty()) {
             Timber.tag(TAG).w("데이터 전처리 실패 - 하나 이상의 센서 데이터가 전처리 후 비어 있음");
-            saveSegmentsWithFallback(gpsData, distance, DEFAULT_MODE_STOPPED, speed); // 처리 실패 시 STOP으로 저장
+            saveSegmentsWithFallback(gpsData, distance, DEFAULT_MODE_UNKNOWN, speed); // 처리 실패 시 fallback
             return;
         }
 
@@ -242,14 +250,14 @@ public class SensorDataProcessor {
             Tensor inputTensor = getProcessedFeatureVector(processedAP, processedBTS, processedGPS, processedIMU);
             if (inputTensor == null) {
                 Timber.tag(TAG).e("입력 텐서 생성 실패");
-                saveSegmentsWithFallback(gpsData, distance, DEFAULT_MODE_STOPPED, speed); // 텐서 생성 실패 시 STOP으로 저장
+                saveSegmentsWithFallback(gpsData, distance, DEFAULT_MODE_UNKNOWN, speed); // 텐서 생성 실패 시 fallback
                 return;
             }
-            // predictMovingMode 내부에서 lastPredictedResult 업데이트 및 세그먼트 저장
+            // predictMovingModeWithEnsemble 내부에서 lastPredictedResult 업데이트 및 세그먼트 저장
             predictMovingModeWithEnsemble(inputTensor, gpsData, distance, speed);
         } catch (Exception e) {
             Timber.tag(TAG).e(e, "데이터 처리 또는 예측 중 오류 발생");
-            saveSegmentsWithFallback(gpsData, distance, DEFAULT_MODE_UNKNOWN, speed); // 일반 오류 시 ETC로 저장
+            saveSegmentsWithFallback(gpsData, distance, DEFAULT_MODE_UNKNOWN, speed); // 일반 오류 시 fallback
         }
     }
 
@@ -287,8 +295,6 @@ public class SensorDataProcessor {
     }
 
     /**
-     * --- 새로운 앙상블 예측 메소드 ---
-     * (기존 predictMovingMode 메소드를 대체하거나 수정하여 이 형태로 만듦)
      * 입력 텐서를 사용하여 모든 로드된 모델로 추론을 수행하고, 결과를 앙상블하여 이동 수단을 결정한 후,
      * GPS 데이터를 세그먼트로 나누어 각 세그먼트 정보를 CSV 파일에 저장합니다.
      * @param inputTensor 모델 입력 텐서
@@ -299,7 +305,7 @@ public class SensorDataProcessor {
     private void predictMovingModeWithEnsemble(Tensor inputTensor, List<Map<String, Object>> gpsData, float totalDistance, float speed) {
         if (models.isEmpty()) {
             Timber.tag(TAG).e("앙상블 예측 시도 중 로드된 모델 없음.");
-            saveSegmentsWithFallback(gpsData, totalDistance, DEFAULT_MODE_UNKNOWN, speed);
+            saveSegmentsWithFallback(gpsData, totalDistance, DEFAULT_MODE_UNKNOWN, speed); // 모델 없으면 fallback
             return;
         }
 
@@ -307,7 +313,7 @@ public class SensorDataProcessor {
 
         try {
             // --- 각 모델에 대해 추론 실행 ---
-            for (int i = 0; i < models.size(); i++) { // 모델 인덱스 로깅을 위해 for-i 사용
+            for (int i = 0; i < models.size(); i++) {
                 Module model = models.get(i);
                 try {
                     IValue output = model.forward(IValue.from(inputTensor));
@@ -328,7 +334,7 @@ public class SensorDataProcessor {
             if (allModelProbabilities.isEmpty()) {
                 Timber.tag(TAG).e("모든 모델에서 유효한 예측을 얻지 못함.");
                 lastPredictedResult = DEFAULT_MODE_UNKNOWN;
-                saveSegmentsWithFallback(gpsData, totalDistance, lastPredictedResult, speed);
+                saveSegmentsWithFallback(gpsData, totalDistance, lastPredictedResult, speed); // 예측 실패 시 fallback
                 return;
             }
 
@@ -337,7 +343,7 @@ public class SensorDataProcessor {
             if (finalProbabilities == null) {
                 Timber.tag(TAG).e("확률 평균화 실패.");
                 lastPredictedResult = DEFAULT_MODE_UNKNOWN;
-                saveSegmentsWithFallback(gpsData, totalDistance, lastPredictedResult, speed);
+                saveSegmentsWithFallback(gpsData, totalDistance, lastPredictedResult, speed); // 확률 평균화 실패 시 fallback
                 return;
             }
 
@@ -351,74 +357,86 @@ public class SensorDataProcessor {
                 }
             }
 
-            String predictedMode;
-            float threshold = 0.1f;
+            String predictedModeFromModel; // 모델이 예측한 순수 결과
+            float confidenceThreshold = 0.1f; // 예측 신뢰도 임계값
 
-            if (maxProb < threshold) {
-                predictedMode = DEFAULT_MODE_UNKNOWN;
-                Timber.tag(TAG).w("앙상블: 가장 높은 평균 확률(%.4f)이 임계값(%.1f) 미만. '%s' 사용", maxProb, threshold, predictedMode);
+            if (maxProb < confidenceThreshold) {
+                predictedModeFromModel = DEFAULT_MODE_UNKNOWN;
+                Timber.tag(TAG).w("앙상블: 가장 높은 평균 확률(%.4f)이 임계값(%.1f) 미만. 모델 예측: '%s' 사용", maxProb, confidenceThreshold, predictedModeFromModel);
             } else if (maxIndex >= 0 && maxIndex < TRANSPORT_MODES.length) {
-                predictedMode = TRANSPORT_MODES[maxIndex];
-                Timber.tag(TAG).d("앙상블: 가장 높은 확률의 이동수단: %s (인덱스: %d), 평균 확률: %.4f", predictedMode, maxIndex, maxProb);
+                predictedModeFromModel = TRANSPORT_MODES[maxIndex];
+                Timber.tag(TAG).d("앙상블: 가장 높은 확률의 이동수단: %s (인덱스: %d), 평균 확률: %.4f", predictedModeFromModel, maxIndex, maxProb);
             } else {
-                predictedMode = DEFAULT_MODE_UNKNOWN;
-                Timber.tag(TAG).e("앙상블 오류: 유효하지 않은 예측 인덱스(%d) (평균 확률: %.4f). '%s' 사용", maxIndex, maxProb, predictedMode);
+                predictedModeFromModel = DEFAULT_MODE_UNKNOWN;
+                Timber.tag(TAG).e("앙상블 오류: 유효하지 않은 예측 인덱스(%d) (평균 확률: %.4f). 모델 예측: '%s' 사용", maxIndex, maxProb, predictedModeFromModel);
             }
 
-            lastPredictedResult = predictedMode;
+            // --- 최종 이동 수단 결정 로직 ---
+            String finalTransportMode;
+            if (totalDistance < STOP_DISTANCE_THRESHOLD_METER) {
+                // GPS 드리프트 필터링 또는 실제 정지 상태
+                finalTransportMode = DEFAULT_MODE_STOPPED;
+                Timber.tag(TAG).d("총 이동 거리 (%.2fm)가 STOP 임계값 (%.2fm) 미만. 최종 모드를 '%s'로 설정하고 저장 스킵.", totalDistance, STOP_DISTANCE_THRESHOLD_METER, finalTransportMode);
+            } else {
+                // 충분한 이동 거리가 있었으므로 모델 예측 또는 속도 기반 오버라이드 적용
+                finalTransportMode = predictedModeFromModel;
 
-            // --- 세그먼트 저장 로직 (기존과 유사하나, 앙상블의 predictedMode 사용) ---
-            // (이 부분의 코드는 이전 답변의 predictMovingModeWithEnsemble 메소드 내 세그먼트 저장 로직과 동일)
+                // 속도 기반 WALK 오버라이드
+                if (speed < WALK_SPEED_THRESHOLD_KMPH) {
+                    String originalMode = finalTransportMode;
+                    finalTransportMode = "WALK";
+                    Timber.tag(TAG).d("앙상블 - 평균 속도: %.1fKm/h. 예측된 모드 '%s'를 '%s'로 변경 (속도 기반 오버라이드).", speed, originalMode, finalTransportMode);
+                }
+            }
+
+            lastPredictedResult = finalTransportMode; // 다음 배치를 위해 마지막 유효 예측 결과 저장
+
+            // 최종 결정된 모드가 STOP이면 CSV 저장을 스킵
+            if (finalTransportMode.equals(DEFAULT_MODE_STOPPED)) {
+                Timber.tag(TAG).d("최종 결정된 모드가 '%s'이므로 세그먼트 저장 스킵.", finalTransportMode);
+                return;
+            }
+
+            // --- 세그먼트 저장 (STOP이 아닌 경우만) ---
             if (gpsData != null && gpsData.size() >= MIN_TIMESTAMP_COUNT) {
                 int totalSegments = gpsData.size() / SEGMENT_SIZE;
-                double distancePerSegment = (totalSegments > 0) ? (double)totalDistance / totalSegments : 0.0;
+                double distancePerSegment = (totalSegments > 0) ? (double) totalDistance / totalSegments : 0.0;
 
-                Timber.tag(TAG).d("앙상블 배치 총 이동 거리: %.2f m. %d개 세그먼트 저장 시작.", totalDistance, totalSegments);
+                Timber.tag(TAG).d("앙상블 배치 총 이동 거리: %.2f m. %d개 세그먼트 저장 시작. 최종 모드: %s", totalDistance, totalSegments, finalTransportMode);
+                if(totalDistance > 30) {
+                    for (int segment = 0; segment < totalSegments; segment++) {
+                        int startIndex = segment * SEGMENT_SIZE;
+                        int endIndex = Math.min(startIndex + SEGMENT_SIZE, gpsData.size() - 1); // 세그먼트의 마지막 인덱스
 
-                for (int segment = 0; segment < totalSegments; segment++) {
-                    int startIndex = segment * SEGMENT_SIZE;
-                    int endIndex = Math.min(startIndex + SEGMENT_SIZE, gpsData.size() - 1);
-
-                    if (startIndex > endIndex) {
-                        Timber.tag(TAG).w("앙상블 세그먼트 %d: 유효하지 않은 인덱스 범위 (시작: %d, 끝: %d). 건너뜁니다.", segment, startIndex, endIndex);
-                        continue;
-                    }
-
-                    Map<String, Object> startData = gpsData.get(startIndex);
-                    Map<String, Object> endData = gpsData.get(endIndex);
-
-                    try {
-                        long startTimestamp = ((Number) Objects.requireNonNull(startData.get("timestamp"))).longValue();
-                        double startLat = ((Number) Objects.requireNonNull(startData.get("latitude"))).doubleValue();
-                        double startLon = ((Number) Objects.requireNonNull(startData.get("longitude"))).doubleValue();
-                        double endLat = ((Number) Objects.requireNonNull(endData.get("latitude"))).doubleValue();
-                        double endLon = ((Number) Objects.requireNonNull(endData.get("longitude"))).doubleValue();
-
-                        String finalTransportMode = predictedMode;
-                        if (totalDistance <= 0.05) {
-                            finalTransportMode = DEFAULT_MODE_STOPPED;
+                        if (startIndex > endIndex) {
+                            Timber.tag(TAG).w("앙상블 세그먼트 %d: 유효하지 않은 인덱스 범위 (시작: %d, 끝: %d). 건너뜁니다.", segment, startIndex, endIndex);
+                            continue;
                         }
 
-                        if (!finalTransportMode.equals(DEFAULT_MODE_STOPPED)) {
-                            if (speed < 20.0f) {
-                                String originalMode = finalTransportMode;
-                                finalTransportMode = "WALK";
-                                Timber.tag(TAG).d("앙상블 - 평균 속도: %.1fKm/h. 예측된 모드 '%s'를 '%s'로 변경.", speed, originalMode, finalTransportMode);
-                                // Toast.makeText(context, String.format(Locale.getDefault(), "속도: %dKm/h -> WALK로 변경", (int) speed), Toast.LENGTH_SHORT).show();
-                            }
+                        Map<String, Object> startData = gpsData.get(startIndex);
+                        Map<String, Object> endData = gpsData.get(endIndex);
+
+                        try {
+                            long startTimestamp = ((Number) Objects.requireNonNull(startData.get("timestamp"))).longValue();
+                            double startLat = ((Number) Objects.requireNonNull(startData.get("latitude"))).doubleValue();
+                            double startLon = ((Number) Objects.requireNonNull(startData.get("longitude"))).doubleValue();
+                            double endLat = ((Number) Objects.requireNonNull(endData.get("latitude"))).doubleValue();
+                            double endLon = ((Number) Objects.requireNonNull(endData.get("longitude"))).doubleValue();
+
+                            // 세그먼트 저장
                             savePredictionToCSV(finalTransportMode, distancePerSegment, startTimestamp, startLat, startLon, endLat, endLon);
-                        } else {
-                            Timber.tag(TAG).d("앙상블 - STOP이므로 세그먼트 저장 무시");
+
+                            Timber.tag(TAG).d("앙상블 세그먼트 %d 저장: 모드: %s (거리: %.2fm, 시작: %.6f,%.6f, 종료: %.6f,%.6f)",
+                                    segment, finalTransportMode, distancePerSegment, startLat, startLon, endLat, endLon);
+
+                        } catch (NullPointerException e) {
+                            Timber.tag(TAG).e(e, "앙상블 세그먼트 %d 데이터 추출 중 NullPointerException", segment);
+                        } catch (Exception e) {
+                            Timber.tag(TAG).e(e, "앙상블 세그먼트 %d 처리 중 예외 발생", segment);
                         }
-
-                        Timber.tag(TAG).d("앙상블 세그먼트 %d 최종 모드: %s (거리: %.2fm, 시작: %.6f,%.6f, 종료: %.6f,%.6f)",
-                                segment, finalTransportMode, distancePerSegment, startLat, startLon, endLat, endLon);
-
-                    } catch (NullPointerException e) {
-                        Timber.tag(TAG).e(e, "앙상블 세그먼트 %d 데이터 추출 중 NullPointerException", segment);
-                    } catch (Exception e) {
-                        Timber.tag(TAG).e(e, "앙상블 세그먼트 %d 처리 중 예외 발생", segment);
                     }
+                }else{
+                    Timber.tag(TAG).d("앙상블 배치 총 이동 거리: %.2f m. '30m 이하' 이므로 세그먼트 저장 스킵", totalDistance);
                 }
             } else {
                 Timber.tag(TAG).w("앙상블: GPS 데이터 부족 (%d개)하여 세그먼트 저장 불가", gpsData != null ? gpsData.size() : 0);
@@ -427,7 +445,7 @@ public class SensorDataProcessor {
         } catch (Exception e) {
             Timber.tag(TAG).e(e, "앙상블 예측 또는 세그먼트 저장 중 최상위 오류: %s", e.getMessage());
             lastPredictedResult = DEFAULT_MODE_UNKNOWN;
-            saveSegmentsWithFallback(gpsData, totalDistance, DEFAULT_MODE_UNKNOWN, speed);
+            saveSegmentsWithFallback(gpsData, totalDistance, DEFAULT_MODE_UNKNOWN, speed); // 오류 발생 시 fallback
         }
     }
 
@@ -462,25 +480,21 @@ public class SensorDataProcessor {
         for (int i = 0; i < MIN_TIMESTAMP_COUNT; i++) {
             Map<String, Object> row = new LinkedHashMap<>(); // 순서 보장
 
+            // GPS 데이터 인덱스 계산 (주기적으로 반복)
             int gpsIndex = i / repetitionsPerGpsRecord;
-            // 안전하게 데이터 가져오기 (인덱스 벗어나면 마지막 유효 레코드 사용)
-//            row.putAll(getWithFallback(sortedGPS, gpsIndex)); // GPS 데이터 추가
-            row.putAll(getWithFallback(sortedAP, 0));
+            gpsIndex = Math.min(gpsIndex, sortedGPS.size() - 1);
+
+            // AP/BTS/GPS/IMU 데이터를 합쳐 하나의 행(타임스텝) 구성
+            // 주의: 이 순서는 모델이 기대하는 특성 순서와 일치해야 합니다.
+            // 현재 코드는 각 프로세서가 반환하는 Map의 순서에 의존합니다.
+            row.putAll(getWithFallback(sortedAP, 0)); // AP는 첫 번째 데이터 반복 사용
             row.putAll(getWithFallback(sortedBTS, i % Math.min(12, sortedBTS.size())));
             row.putAll(getWithFallback(sortedGPS, i % Math.min(12, sortedGPS.size())));
-            row.putAll(getWithFallback(sortedIMU, i));
-
-            // --- 중요: 모델이 AP/BTS 특성을 요구하는 경우 아래 주석 해제 및 조정 필요 ---
-            // 예시: 항상 첫 번째 AP 데이터 사용
-            // row.putAll(getWithFallback(sortedAP, 0));
-            // 예시: BTS 데이터를 순환하며 사용
-            // row.putAll(getWithFallback(sortedBTS, i % sortedBTS.size()));
-            // --- 중요: AP/BTS 추가 시 총 특성 수가 MODEL_INPUT_FEATURE_SIZE와 일치해야 함 ---
+            row.putAll(getWithFallback(sortedIMU, i)); // IMU는 순차적으로 사용
 
             combinedData.add(row); // 완성된 타임스텝 데이터 추가
         }
 
-        // Timber.tag(TAG).d("결합된 데이터 행 예시 (0): %s", combinedData.get(0).toString());
         return convertListMapToTensor(combinedData); // 최종 텐서 변환
     }
 
@@ -488,6 +502,7 @@ public class SensorDataProcessor {
     private static Map<String, Object> getWithFallback(List<Map<String, Object>> list, int index) {
         if (list == null || list.isEmpty()) return new HashMap<>(); // 리스트가 null이거나 비었으면 빈 맵 반환
         int actualIndex = Math.min(index, list.size() - 1); // index 또는 마지막 유효 인덱스 사용
+        if (actualIndex < 0) return new HashMap<>(); // list가 비어있을 때 Math.min 결과가 -1이 될 수 있음
         return list.get(actualIndex);
     }
 
@@ -599,9 +614,11 @@ public class SensorDataProcessor {
 
     /**
      * 예측이 불가능하거나 신뢰도가 낮을 때, GPS 데이터를 기반으로 세그먼트를 저장하는 함수.
+     * 이 함수도 'STOP' 상태를 판단하여 불필요한 저장을 막습니다.
      * @param gpsData GPS 데이터 리스트
      * @param totalDistance 해당 배치의 총 이동 거리 (STOP 판정 기준)
-     * @param fallbackMode 사용할 대체 이동 수단 (예: DEFAULT_MODE_STOPPED, DEFAULT_MODE_UNKNOWN)
+     * @param fallbackMode 사용할 대체 이동 수단 (예: DEFAULT_MODE_UNKNOWN)
+     * @param speed 평균 속도 (Km/h)
      */
     private void saveSegmentsWithFallback(List<Map<String, Object>> gpsData, float totalDistance, String fallbackMode, float speed) {
         // 세그먼트 생성을 위한 최소 GPS 데이터 개수 확인
@@ -610,11 +627,36 @@ public class SensorDataProcessor {
             return;
         }
 
+        // --- 최종 이동 수단 결정 로직 (Fallback 버전) ---
+        String finalSegmentMode;
+        if (totalDistance < STOP_DISTANCE_THRESHOLD_METER) {
+            // GPS 드리프트 필터링 또는 실제 정지 상태
+            finalSegmentMode = DEFAULT_MODE_STOPPED;
+            Timber.tag(TAG).d("Fallback: 총 이동 거리 (%.2fm)가 STOP 임계값 (%.2fm) 미만. 최종 모드를 '%s'로 설정하고 저장 스킵.", totalDistance, STOP_DISTANCE_THRESHOLD_METER, finalSegmentMode);
+        } else {
+            // 충분한 이동 거리가 있었으므로 fallbackMode 또는 속도 기반 오버라이드 적용
+            finalSegmentMode = fallbackMode;
+
+            // 속도 기반 WALK 오버라이드 (STOP이 아닐 때만)
+            if (speed < WALK_SPEED_THRESHOLD_KMPH) {
+                String originalMode = finalSegmentMode;
+                finalSegmentMode = "WALK";
+                Timber.tag(TAG).d("Fallback - 평균 속도: %.1fKm/h. 예측된 모드 '%s'를 '%s'로 변경 (속도 기반 오버라이드).", speed, originalMode, finalSegmentMode);
+            }
+        }
+
+        // 최종 결정된 모드가 STOP이면 CSV 저장을 스킵
+        if (finalSegmentMode.equals(DEFAULT_MODE_STOPPED)) {
+            Timber.tag(TAG).d("Fallback: 최종 결정된 모드가 '%s'이므로 세그먼트 저장 스킵.", finalSegmentMode);
+            return;
+        }
+
+        // --- 세그먼트 저장 (STOP이 아닌 경우만) ---
         int totalSegments = gpsData.size() / SEGMENT_SIZE; // 생성 가능한 총 세그먼트 수
-        // 세그먼트당 대략적인 이동 거리 계산 (정확하지 않을 수 있음)
+        // 세그먼트당 대략적인 이동 거리 계산
         double distancePerSegment = (totalSegments > 0) ? (double)totalDistance / totalSegments : 0.0;
 
-        Timber.tag(TAG).d("대체 모드(%s)로 %d개 세그먼트 저장 시도", fallbackMode, totalSegments);
+        Timber.tag(TAG).d("Fallback: %d개 세그먼트 저장 시도. 최종 모드: %s", totalSegments, finalSegmentMode);
 
         for (int segment = 0; segment < totalSegments; segment++) {
             int startIndex = segment * SEGMENT_SIZE;
@@ -622,7 +664,7 @@ public class SensorDataProcessor {
 
             // 인덱스 유효성 재확인 (루프 조건상 불필요하나 안전 장치)
             if (startIndex >= gpsData.size() || endIndex >= gpsData.size()) {
-                Timber.tag(TAG).w("세그먼트 %d에 대한 인덱스(%d-%d)가 GPS 데이터 크기(%d)를 벗어남", segment, startIndex, endIndex, gpsData.size());
+                Timber.tag(TAG).w("Fallback 세그먼트 %d에 대한 인덱스(%d-%d)가 GPS 데이터 크기(%d)를 벗어남", segment, startIndex, endIndex, gpsData.size());
                 continue; // 잘못된 인덱스면 해당 세그먼트 건너뛰기
             }
 
@@ -637,29 +679,16 @@ public class SensorDataProcessor {
                 double endLat = ((Number) Objects.requireNonNull(endData.get("latitude"), "종료 위도 null")).doubleValue();
                 double endLon = ((Number) Objects.requireNonNull(endData.get("longitude"), "종료 경도 null")).doubleValue();
 
-                // 세그먼트의 최종 이동 수단 결정
-                String segmentMode = fallbackMode; // 기본적으로 전달된 fallback 사용
-                // 만약 전체 거리가 매우 작으면, fallbackMode와 관계없이 STOP으로 강제 설정
-                if (totalDistance <= 0.05) { // 단순화를 위해 전체 배치 거리 기준 사용
-                    segmentMode = DEFAULT_MODE_STOPPED;
-                }
+                // CSV 파일에 저장
+                savePredictionToCSV(finalSegmentMode, distancePerSegment, startTimestamp, startLat, startLon, endLat, endLon);
 
-                if(!segmentMode.equals(DEFAULT_MODE_STOPPED)){
-                    if(speed < 30){
-                        segmentMode = "WALK";
-                        Timber.tag(TAG).d("평균 속도: "+ speed +"Km/s WALK로 변경");
-                    }
-                    // CSV 파일에 저장
-                    savePredictionToCSV(segmentMode, distancePerSegment, startTimestamp, startLat, startLon, endLat, endLon);
-                }else{
-                    Timber.tag(TAG).d("STOP 무시");
-                }
+                Timber.tag(TAG).d("Fallback 세그먼트 %d 저장: 모드=%s, 거리=%.2fm", segment, finalSegmentMode, distancePerSegment);
 
             } catch (NullPointerException e) {
-                Timber.tag(TAG).e(e, "세그먼트 %d 데이터 추출 중 NullPointerException 발생", segment);
+                Timber.tag(TAG).e(e, "Fallback 세그먼트 %d 데이터 추출 중 NullPointerException 발생", segment);
                 // 해당 세그먼트 저장 실패 처리
             } catch (Exception e) {
-                Timber.tag(TAG).e(e, "세그먼트 %d 처리 중 예외 발생", segment);
+                Timber.tag(TAG).e(e, "Fallback 세그먼트 %d 처리 중 예외 발생", segment);
                 // 해당 세그먼트 저장 실패 처리
             }
         }
