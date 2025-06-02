@@ -71,6 +71,11 @@ class HomeFragment : Fragment() {
             startActivity(intent)
         }
 
+        binding.openChatbotText.setOnClickListener {
+            val intent = Intent(requireContext(), ChatbotUi::class.java)
+            startActivity(intent)
+        }
+
         // Firebase 초기화
         storage = FirebaseStorage.getInstance()
         database = FirebaseDatabase.getInstance()
