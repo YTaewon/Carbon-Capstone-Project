@@ -1,4 +1,4 @@
-package com.example.myapplication12345.AI.BTS; // 패키지명은 2번 코드 기준
+package com.example.myapplication12345.AI.BTS;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -24,7 +24,7 @@ public class BTSProcessor {
         for (long curTime = startTimestamp; curTime < startTimestamp + PROCESSING_WINDOW; curTime += STEP) {
             final long currentTime = curTime;
 
-            List<Set<String>> uniqs = btsData.stream()
+            List<Set<String>> uniqs = new ArrayList<>(btsData.stream()
                     .filter(record -> {
                         Object tsObj = record.get("timestamp");
                         if (!(tsObj instanceof Long)) return false;
@@ -39,7 +39,7 @@ public class BTSProcessor {
                                 return ci + "_" + pci;
                             }, Collectors.toSet())
                     ))
-                    .values().stream().collect(Collectors.toList());
+                    .values());
 
             if (uniqs.size() < 2) {
                 processedData.add(createEmptyResult(currentTime));

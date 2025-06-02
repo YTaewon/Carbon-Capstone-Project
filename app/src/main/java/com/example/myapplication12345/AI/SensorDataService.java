@@ -438,7 +438,7 @@ public class SensorDataService extends Service {
                                         Timber.tag(TAG).d("SensorDataProcessor 처리 완료");
                                     });
                                 } else {
-                                    Timber.tag(TAG).w("SensorDataProcessor가 초기화되지 않음");
+                                    Timber.tag(TAG).w("SensorDataProcessor가 초기화 되지 않음");
                                 }
 
                                 gpsBuffer.clear();

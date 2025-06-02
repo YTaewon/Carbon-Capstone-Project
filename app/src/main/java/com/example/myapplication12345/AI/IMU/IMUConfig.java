@@ -11,8 +11,6 @@ public class IMUConfig {
     private static final Map<String, String> FEATURE_SET_USING_SENSOR_DATA = new HashMap<>();
     private static final Map<String, String> FEATURE_SET_DETREND_TYPE_FOR_WELCH = new HashMap<>();
 
-    public static final int SAMPLING_FREQUENCY = 100; // 단위: Hz
-
     static {
         // [SENSORS]
         SENSOR_CHANNELS.put("gyro", 3);
@@ -54,14 +52,6 @@ public class IMUConfig {
 
     public static boolean isProcessEachAxis(String featureSetPrefix) {
         return Boolean.TRUE.equals(FEATURE_SET_PROCESS_EACH_AXIS.getOrDefault(featureSetPrefix, false));
-    }
-
-    public static boolean isStatFeaturesEnabled(String featureSetPrefix) {
-        return true;
-    }
-
-    public static boolean isSpectralFeaturesEnabled(String featureSetPrefix) {
-        return true;
     }
 
     public static boolean isCalculateJerkEnabled(String featureSetPrefix) {

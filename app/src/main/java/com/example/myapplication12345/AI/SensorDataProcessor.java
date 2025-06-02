@@ -33,9 +33,7 @@ import timber.log.Timber;
 public class SensorDataProcessor {
     private static final String TAG = "SensorDataProcessor";
     private static final String[] MODEL_FILENAMES = {
-            "model/model_default.ptl", // 실제 모델 파일 이름으로 교체하세요
-            "model/epoch=40-step=15949_optimized.ptl",
-            "model/epoch=117-step=91686_optimized.ptl"
+            "model/epoch=50-step=19074_optimized.ptl"
     };
     private static final int NUM_MODELS = MODEL_FILENAMES.length;
     private static final int MODEL_INPUT_FEATURE_SIZE = 340;
@@ -67,10 +65,7 @@ public class SensorDataProcessor {
 
     // --- 이동 감지 및 필터링 임계값 ---
     // 1분(MIN_TIMESTAMP_COUNT) 동안의 총 이동 거리가 이 값보다 작으면 STOP으로 간주하고 데이터를 저장하지 않음.
-    // 이는 GPS 드리프트(튀는 현상)를 효과적으로 필터링하는 데 사용됩니다.
-    // 30m는 실내/불량 GPS 환경에서 가만히 있어도 튀는 정도를 고려한 값일 수 있습니다.
-    // 더 보수적으로 10m 등으로 낮출 수도 있습니다.
-    private static final float STOP_DISTANCE_THRESHOLD_METER = 20.0f; // 30m 이하 이동 시 STOP으로 간주
+    private static final float STOP_DISTANCE_THRESHOLD_METER = 20.0f; // 20m 이하 이동 시 STOP으로 간주
 
     // 평균 속도가 이 값보다 낮으면 (STOP 제외) 예측된 모드를 WALK로 강제 변경 (Km/h)
     // 7 km/h는 일반적인 걷기 속도의 상한선 또는 조깅 초반 속도에 해당.
@@ -136,9 +131,9 @@ public class SensorDataProcessor {
 
         File targetDirectory;
         if (parentDirectoryPath != null) {
-            targetDirectory = new File(context.getFilesDir(), parentDirectoryPath); // /data/user/0/.../files/model
+            targetDirectory = new File(context.getFilesDir(), parentDirectoryPath);
         } else {
-            targetDirectory = context.getFilesDir(); // /data/user/0/.../files
+            targetDirectory = context.getFilesDir();
         }
 
         // 대상 디렉토리가 존재하지 않으면 생성합니다.

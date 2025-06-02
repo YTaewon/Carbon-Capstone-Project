@@ -12,9 +12,6 @@ import java.util.TreeSet;
 
 public class IMUProcessor {
 
-    /**
-     * IMU 데이터를 전처리하여 반환
-     */
     public static List<Map<String, Object>> preImu(List<Map<String, Object>> imu) {
         if (imu == null || imu.isEmpty()) {
             throw new IllegalArgumentException("⚠ IMU 데이터가 비어 있습니다! CSV 파일을 확인하세요.");
@@ -52,8 +49,6 @@ public class IMUProcessor {
 
         for (String sensor : enabledSensors) {
             int numChannels = IMUConfig.getSensorChannels(sensor);
-            boolean statFeatures = IMUConfig.isStatFeaturesEnabled(sensor);
-            boolean spectralFeatures = IMUConfig.isSpectralFeaturesEnabled(sensor);
             boolean processEachAxis = IMUConfig.isProcessEachAxis(sensor);
             boolean calculateJerk = IMUConfig.isCalculateJerkEnabled(sensor);
             String process = IMUConfig.getProcessType(sensor);
@@ -61,8 +56,6 @@ public class IMUProcessor {
             Map<String, double[][]> processed = IMUProcessing.processingImu(
                     dfs.get(IMUConfig.getUsingSensorData(sensor)),
                     numChannels,
-                    statFeatures,
-                    spectralFeatures,
                     process,
                     processEachAxis,
                     calculateJerk,
@@ -269,9 +262,6 @@ public class IMUProcessor {
         return sensorDataMap;
     }
 
-    /**
-     * 센서별 채널 수 반환 - Java 11 호환
-     */
     private static int getSensorChannelCount(String sensor) {
         if ("gyro".equals(sensor) || "accel".equals(sensor) || "mag".equals(sensor) ||
                 "gravity".equals(sensor) || "linear_accel".equals(sensor)) {

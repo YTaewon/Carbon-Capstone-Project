@@ -362,17 +362,9 @@ public class MovementAnalyzer {
     }
 
 
-    // 분석 메서드 (IMU 위주로 거리 계산)
-    // 이 메서드는 calculateIMUDistance()를 호출하여 거리 계산을 수행합니다.
     public void analyze() {
-        // analyze 호출 시 필터 변수들 초기화 (calculateIMUDistance 내부에서 수행되므로 여기서는 생략 가능)
-        // 하지만 analyze 메서드가 직접 거리를 계산하고 finalDistance에 할당해야 한다면, 초기화 로직을 이쪽으로 옮길 수 있습니다.
-        // 현재는 calculateIMUDistance()가 독립적으로 초기화하므로 그대로 둡니다.
-
-        float imuDistance = calculateIMUDistance(); // 갱신된 로직 사용
-        this.finalDistance = imuDistance; // calculateIMUDistance 내부에서 최종 검증까지 수행하여 할당됨
-
-        // 추가적인 분석 로직이 필요하다면 여기에 구현 (예: GPS와 IMU 결과 비교, 통계 등)
+        // 갱신된 로직 사용
+        this.finalDistance = calculateIMUDistance();
         Timber.tag("MovementAnalyzer").d("Analysis completed. Final Distance: " + this.finalDistance + " meters");
     }
 

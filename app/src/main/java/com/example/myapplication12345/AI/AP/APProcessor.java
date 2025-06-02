@@ -13,28 +13,26 @@ public class APProcessor {
         long step = 60 * 1000; // 60초(1분) 단위 처리
         boolean hasData = false; // wifi_cnt > 0인 데이터가 있는지 확인하는 변수
 
-        synchronized (apData) { // ✅ 동기화 블록
-            for (long curTime = startTimestamp; curTime < startTimestamp + 10 * 60 * 1000; curTime += step) {
-                long windowStart = curTime;
-                long windowEnd = curTime + step;
 
-                // ✅ 현재 간격 내 데이터 필터링
-                Set<String> uniqueBSSIDs = new HashSet<>();
-                for (Map<String, Object> record : apData) {
-                    long timestamp = (long) record.get("timestamp");
-                    if (timestamp >= windowStart && timestamp < windowEnd) {
-                        uniqueBSSIDs.add((String) record.getOrDefault("wifibssid", "N/A"));
-                    }
+        for (long curTime = startTimestamp; curTime < startTimestamp + 10 * 60 * 1000; curTime += step) {
+            long windowEnd = curTime + step;
+
+            // ✅ 현재 간격 내 데이터 필터링
+            Set<String> uniqueBSSIDs = new HashSet<>();
+            for (Map<String, Object> record : apData) {
+                long timestamp = (long) record.get("timestamp");
+                if (timestamp >= curTime && timestamp < windowEnd) {
+                    uniqueBSSIDs.add((String) record.getOrDefault("wifibssid", "N/A"));
                 }
+            }
 
-                int wifiCount = uniqueBSSIDs.size();
-                if (wifiCount > 0) {
+            int wifiCount = uniqueBSSIDs.size();
+            if (wifiCount > 0) {
                     hasData = true; // wifi_cnt가 0보다 큰 값이 하나라도 있으면 true 설정
                     Map<String, Object> result = new HashMap<>();
                     result.put("timestamp", curTime);
                     result.put("wifi_cnt", wifiCount); // 고유한 AP 개수
                     results.add(result);
-                }
             }
         }
 

@@ -67,7 +67,6 @@ public class IMUUtils {
 
         for (int i = 0; i < numWindows; i++) {
             for (int j = 0; j < windowSize; j++) {
-                // Python의 np.nan_to_num 과 동일하게 처리
                 double gx = Double.isNaN(gravity[i][j][0]) ? 0.0 : gravity[i][j][0];
                 double gy = Double.isNaN(gravity[i][j][1]) ? 0.0 : gravity[i][j][1];
                 double gz = Double.isNaN(gravity[i][j][2]) ? 0.0 : gravity[i][j][2];
@@ -80,17 +79,13 @@ public class IMUUtils {
                 double magL = Math.sqrt(currentLx * currentLx + currentLy * currentLy + currentLz * currentLz);
 
                 double denominator = magG * magL;
-                // --- Python np.where(d == 0, ...) 과 동일하게 '정확히 0'일 때만 대체 ---
-                if (denominator == 0.0) { // Python은 0.000001 (1e-6)로 정확히 0일 때만 바꿉니다.
-                    denominator = 1e-6; // Python과 동일한 값으로 설정
+                if (denominator == 0.0) {
+                    denominator = 1e-6;
                 }
 
                 double cosThetaVal;
-                // 이 부분은 denominator가 0.0으로 남아있을 경우의 방어 코드입니다.
-                // 위에서 1e-6으로 바뀌므로 실제 이 브랜치로 올 일은 거의 없을 것입니다.
                 cosThetaVal = dotProduct / denominator;
 
-                // 파이썬 np.clip(cos_theta, -1.0, 1.0) 과 동일한 효과
                 cosThetaVal = Math.max(-1.0, Math.min(1.0, cosThetaVal));
                 theta[i][j] = Math.acos(cosThetaVal);
             }

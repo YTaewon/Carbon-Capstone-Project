@@ -27,7 +27,7 @@ public class GPSProcessor {
 
             List<Map<String, Object>> currentData = gpsData.stream()
                     .filter(record -> {
-                        long timestamp = ((Number) record.get("timestamp")).longValue();
+                        long timestamp = ((Number) Objects.requireNonNull(record.get("timestamp"))).longValue();
                         return timestamp >= currentTime && timestamp < currentTime + STEP;
                     })
                     .collect(Collectors.toList());
@@ -60,11 +60,11 @@ public class GPSProcessor {
         Long prevTime = null;
 
         for (Map<String, Object> row : currentData) {
-            long currentTime = ((Number) row.get("timestamp")).longValue();
-            double currentLat = ((Number) row.get("latitude")).doubleValue();
-            double currentLon = ((Number) row.get("longitude")).doubleValue();
+            long currentTime = ((Number) Objects.requireNonNull(row.get("timestamp"))).longValue();
+            double currentLat = ((Number) Objects.requireNonNull(row.get("latitude"))).doubleValue();
+            double currentLon = ((Number) Objects.requireNonNull(row.get("longitude"))).doubleValue();
 
-            if (prevLat != null && prevLon != null && prevTime != null) {
+            if (prevLat != null) {
                 double distance_km = haversineDistance(prevLat, prevLon, currentLat, currentLon); // km
                 double distance_meters = distance_km * 1000.0; // ✅ km를 미터로 변환
                 double timeDiff = (currentTime - prevTime); // milliseconds

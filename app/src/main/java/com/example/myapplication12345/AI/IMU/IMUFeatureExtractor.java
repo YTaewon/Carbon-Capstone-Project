@@ -315,10 +315,7 @@ public class IMUFeatureExtractor {
         for (double v : cleanData) { double d = v - mean; m2 += d * d; m4 += d * d * d * d; }
         m2 /= n; m4 /= n;
 
-        // Python의 gravity-like PSD 분산이 ~e-32 였고, 그때 값을 반환했음.
-        // Java의 PSD 분산도 이와 유사하게 매우 작을 수 있음.
-        // SciPy는 분산이 "정확히 0"일 때 NaN을 반환. "매우 작은 값"에 대한 처리는 내부적일 수 있음.
-        if (Math.abs(m2) < 1e-40) { // 매우 작은 분산 (거의 0) -> Python도 NaN일 가능성 높음
+        if (Math.abs(m2) < 1e-40) {
             return Double.NaN;
         }
         double denom = m2 * m2;
@@ -333,20 +330,19 @@ public class IMUFeatureExtractor {
         double[] cleanData = Arrays.stream(data).filter(d -> !Double.isNaN(d) && Double.isFinite(d)).toArray();
         int n = cleanData.length;
         if (n == 0) return Double.NaN;
-        if (n == 1) return 0.0; // SciPy: bias=True
-        // For n < 3, SciPy skew with bias=True might return NaN.
+        if (n == 1) return 0.0;
 
         double mean = 0; for (double v : cleanData) mean += v; mean /= n;
         double m2 = 0, m3 = 0;
         for (double v : cleanData) { double d = v - mean; m2 += d * d; m3 += d * d * d; }
         m2 /= n; m3 /= n;
 
-        if (Math.abs(m2) < 1e-40) { // 위와 동일한 논리
+        if (Math.abs(m2) < 1e-40) {
             return Double.NaN;
         }
         double m2_pow_1_5 = Math.pow(m2, 1.5);
         if (Double.isNaN(m2_pow_1_5) || Math.abs(m2_pow_1_5) < 1e-60) {
-            return (Math.abs(m3) < 1e-60 && m3 != 0) ? Double.NaN : 0.0; // m3도 0에 가까우면 0, 아니면 NaN
+            return (Math.abs(m3) < 1e-60 && m3 != 0) ? Double.NaN : 0.0;
         }
         double skew = m3 / m2_pow_1_5;
         return Double.isFinite(skew) ? skew : Double.NaN;
