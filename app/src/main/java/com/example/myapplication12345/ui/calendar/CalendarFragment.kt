@@ -56,14 +56,12 @@ class CalendarFragment : Fragment() {
         binding.gridview.adapter = gridAdapter
 
         binding.btnPrevMonth.setOnClickListener {
-            hideIndicatorAtPosition(selectedPosition)
             selectedPosition = -1
             mCal.add(Calendar.MONTH, -1)
             updateCalendar()
         }
 
         binding.btnNextMonth.setOnClickListener {
-            hideIndicatorAtPosition(selectedPosition)
             selectedPosition = -1
             mCal.add(Calendar.MONTH, 1)
             updateCalendar()
@@ -173,8 +171,7 @@ class CalendarFragment : Fragment() {
             val holder = if (convertView == null) {
                 ViewHolder(
                     view.findViewById(R.id.tv_item_gridview),
-                    view.findViewById(R.id.tv_points),
-                    view.findViewById(R.id.iv_indicator)
+                    view.findViewById(R.id.tv_points)
                 ).also { view.tag = it }
             } else {
                 view.tag as ViewHolder
@@ -205,9 +202,6 @@ class CalendarFragment : Fragment() {
                 // 선택된 날짜 강조
                 if (position == selectedPosition) {
                     holder.tvItemGridView.isPressed = true
-                    holder.ivIndicator.visibility = View.VISIBLE
-                } else {
-                    holder.ivIndicator.visibility = View.INVISIBLE
                 }
 
                 // 요일별 색상
@@ -244,7 +238,6 @@ class CalendarFragment : Fragment() {
 
             view.setOnClickListener {
                 if (day.date.isNotEmpty() && day.productEmissions >= 0 && day.date.all { it.isDigit() }) {
-                    hideIndicatorAtPosition(selectedPosition)
                     selectedPosition = position
                     holder.tvItemGridView.isPressed = true
                     val isTodayInClick = day.date.toInt() == today.get(Calendar.DAY_OF_MONTH) &&
@@ -253,7 +246,6 @@ class CalendarFragment : Fragment() {
                     if (isTodayInClick) {
                         holder.tvItemGridView.isSelected = true
                     }
-                    holder.ivIndicator.visibility = View.VISIBLE
                     showPointVeiw(day)
                     gridAdapter.notifyDataSetChanged()
                 }
@@ -267,13 +259,6 @@ class CalendarFragment : Fragment() {
             }
 
             return view
-        }
-    }
-
-    private fun hideIndicatorAtPosition(position: Int) {
-        if (position >= 0) {
-            val previousView = binding.gridview.getChildAt(position) as? ViewGroup
-            previousView?.findViewById<ImageView>(R.id.iv_indicator)?.visibility = View.INVISIBLE
         }
     }
 
@@ -355,5 +340,5 @@ class CalendarFragment : Fragment() {
         _binding = null
     }
 
-    private data class ViewHolder(val tvItemGridView: TextView, val tvPoints: TextView, val ivIndicator: ImageView)
+    private data class ViewHolder(val tvItemGridView: TextView, val tvPoints: TextView)
 }
