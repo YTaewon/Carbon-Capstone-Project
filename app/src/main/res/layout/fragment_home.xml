@@ -525,7 +525,7 @@
                                 android:id="@+id/news_date"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="@{homeViewModel.news != null ? homeViewModel.news.pubDate.substring(0, 10) : `날짜`}"
+                                android:text="@{homeViewModel.news != null &amp;&amp; homeViewModel.news.pubDate != null &amp;&amp; !homeViewModel.news.pubDate.isEmpty() ? homeViewModel.news.pubDate.substring(0, Math.min(homeViewModel.news.pubDate.length(), 12)) : `날짜`}"
                                 android:textColor="@color/black"
                                 android:textSize="14sp" />
 
