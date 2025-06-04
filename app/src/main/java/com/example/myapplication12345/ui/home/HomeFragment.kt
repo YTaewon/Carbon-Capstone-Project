@@ -34,6 +34,7 @@ import timber.log.Timber
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
+import androidx.core.net.toUri
 
 class HomeFragment : Fragment() {
     private lateinit var homeViewModel: HomeViewModel
@@ -58,13 +59,16 @@ class HomeFragment : Fragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        val view = inflater.inflate(R.layout.fragment_home, container, false)
-        _binding = FragmentHomeBinding.bind(view)
+//        val view = inflater.inflate(R.layout.fragment_home, container, false)
+//        _binding = FragmentHomeBinding.bind(view)
+
+        _binding = FragmentHomeBinding.inflate(inflater, container, false)
+        val view = binding.root // binding 객체에서 root 뷰를 가져옵니다.
         homeViewModel = ViewModelProvider(this)[HomeViewModel::class.java]
         binding.homeViewModel = homeViewModel
         binding.lifecycleOwner = viewLifecycleOwner
 
-        profileImage = view.findViewById(R.id.profile_img)
+        profileImage = binding.profileImg
 
         binding.openChatbotButton.setOnClickListener {
             val intent = Intent(requireContext(), ChatbotUi::class.java)
@@ -101,7 +105,7 @@ class HomeFragment : Fragment() {
             userRef.child("nickname").addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(dataSnapshot: DataSnapshot) {
                     val nickname = dataSnapshot.getValue(String::class.java)?: "익명"
-                    binding.greeting.text = buildString {
+                    _binding?.greeting?.text = buildString {
                         append("안녕하세요, ")
                         append(nickname)
                         append("님!")
@@ -109,7 +113,7 @@ class HomeFragment : Fragment() {
                 }
                 override fun onCancelled(databaseError: DatabaseError) {
                     Timber.tag("Firebase").w(databaseError.toException(), "loadNickname:onCancelled")
-                    binding.greeting.text = "안녕하세요, 익명님!"
+                    _binding?.greeting?.text = "안녕하세요, 익명님!"
                 }
             })
 
@@ -117,11 +121,11 @@ class HomeFragment : Fragment() {
             userRef.child("score").addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(dataSnapshot: DataSnapshot) {
                     val score = dataSnapshot.getValue(Int::class.java)
-                    " ${score ?: 0}".also { binding.scoreValue.text = it }
+                    " ${score ?: 0}".also { _binding?.scoreValue?.text = it }
                 }
                 override fun onCancelled(databaseError: DatabaseError) {
                     Timber.tag("Firebase").w(databaseError.toException(), "loadScore:onCancelled")
-                    binding.scoreValue.text = "점수: 0"
+                    _binding?.scoreValue?.text = "점수: 0"
                 }
             })
 
@@ -129,50 +133,52 @@ class HomeFragment : Fragment() {
             userRef.child("monthly_points").child(getCurrentMonth()).child("point").addValueEventListener(object : ValueEventListener {
                 override fun onDataChange(dataSnapshot: DataSnapshot) {
                     val point = dataSnapshot.getValue(Int::class.java) ?: 0
-                    binding.pointsValue.text = "$point"
+//                    binding.pointsValue.text = "$point"
+                    _binding?.pointsValue?.text = "$point"
                 }
                 override fun onCancelled(databaseError: DatabaseError) {
                     Timber.tag("Firebase").w(databaseError.toException(), "loadPoint:onCancelled")
-                    binding.pointsValue.text = "0"
+//                    binding.pointsValue.text = "0"
+                    _binding?.pointsValue?.text = "0"
                 }
             })
 
         } else {
             binding.greeting.text = "안녕하세요, 익명님!"
-            binding.scoreValue.text = "점수: 0"
+               binding.scoreValue.text = "점수: 0"
             binding.pointsValue.text = "탄소 배출량: 0"
             homeViewModel.setProgress(0)
         }
 
         // 팁 텍스트 관찰
         homeViewModel.currentTip.observe(viewLifecycleOwner) { newTip ->
-            binding.tipText.text = newTip
+            _binding?.tipText?.text = newTip
             Timber.tag("HomeFragment").d("Tip updated: $newTip")
         }
 
         // 이동 거리 관찰
         pedometerViewModel.distanceMeters.observe(viewLifecycleOwner) {
-            binding.tvTotalTrees.text = pedometerViewModel.getFormattedDistance()
+            _binding?.tvTotalTrees?.text = pedometerViewModel.getFormattedDistance()
         }
 
         // "다음 팁" 버튼 클릭 리스너 설정
-        binding.nextTipButton.setOnClickListener {
+        _binding?.nextTipButton?.setOnClickListener {
             Timber.tag("HomeFragment").d("Next tip button clicked")
             homeViewModel.showRandomTip()
         }
 
         // 새로고침 버튼 클릭 시 랜덤 뉴스 갱신
-        binding.refreshButton.setOnClickListener {
+        _binding?.refreshButton?.setOnClickListener {
             homeViewModel.showRandomNews()
             Toast.makeText(context, "뉴스가 갱신되었습니다.", Toast.LENGTH_SHORT).show()
         }
 
         // 환경 뉴스 섹션 클릭 시 링크로 이동
-        binding.newsSection.setOnClickListener {
+        _binding?.newsSection?.setOnClickListener {
             homeViewModel.news.value?.let { news ->
                 val link = news.originallink
                 if (link.isNotEmpty()) {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(link))
+                    val intent = Intent(Intent.ACTION_VIEW, link.toUri())
                     startActivity(intent)
                 } else {
                     Toast.makeText(context, "유효한 링크가 없습니다.", Toast.LENGTH_SHORT).show()
@@ -192,19 +198,19 @@ class HomeFragment : Fragment() {
         }
 
         // PedometerFragment 다이얼로그 띄우기
-        binding.distanceContainer.setOnClickListener {
+        _binding?.distanceContainer?.setOnClickListener {
             val pedometerFragment = PedometerFragment()
             pedometerFragment.show(childFragmentManager, "PedometerFragment")
         }
 
         // 오늘의 탄소 절약 목표 프로그레스 관찰 [수정: 포맷만 최적화]
         homeViewModel.progress.observe(viewLifecycleOwner) { progress ->
-            binding.progressMonthlyGoal.progress = progress
-            binding.tvMonthlyProgress.text = "$progress/100%"
+            _binding?.progressMonthlyGoal?.progress = progress
+            _binding?.tvMonthlyProgress?.text = "$progress/100%"
         }
 
         // 프로그레스 테스트용 클릭 리스너
-        binding.progressMonthlyGoal.setOnClickListener {
+        _binding?.progressMonthlyGoal?.setOnClickListener {
             val newProgress = (1..100).random()
             homeViewModel.setProgress(newProgress)
             Toast.makeText(context, "목표 진행률: $newProgress%", Toast.LENGTH_SHORT).show()
