@@ -19,7 +19,6 @@ import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.ViewModelProvider
 import com.bumptech.glide.Glide
 import com.example.myapplication12345.R
-import com.example.myapplication12345.ServerManager
 import com.example.myapplication12345.chatbot.ChatbotUi
 import com.example.myapplication12345.databinding.FragmentHomeBinding
 import com.example.myapplication12345.ui.pedometer.PedometerFragment
@@ -39,7 +38,6 @@ import androidx.core.net.toUri
 class HomeFragment : Fragment() {
     private lateinit var homeViewModel: HomeViewModel
     private lateinit var profileImage: ImageView
-    private lateinit var serverManager: ServerManager
 
     private var _binding: FragmentHomeBinding? = null
     private val binding get() = _binding!!
@@ -59,9 +57,6 @@ class HomeFragment : Fragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-//        val view = inflater.inflate(R.layout.fragment_home, container, false)
-//        _binding = FragmentHomeBinding.bind(view)
-
         _binding = FragmentHomeBinding.inflate(inflater, container, false)
         val view = binding.root // binding 객체에서 root 뷰를 가져옵니다.
         homeViewModel = ViewModelProvider(this)[HomeViewModel::class.java]
@@ -133,12 +128,10 @@ class HomeFragment : Fragment() {
             userRef.child("monthly_points").child(getCurrentMonth()).child("point").addValueEventListener(object : ValueEventListener {
                 override fun onDataChange(dataSnapshot: DataSnapshot) {
                     val point = dataSnapshot.getValue(Int::class.java) ?: 0
-//                    binding.pointsValue.text = "$point"
                     _binding?.pointsValue?.text = "$point"
                 }
                 override fun onCancelled(databaseError: DatabaseError) {
                     Timber.tag("Firebase").w(databaseError.toException(), "loadPoint:onCancelled")
-//                    binding.pointsValue.text = "0"
                     _binding?.pointsValue?.text = "0"
                 }
             })
@@ -203,10 +196,11 @@ class HomeFragment : Fragment() {
             pedometerFragment.show(childFragmentManager, "PedometerFragment")
         }
 
-        // 오늘의 탄소 절약 목표 프로그레스 관찰 [수정: 포맷만 최적화]
+        // 오늘의 탄소 절약 목표 프로그레스 관찰
         homeViewModel.progress.observe(viewLifecycleOwner) { progress ->
             _binding?.progressMonthlyGoal?.progress = progress
-            _binding?.tvMonthlyProgress?.text = "$progress/100%"
+            val output = progress / 100;
+            _binding?.tvMonthlyProgress?.text = "$output"
         }
 
         // 프로그레스 테스트용 클릭 리스너
