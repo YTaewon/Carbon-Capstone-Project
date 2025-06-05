@@ -143,8 +143,11 @@ class MainActivity : AppCompatActivity() {
                     val intent = Intent(this, ChatbotUi::class.java)
                     startActivity(intent)
                 }
-                R.id.nav_ai ->{
+                R.id.nav_ai_start ->{
                     startSensorService();
+                }
+                R.id.nav_ai_stop ->{
+                    stopSensorService()
                 }
             }
             drawerLayout.closeDrawer(GravityCompat.START)
@@ -269,6 +272,21 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun stopSensorService() {
+        val serviceIntent = Intent(this, SensorDataService::class.java)
+        // 서비스 정지를 위한 고유 액션 설정
+        serviceIntent.setAction(SensorDataService.ACTION_STOP_SERVICE)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            ContextCompat.startForegroundService(this, serviceIntent)
+        } else {
+            startService(serviceIntent)
+        }
+
+        Toast.makeText(this, "AI 서비스 정지 요청", Toast.LENGTH_SHORT).show()
+        Timber.tag("MainActivity").d("SensorDataService 정지 요청됨.")
+    }
+
     private fun startSensorService() {
         val serviceIntent: Intent = Intent(this, SensorDataService::class.java)
         // Android O (API 26) 이상에서는 startForegroundService() 사용
@@ -277,7 +295,7 @@ class MainActivity : AppCompatActivity() {
         } else {
             startService(serviceIntent)
         }
-        Toast.makeText(this, "센서 데이터 수집 서비스 시작 요청", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, "AI 서비스 시작 요청", Toast.LENGTH_SHORT).show()
         Timber.tag("MainActivity").d("SensorDataService 시작 요청됨.")
     }
 }
