@@ -3,6 +3,7 @@ package com.example.myapplication12345
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
 import android.widget.Button
@@ -10,33 +11,32 @@ import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.GravityCompat
-import androidx.drawerlayout.widget.DrawerLayout
-import androidx.viewpager2.widget.ViewPager2
-
-import com.google.android.material.navigation.NavigationView
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.ktx.auth
-import com.google.firebase.ktx.Firebase
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
+import androidx.core.view.GravityCompat
 import androidx.core.view.get
+import androidx.drawerlayout.widget.DrawerLayout
 import androidx.lifecycle.lifecycleScope
+import androidx.viewpager2.widget.ViewPager2
 import com.bumptech.glide.Glide
-
+import com.example.myapplication12345.AI.SensorDataService
+import com.example.myapplication12345.chatbot.ChatbotUi
 import com.example.myapplication12345.databinding.ActivityMainBinding
 import com.example.myapplication12345.ui.login.IntroActivity
-import com.example.myapplication12345.ui.sidebar.foodcalculator.FoodCalculatorActivity
 import com.example.myapplication12345.ui.sidebar.carbonquiz.QuizActivity
+import com.example.myapplication12345.ui.sidebar.foodcalculator.FoodCalculatorActivity
 import com.example.myapplication12345.ui.sidebar.setting.SettingActivity
-import com.example.myapplication12345.chatbot.ChatbotUi
-
+import com.google.android.material.navigation.NavigationView
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.ktx.auth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
+import com.google.firebase.ktx.Firebase
 import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -142,6 +142,9 @@ class MainActivity : AppCompatActivity() {
                 R.id.nav_chatbot -> {
                     val intent = Intent(this, ChatbotUi::class.java)
                     startActivity(intent)
+                }
+                R.id.nav_ai ->{
+                    startSensorService();
                 }
             }
             drawerLayout.closeDrawer(GravityCompat.START)
@@ -264,5 +267,17 @@ class MainActivity : AppCompatActivity() {
             }
             true
         }
+    }
+
+    private fun startSensorService() {
+        val serviceIntent: Intent = Intent(this, SensorDataService::class.java)
+        // Android O (API 26) 이상에서는 startForegroundService() 사용
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            ContextCompat.startForegroundService(this, serviceIntent)
+        } else {
+            startService(serviceIntent)
+        }
+        Toast.makeText(this, "센서 데이터 수집 서비스 시작 요청", Toast.LENGTH_SHORT).show()
+        Timber.tag("MainActivity").d("SensorDataService 시작 요청됨.")
     }
 }

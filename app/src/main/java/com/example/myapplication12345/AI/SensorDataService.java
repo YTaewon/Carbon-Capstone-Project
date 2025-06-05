@@ -5,6 +5,7 @@ import static com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
@@ -30,6 +31,7 @@ import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
 
 import com.example.myapplication12345.R;
+import com.example.myapplication12345.SplashActivity;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
@@ -56,6 +58,8 @@ public class SensorDataService extends Service {
     private static final String TAG = "SensorDataService";
     private static final String NOTIFICATION_CHANNEL_ID = "sensor_service_channel";
     private static final int NOTIFICATION_ID = 1;
+    // 서비스 정지 액션 정의
+    public static final String ACTION_STOP_SERVICE = "com.example.myapplication12345.AI.ACTION_STOP_SERVICE";
 
     private WifiManager wifiManager;
     private TelephonyManager telephonyManager;
@@ -124,12 +128,40 @@ public class SensorDataService extends Service {
             notificationManager.createNotificationChannel(channel);
         }
 
+        // 1. 알림 본문을 클릭했을 때 열릴 MainActivity에 대한 Intent 생성
+        Intent notificationIntent = new Intent(this, SplashActivity.class);
+        // 이미 실행 중인 Activity 스택을 재활용하고, MainActivity를 최상단으로 가져옴
+        notificationIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+
+        // 2. Intent를 감싸는 PendingIntent 생성
+        // FLAG_IMMUTABLE은 Android 12(API 31) 이상에서 필수
+        // FLAG_UPDATE_CURRENT는 기존 PendingIntent가 있다면 업데이트하도록 함
+        PendingIntent pendingIntent = PendingIntent.getActivity(
+                this,
+                0, // requestCode, 여러 PendingIntent를 구분하기 위한 고유 ID
+                notificationIntent,
+                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
+        );
+
+        // 서비스 정지 Intent 생성
+        Intent stopSelfIntent = new Intent(this, SensorDataService.class);
+        stopSelfIntent.setAction(ACTION_STOP_SERVICE); // 정의한 액션 설정
+
+        PendingIntent stopPendingIntent = PendingIntent.getService(
+                this,
+                0, // requestCode, 여러 PendingIntent를 구분하기 위한 고유 ID
+                stopSelfIntent,
+                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
+        );
+
         return new NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
                 .setSmallIcon(R.drawable.img_logo)
                 .setContentTitle("센서 데이터 수집 서비스")
                 .setContentText("백그라운드에서 센서 데이터를 수집 중입니다.")
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                 .setOngoing(true)
+                .setContentIntent(pendingIntent)
+                .addAction(android.R.drawable.ic_delete, "서비스 정지", stopPendingIntent)
                 .build();
     }
 
@@ -141,7 +173,13 @@ public class SensorDataService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        return START_STICKY;
+        // 인텐트가 null이 아니고, 정지 액션을 포함하는지 확인
+        if (intent != null && ACTION_STOP_SERVICE.equals(intent.getAction())) {
+            Timber.tag(TAG).d("정지 요청 액션 수신. 서비스 종료.");
+            stopSelf(); // 서비스 종료
+            return START_NOT_STICKY; // 서비스가 종료되면 다시 시작하지 않도록 설정
+        }
+        return START_STICKY; // 기본 동작: 시스템에 의해 종료되면 다시 시작 시도
     }
 
     @Override

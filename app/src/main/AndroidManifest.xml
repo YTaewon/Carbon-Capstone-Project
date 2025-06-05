@@ -63,8 +63,6 @@
     <uses-permission android:name="android.permission.INTERNET" />
 
 
-
-
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -121,6 +119,8 @@
 
         <!-- 위치 기반 포그라운드 서비스로 실행되는 SensorDataService -->
         <service android:name=".AI.SensorDataService"
+            android:enabled="true"
+            android:exported="false"
             android:foregroundServiceType="location|dataSync"
             tools:ignore="ForegroundServicePermission" />
 

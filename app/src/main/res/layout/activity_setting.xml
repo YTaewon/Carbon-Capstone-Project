@@ -106,38 +106,6 @@
                     android:layout_marginStart="16dp"
                     android:layout_marginEnd="16dp"/>
 
-                <!-- 알림 설정 -->
-                <RelativeLayout
-                    android:id="@+id/setting_run_AI"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:paddingStart="16dp"
-                    android:paddingEnd="16dp"
-                    android:paddingTop="12dp"
-                    android:paddingBottom="12dp"
-                    android:background="?attr/selectableItemBackground"
-                    android:clickable="true"
-                    android:focusable="true">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_alignParentStart="true"
-                        android:layout_centerVertical="true"
-                        android:text="AI 작동"
-                        android:textSize="16sp"
-                        android:textColor="@android:color/black"/>
-
-                    <androidx.appcompat.widget.SwitchCompat
-                        android:id="@+id/switch_run_AI"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_alignParentEnd="true"
-                        android:layout_centerVertical="true"
-                        android:checked="true"/>
-
-                </RelativeLayout>
-
                 <View
                     android:layout_width="match_parent"
                     android:layout_height="1dp"
@@ -206,13 +174,6 @@
                     android:clickable="true"
                     android:focusable="true"
                     app:drawableEndCompat="@drawable/ic_chevron_right" />
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="#E0E0E0"
-                    android:layout_marginStart="16dp"
-                    android:layout_marginEnd="16dp"/>
 
                 <TextView
                     android:id="@+id/setting_app_info"

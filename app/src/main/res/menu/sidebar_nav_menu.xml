@@ -25,6 +25,10 @@
             <item
                 android:id="@+id/nav_food"
                 android:title="음식 탄소 계산기" />
+
+            <item
+                android:id="@+id/nav_ai"
+                android:title="이동수단 AI 시작" />
         </menu>
     </item>
 
