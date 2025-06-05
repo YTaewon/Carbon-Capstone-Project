@@ -1,14 +1,16 @@
 package com.example.myapplication12345.ui.camera
 
 import android.Manifest
+import android.app.AlertDialog // AlertDialog 임포트 추가 (android.app.AlertDialog 사용)
 import android.content.Context
+import android.content.Intent // Intent 임포트 추가
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.net.Uri
+import android.net.Uri // Uri 임포트 추가
 import android.os.Bundle
-import android.provider.MediaStore
+import android.provider.Settings // Settings 임포트 추가 (앱 설정으로 이동 위함)
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -58,14 +60,7 @@ class CameraFragment : Fragment() {
     private val homeViewModel: HomeViewModel by activityViewModels()
     private val calendarViewModel: CalendarViewModel by activityViewModels()
 
-    private val requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) {
-            startCamera()
-        } else {
-            Toast.makeText(requireContext(), "카메라 권한이 필요합니다.", Toast.LENGTH_SHORT).show()
-        }
-    }
-
+    // 갤러리 이미지 선택을 위한 ActivityResultLauncher
     private val getContentLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         uri?.let {
             if (canInputThisMonth()) {
@@ -76,6 +71,27 @@ class CameraFragment : Fragment() {
         }
     }
 
+    // 카메라 권한 요청을 위한 ActivityResultLauncher
+    private val requestCameraPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
+            if (isGranted) {
+                // 권한이 승인됨: 카메라 시작
+                Timber.d("카메라 권한 승인됨.")
+                startCamera()
+                binding.startCameraButton.visibility = View.GONE // 카메라 시작 후 시작 버튼 숨김
+            } else {
+                // 권한 거부됨
+                Timber.w("카메라 권한 거부됨.")
+                Toast.makeText(requireContext(), "카메라 권한이 거부되었습니다.", Toast.LENGTH_SHORT).show()
+
+                // "다시 묻지 않음"을 선택했거나 영구적으로 거부한 경우
+                // shouldShowRequestPermissionRationale()가 false를 반환하면 영구 거부된 것임
+                if (!shouldShowRequestPermissionRationale(Manifest.permission.CAMERA)) {
+                    showPermissionDeniedPermanentlyDialog("카메라")
+                }
+            }
+        }
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentCameraBinding.inflate(inflater, container, false)
         return binding.root
@@ -85,12 +101,8 @@ class CameraFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         binding.startCameraButton.setOnClickListener {
-            if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
-                startCamera()
-                binding.startCameraButton.visibility = View.GONE
-            } else {
-                Toast.makeText(requireContext(), "카메라 권한이 필요합니다.", Toast.LENGTH_SHORT).show()
-            }
+            // 카메라 시작 전 권한 확인
+            checkCameraPermissionAndStartCamera()
         }
 
         binding.captureButton.setOnClickListener {
@@ -98,6 +110,9 @@ class CameraFragment : Fragment() {
         }
 
         binding.galleryButton.setOnClickListener {
+            // 갤러리 이미지 선택은 READ_EXTERNAL_STORAGE 권한이 필요할 수 있지만,
+            // ActivityResultContracts.GetContent()는 시스템 파일 선택기를 사용하므로 일반적으로 권한 요청이 필요 없음.
+            // (Android 10+에서는 Scoped Storage로 인해 더욱 그렇습니다.)
             getContentLauncher.launch("image/*")
         }
 
@@ -107,6 +122,68 @@ class CameraFragment : Fragment() {
 
         binding.resultText.text = "사진 촬영 혹은 갤러리에서 이미지를 선택하세요."
         displaySavedResult()
+
+        // Fragment가 생성될 때 현재 카메라 권한 상태에 따라 시작 버튼의 가시성 조정 (선택 사항)
+        // 이 부분을 추가하면, 앱 재실행 시 권한이 이미 있다면 버튼이 자동으로 숨겨집니다.
+        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+            binding.startCameraButton.visibility = View.GONE
+            startCamera() // 권한이 있다면 자동으로 카메라 시작
+        } else {
+            binding.startCameraButton.visibility = View.VISIBLE
+        }
+    }
+
+    // 카메라 권한 확인 및 요청 메서드
+    private fun checkCameraPermissionAndStartCamera() {
+        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+            // 권한이 이미 승인됨
+            Timber.d("카메라 권한 이미 승인됨. 카메라 시작.")
+            startCamera()
+            binding.startCameraButton.visibility = View.GONE // 시작 버튼 숨김
+        } else {
+            // 권한이 없는 경우, 설명을 보여줄지 결정
+            if (shouldShowRequestPermissionRationale(Manifest.permission.CAMERA)) {
+                // 이전에 권한을 거부했으나 "다시 묻지 않음"을 선택하지 않은 경우
+                // 사용자에게 권한이 필요한 이유를 설명하는 다이얼로그 표시
+                showCameraPermissionRationaleDialog()
+            } else {
+                // 권한 요청 (설명 불필요하거나, 사용자가 '다시 묻지 않음'을 선택한 경우)
+                requestCameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+            }
+        }
+    }
+
+    // 카메라 권한 설명 다이얼로그
+    private fun showCameraPermissionRationaleDialog() {
+        AlertDialog.Builder(requireContext())
+            .setTitle("카메라 권한 필요")
+            .setMessage("사진 촬영 기능을 사용하려면 카메라 접근 권한이 필요합니다. 권한을 허용해 주세요.")
+            .setPositiveButton("확인") { dialog, which ->
+                // 사용자가 확인을 누르면 권한 요청 실행
+                requestCameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+            }
+            .setNegativeButton("취소") { dialog, which ->
+                Toast.makeText(requireContext(), "카메라 권한 요청이 취소되었습니다.", Toast.LENGTH_SHORT).show()
+                Timber.d("카메라 권한 설명 다이얼로그 취소됨.")
+            }
+            .create()
+            .show()
+    }
+
+    // 권한이 영구적으로 거부되었을 때 앱 설정으로 이동을 제안하는 다이얼로그
+    private fun showPermissionDeniedPermanentlyDialog(permissionName: String) {
+        AlertDialog.Builder(requireContext())
+            .setTitle("권한 필요")
+            .setMessage("$permissionName 권한이 영구적으로 거부되었습니다. 앱 설정에서 수동으로 권한을 허용해야 합니다.")
+            .setPositiveButton("설정으로 이동") { dialog, which ->
+                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                val uri = Uri.fromParts("package", requireActivity().packageName, null)
+                intent.data = uri
+                startActivity(intent)
+            }
+            .setNegativeButton("취소", null) // 취소 버튼 클릭 시 아무것도 하지 않음
+            .create()
+            .show()
     }
 
     private fun getUserPrefs(): SharedPreferences? {
@@ -190,10 +267,11 @@ class CameraFragment : Fragment() {
             try {
                 cameraProvider.unbindAll()
                 cameraProvider.bindToLifecycle(this, CameraSelector.DEFAULT_BACK_CAMERA, preview, imageCapture)
-                Timber.d("Camera started")
+                Timber.d("카메라 시작됨")
             } catch (e: Exception) {
-                Timber.e(e, "Failed to bind camera use cases")
+                Timber.e(e, "카메라 유즈케이스 바인딩 실패")
                 Toast.makeText(requireContext(), "카메라 시작 실패", Toast.LENGTH_SHORT).show()
+                binding.startCameraButton.visibility = View.VISIBLE // 실패 시 다시 시작 버튼 표시
             }
         }, ContextCompat.getMainExecutor(requireContext()))
     }
@@ -214,13 +292,13 @@ class CameraFragment : Fragment() {
                         binding.resultText.text = "사진이 촬영되었습니다. 분석 버튼을 눌러주세요."
                     }
                 } catch (e: Exception) {
-                    Timber.e(e, "Error capturing image")
+                    Timber.e(e, "이미지 캡처 처리 실패")
                     Toast.makeText(requireContext(), "이미지 처리 실패", Toast.LENGTH_SHORT).show()
                 }
             }
 
             override fun onError(exception: ImageCaptureException) {
-                Timber.e(exception, "Capture failed: ${exception.message}")
+                Timber.e(exception, "사진 촬영 실패: ${exception.message}")
                 Toast.makeText(requireContext(), "사진 촬영 실패", Toast.LENGTH_SHORT).show()
             }
         })
@@ -243,7 +321,7 @@ class CameraFragment : Fragment() {
                 recognizeText(image)
             }
         } catch (e: IOException) {
-            Timber.e(e, "Image processing error")
+            Timber.e(e, "이미지 처리 오류")
             Toast.makeText(requireContext(), "이미지 로드 실패", Toast.LENGTH_SHORT).show()
         }
     }
@@ -278,14 +356,14 @@ class CameraFragment : Fragment() {
                         }
                     }
                 } catch (e: Exception) {
-                    Timber.e(e, "Text recognition processing error")
+                    Timber.e(e, "텍스트 인식 처리 오류")
                     requireActivity().runOnUiThread {
                         binding.resultText.text = "텍스트 처리 중 오류 발생"
                     }
                 }
             }
             .addOnFailureListener { e ->
-                Timber.e(e, "Text recognition failed")
+                Timber.e(e, "텍스트 인식 실패")
                 requireActivity().runOnUiThread {
                     Toast.makeText(requireContext(), "텍스트 인식 실패", Toast.LENGTH_SHORT).show()
                 }
@@ -309,29 +387,25 @@ class CameraFragment : Fragment() {
 
         val kwhPattern = "(\\d+)\\s*kWh".toRegex()
         val kwhMatch = text.lines()
-            .filter { it.contains("당월", ignoreCase = true) }
-            .mapNotNull { line ->
+            .filter { it.contains("당월", ignoreCase = true) }.firstNotNullOfOrNull { line ->
                 kwhPattern.find(line)?.let {
                     val value = it.groupValues[1].toDoubleOrNull()
                     Timber.d("kWh 패턴 발견: $value")
                     value
                 }
             }
-            .firstOrNull()
 
         if (kwhMatch != null) return kwhMatch
 
         val numberPattern = "\\b(\\d+)\\b".toRegex()
         val numberMatch = text.lines()
-            .filter { it.contains("당월", ignoreCase = true) }
-            .mapNotNull { line ->
+            .filter { it.contains("당월", ignoreCase = true) }.firstNotNullOfOrNull { line ->
                 numberPattern.find(line)?.let {
                     val value = it.groupValues[1].toDoubleOrNull()
                     Timber.d("숫자 발견: $value")
                     value
                 }
             }
-            .firstOrNull()
 
         return numberMatch
     }
@@ -355,12 +429,12 @@ class CameraFragment : Fragment() {
             val userRef = database.getReference("users").child(userId)
             val pointsToAdd = carbonEmission.toInt()
             homeViewModel.addPoints(pointsToAdd)
-            Timber.d("Added $pointsToAdd points for carbon emission")
+            Timber.d("탄소 배출량으로 ${pointsToAdd}점 추가됨")
 
             userRef.child("score").runTransaction(object : com.google.firebase.database.Transaction.Handler {
                 override fun doTransaction(currentData: com.google.firebase.database.MutableData): com.google.firebase.database.Transaction.Result {
                     val currentScore = currentData.getValue(Int::class.java) ?: 0
-                    currentData.value = currentScore + 50
+                    currentData.value = currentScore + 50 // 고정 점수 50점 추가
                     return com.google.firebase.database.Transaction.success(currentData)
                 }
 
@@ -382,14 +456,14 @@ class CameraFragment : Fragment() {
             calendarViewModel.updateProductEmissions(today, pointsToAdd) { success ->
                 requireActivity().runOnUiThread {
                     if (success) {
-                        Timber.d("Updated productEmissions for today: $pointsToAdd")
+                        Timber.d("오늘의 탄소 배출량 업데이트됨: $pointsToAdd")
                     } else {
                         Toast.makeText(requireContext(), "캘린더 데이터 업데이트 실패", Toast.LENGTH_SHORT).show()
                     }
                 }
             }
         } catch (e: Exception) {
-            Timber.e(e, "Error in addCarbonEmissionAndScore")
+            Timber.e(e, "addCarbonEmissionAndScore 오류 발생")
             requireActivity().runOnUiThread {
                 Toast.makeText(requireContext(), "데이터 추가 중 오류 발생", Toast.LENGTH_SHORT).show()
             }
@@ -409,7 +483,7 @@ class CameraFragment : Fragment() {
             userRef.child("score").runTransaction(object : com.google.firebase.database.Transaction.Handler {
                 override fun doTransaction(currentData: com.google.firebase.database.MutableData): com.google.firebase.database.Transaction.Result {
                     val currentScore = currentData.getValue(Int::class.java) ?: 0
-                    currentData.value = currentScore + 10
+                    currentData.value = currentScore + 10 // 분석 성공 시 10점 추가
                     return com.google.firebase.database.Transaction.success(currentData)
                 }
 
@@ -427,7 +501,7 @@ class CameraFragment : Fragment() {
                 }
             })
         } catch (e: Exception) {
-            Timber.e(e, "Error in addAnalysisScore")
+            Timber.e(e, "addAnalysisScore 오류 발생")
             requireActivity().runOnUiThread {
                 Toast.makeText(requireContext(), "점수 추가 중 오류 발생", Toast.LENGTH_SHORT).show()
             }
