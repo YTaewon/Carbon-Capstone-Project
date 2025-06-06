@@ -189,7 +189,9 @@ class RankingFragment : Fragment() {
         } else {
             ivProfile1?.setImageResource(R.drawable.user)
             tvName1?.text = ""
-            tvScore1?.text = "000"
+            tvScore1?.text = buildString {
+                append("000")
+            }
         }
 
         // 2등 처리
@@ -201,7 +203,9 @@ class RankingFragment : Fragment() {
         } else {
             ivProfile2?.setImageResource(R.drawable.user)
             tvName2?.text = ""
-            tvScore2?.text = "000"
+            tvScore2?.text = buildString {
+                append("000")
+            }
         }
 
         // 3등 처리
@@ -213,7 +217,9 @@ class RankingFragment : Fragment() {
         } else {
             ivProfile3?.setImageResource(R.drawable.user)
             tvName3?.text = ""
-            tvScore3?.text = "000"
+            tvScore3?.text = buildString {
+                append("000")
+            }
         }
     }
 
