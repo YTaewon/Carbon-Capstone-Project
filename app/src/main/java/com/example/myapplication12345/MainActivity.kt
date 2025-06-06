@@ -49,8 +49,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var serverManager: ServerManager
     private lateinit var drawerLayout: DrawerLayout
 
-    private lateinit var profileImage: ImageView
-    private lateinit var profileImageChange: Button
+    private lateinit var sidebarProfileImage: ImageView
+    private lateinit var sidebarProfileImageChange: Button
+    private lateinit var sidebarSetting: ImageView
+
     private var selectedImageUri: Uri? = null
     private lateinit var galleryLauncher: ActivityResultLauncher<Intent>
 
@@ -68,7 +70,7 @@ class MainActivity : AppCompatActivity() {
             if (result.resultCode == Activity.RESULT_OK) {
                 selectedImageUri = result.data?.data
                 if (selectedImageUri != null) {
-                    profileImage.setImageURI(selectedImageUri) // 미리보기
+                    sidebarProfileImage.setImageURI(selectedImageUri) // 미리보기
                     uploadImageToFirebase(selectedImageUri!!) // Firebase에 업로드
                 }
             }
@@ -91,12 +93,19 @@ class MainActivity : AppCompatActivity() {
 
         // 사용자 프로필 설정
         val headerView = navView.getHeaderView(0) // 헤더 뷰 가져오기
-        val profileName = headerView.findViewById<TextView>(R.id.profile_name)
-        profileImage = headerView.findViewById<ImageView>(R.id.profile_image)
-        profileImageChange = headerView.findViewById<Button>(R.id.profile_image_change)
+        val profileName = headerView.findViewById<TextView>(R.id.sidebar_profile_name)
+        sidebarProfileImage = headerView.findViewById<ImageView>(R.id.sidebar_profile_image)
+        sidebarProfileImageChange = headerView.findViewById<Button>(R.id.sidebar_profile_image_change)
+        sidebarSetting = headerView.findViewById<ImageView>(R.id.sidebar_setting)
 
-        profileImageChange.setOnClickListener {
+
+        sidebarProfileImageChange.setOnClickListener {
             openGallery()
+        }
+
+        sidebarSetting.setOnClickListener {
+            val intent = Intent(this, SettingActivity::class.java)
+            startActivity(intent)
         }
 
         val userId = auth.currentUser?.uid
@@ -109,22 +118,6 @@ class MainActivity : AppCompatActivity() {
 
         navView.setNavigationItemSelectedListener { menuItem ->
             when (menuItem.itemId) {
-                R.id.nav_home -> {
-                    binding.viewPager.currentItem = 0
-                }
-
-                R.id.nav_settings -> {
-                    val intent = Intent(this, SettingActivity::class.java)
-                    startActivity(intent)
-                }
-
-                R.id.nav_logout -> {
-                    auth.signOut()
-                    val intent = Intent(this, IntroActivity::class.java)
-                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                    startActivity(intent)
-                }
-
                 R.id.nav_plus -> {
                     serverManager.addScoreToCurrentUser(5)
                 }
@@ -229,16 +222,16 @@ class MainActivity : AppCompatActivity() {
                         .error(R.drawable.user) // 로드 실패 시 기본 이미지
                         .placeholder(R.drawable.user)
                         .error(R.drawable.user)
-                        .into(profileImage)
+                        .into(sidebarProfileImage)
 
                 } else {
-                    profileImage.setImageResource(R.drawable.user) // 기본 이미지 설정
+                    sidebarProfileImage.setImageResource(R.drawable.user) // 기본 이미지 설정
                 }
             }
 
             override fun onCancelled(error: DatabaseError) {
                 Timber.tag("Firebase").w(error.toException(), "loadProfileImage:onCancelled")
-                profileImage.setImageResource(R.drawable.user)
+                sidebarProfileImage.setImageResource(R.drawable.user)
             }
         })
     }

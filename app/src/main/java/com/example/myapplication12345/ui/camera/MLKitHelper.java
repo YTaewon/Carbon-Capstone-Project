@@ -9,7 +9,6 @@ import com.google.mlkit.vision.label.ImageLabeling;
 import com.google.mlkit.vision.label.defaults.ImageLabelerOptions;
 import com.google.mlkit.vision.text.TextRecognition;
 import com.google.mlkit.vision.text.korean.KoreanTextRecognizerOptions;
-import com.google.mlkit.vision.text.latin.TextRecognizerOptions;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -72,7 +71,7 @@ public class MLKitHelper {
                                         if (i < filtered.size() - 1) sb.append(", ");
                                     }
                                 }
-                                if (detectedText != null && !detectedText.trim().isEmpty()) {
+                                if (!detectedText.trim().isEmpty()) {
                                     if (sb.length() > 0) sb.append(" / ");
                                     sb.append("텍스트: ").append(detectedText.replace("\n", " "));
                                 }

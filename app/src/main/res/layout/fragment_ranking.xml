@@ -19,48 +19,49 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
-        <com.google.android.material.tabs.TabLayout
-            android:id="@+id/tab_layout"
+    <com.google.android.material.tabs.TabLayout
+        android:id="@+id/tab_layout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/background_white"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/header"
+        app:tabIndicatorColor="@color/green"
+        app:tabMode="fixed"
+        app:tabRippleColor="@color/green"
+        app:tabSelectedTextColor="@color/green"
+        app:tabTextColor="@color/black"
+        tools:ignore="MissingConstraints">
+
+        <com.google.android.material.tabs.TabItem
+            android:id="@+id/btn_now"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            app:tabMode="fixed"
-            tools:ignore="MissingConstraints"
-            android:background="@drawable/background_white"
-            app:tabIndicatorColor="@color/green"
-            app:tabRippleColor="@color/green"
-            app:tabTextColor="@color/black"
-            app:tabSelectedTextColor="@color/green"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/header">
+            android:layout_height="match_parent"
+            android:text="전체" />
 
-            <com.google.android.material.tabs.TabItem
-                android:id="@+id/btn_now"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:text="전체" />
+        <com.google.android.material.tabs.TabItem
+            android:id="@+id/btn_daily"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:text="일간" />
 
-            <com.google.android.material.tabs.TabItem
-                android:id="@+id/btn_daily"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:text="일간" />
+        <com.google.android.material.tabs.TabItem
+            android:id="@+id/btn_weekly"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:text="주간" />
 
-            <com.google.android.material.tabs.TabItem
-                android:id="@+id/btn_weekly"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:text="주간" />
+        <com.google.android.material.tabs.TabItem
+            android:id="@+id/btn_monthly"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:text="월간" />
 
-            <com.google.android.material.tabs.TabItem
-                android:id="@+id/btn_monthly"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:text="월간" />
+    </com.google.android.material.tabs.TabLayout>
 
-        </com.google.android.material.tabs.TabLayout>
-
-        <LinearLayout
+    <LinearLayout
             android:id="@+id/top_rank"
             android:layout_width="0dp"
             android:layout_height="wrap_content"

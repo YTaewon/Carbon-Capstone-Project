@@ -27,6 +27,7 @@ import android.telephony.CellInfo;
 import android.telephony.CellInfoLte;
 import android.telephony.TelephonyManager;
 
+import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
 
@@ -221,13 +222,11 @@ public class SensorDataService extends Service {
 
             locationCallback = new LocationCallback() {
                 @Override
-                public void onLocationResult(LocationResult locationResult) {
-                    if (locationResult != null) {
-                        Location location = locationResult.getLastLocation();
-                        if (location != null) {
-                            lastKnownLocation = location;
+                public void onLocationResult(@NonNull LocationResult locationResult) {
+                    Location location = locationResult.getLastLocation();
+                    if (location != null) {
+                        lastKnownLocation = location;
 //                            Timber.tag(TAG).d("GPS 업데이트 수신: %f, %f", location.getLatitude(), location.getLongitude());
-                        }
                     }
                 }
             };

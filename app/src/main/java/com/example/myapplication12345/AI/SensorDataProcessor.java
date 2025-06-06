@@ -19,7 +19,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -358,7 +357,7 @@ public class SensorDataProcessor {
             if (maxProb < confidenceThreshold) {
                 predictedModeFromModel = DEFAULT_MODE_UNKNOWN;
                 Timber.tag(TAG).w("앙상블: 가장 높은 평균 확률(%.4f)이 임계값(%.1f) 미만. 모델 예측: '%s' 사용", maxProb, confidenceThreshold, predictedModeFromModel);
-            } else if (maxIndex >= 0 && maxIndex < TRANSPORT_MODES.length) {
+            } else if (maxIndex < TRANSPORT_MODES.length) {
                 predictedModeFromModel = TRANSPORT_MODES[maxIndex];
                 Timber.tag(TAG).d("앙상블: 가장 높은 확률의 이동수단: %s (인덱스: %d), 평균 확률: %.4f", predictedModeFromModel, maxIndex, maxProb);
             } else {
@@ -395,7 +394,7 @@ public class SensorDataProcessor {
             // --- 세그먼트 저장 (STOP이 아닌 경우만) ---
             if (gpsData != null && gpsData.size() >= MIN_TIMESTAMP_COUNT) {
                 int totalSegments = gpsData.size() / SEGMENT_SIZE;
-                double distancePerSegment = (totalSegments > 0) ? (double) totalDistance / totalSegments : 0.0;
+                double distancePerSegment = (double) totalDistance / totalSegments;
 
                 Timber.tag(TAG).d("앙상블 배치 총 이동 거리: %.2f m. %d개 세그먼트 저장 시작. 최종 모드: %s", totalDistance, totalSegments, finalTransportMode);
                 if(totalDistance > 30) {
@@ -586,9 +585,9 @@ public class SensorDataProcessor {
 
         // 타임스탬프 기준 정렬 (null 안전 처리 포함)
         try {
-            Collections.sort(sortedList, Comparator.comparingLong(m ->
+            sortedList.sort(Comparator.comparingLong(m ->
                     (m != null && m.get("timestamp") instanceof Number) ?
-                            ((Number) m.get("timestamp")).longValue() : Long.MAX_VALUE // null 이거나 timestamp 없으면 맨 뒤로
+                            ((Number) Objects.requireNonNull(m.get("timestamp"))).longValue() : Long.MAX_VALUE // null 이거나 timestamp 없으면 맨 뒤로
             ));
         } catch (Exception e) {
             Timber.tag(TAG).e(e, "타임스탬프 정렬 중 오류 발생");
@@ -774,7 +773,7 @@ public class SensorDataProcessor {
                 // null map, timestamp 키 부재, timestamp가 숫자가 아닌 경우 필터링
                 .filter(map -> map != null && map.containsKey("timestamp") && map.get("timestamp") instanceof Number)
                 // Long 값으로 변환
-                .mapToLong(map -> ((Number) map.get("timestamp")).longValue())
+                .mapToLong(map -> ((Number) Objects.requireNonNull(map.get("timestamp"))).longValue())
                 // 최소값 찾기
                 .min()
                 // 유효한 타임스탬프가 없으면 현재 시간 반환

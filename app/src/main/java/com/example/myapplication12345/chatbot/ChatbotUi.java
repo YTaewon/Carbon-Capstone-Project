@@ -6,7 +6,6 @@ import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
-import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
@@ -187,14 +186,14 @@ public class ChatbotUi extends AppCompatActivity {
                     getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
                 } else {
                     //응답 오류
-                    Log.e("getChatResponse", "Error: " + response.message());
+                    Timber.tag("getChatResponse").e("Error: %s", response.message());
                 }
             }
 
             @Override
             public void onFailure(Call<ChatGPTResponse> call, Throwable t) {
                 //응답 오류
-                Log.e("getChatResponse", "onFailure: ", t);
+                Timber.tag("getChatResponse").e(t, "onFailure: ");
             }
         });
     }

@@ -19,7 +19,7 @@
         <androidx.appcompat.widget.Toolbar
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
-            android:layout_height="50dp"
+            android:layout_height="?attr/actionBarSize"
             android:background="@color/headerBackground"
             app:titleTextColor="@android:color/white">
 
@@ -47,6 +47,7 @@
                 android:layout_width="30dp"
                 android:layout_height="30dp"
                 android:layout_gravity="end"
+                android:layout_marginRight="16dp"
                 android:src="@drawable/ic_reload" />
 
         </androidx.appcompat.widget.Toolbar>

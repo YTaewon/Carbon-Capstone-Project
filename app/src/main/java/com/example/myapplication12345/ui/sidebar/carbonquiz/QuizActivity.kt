@@ -9,6 +9,7 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import com.example.myapplication12345.R
+import com.example.myapplication12345.ServerManager
 
 class QuizActivity : AppCompatActivity() {
 
@@ -24,6 +25,8 @@ class QuizActivity : AppCompatActivity() {
     private lateinit var option4: Button
     private lateinit var resultText: TextView
     private lateinit var nextButton: Button
+
+    private lateinit var serverManager: ServerManager
 
     // 음식 관련 탄소 발자국 퀴즈 데이터
     private val quizData = listOf(
@@ -171,6 +174,7 @@ class QuizActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_quiz)
+        serverManager = ServerManager(this)
 
         // UI 요소 초기화
         progress = findViewById(R.id.progress_Monthly)
@@ -240,7 +244,7 @@ class QuizActivity : AppCompatActivity() {
                     append(questionAnswersIndex)
                 }
                 if(questionAnswersIndex == 100){
-                    //추후 추가 예정
+                    serverManager.addScoreToCurrentUser(5)
                 }
                 option1.visibility = View.GONE
                 option2.visibility = View.GONE
