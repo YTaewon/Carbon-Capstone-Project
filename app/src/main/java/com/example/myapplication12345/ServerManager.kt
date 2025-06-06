@@ -3,6 +3,7 @@ package com.example.myapplication12345
 import android.content.Context
 import android.content.SharedPreferences
 import android.widget.Toast
+import androidx.core.content.edit
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
@@ -15,15 +16,16 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 import kotlin.coroutines.resume
-import androidx.core.content.edit
 
 class ServerManager(private val context: Context) {
 
+    // Firebase 인스턴스와 인증 객체 초기화
     private val database = FirebaseDatabase.getInstance()
     private val auth = FirebaseAuth.getInstance()
+    // 점수 및 닉네임 캐싱을 위한 SharedPreferences 초기화
     private val prefs: SharedPreferences = context.getSharedPreferences("ScoreCache", Context.MODE_PRIVATE)
 
-    // Firebase 참조 헬퍼 함수
+    // 현재 사용자의 Firebase 참조를 반환하는 헬퍼 함수
     private fun getUserReference() = auth.currentUser?.uid?.let { database.getReference("users").child(it) }
 
     // 공통 에러 처리 헬퍼 함수 (사용자 친화적 메시지)
@@ -58,15 +60,47 @@ class ServerManager(private val context: Context) {
         return sdf.format(date.time)
     }
 
+    // 특정 날짜의 제품 배출량 점수를 가져오는 메서드 (getProductEmissions 호출)
     fun getScoresForDate(date: Calendar, onScoresRetrieved: (Int) -> Unit) {
         getProductEmissions(date, onScoresRetrieved)
     }
 
+    // 특정 날짜의 이동경로 배출량 점수를 가져오는 메서드 (getTransportEmissions 호출)
     fun getTransportEmissionsForDate(date: Calendar, onScoresRetrieved: (Int) -> Unit) {
         getTransportEmissions(date, onScoresRetrieved)
     }
 
+    // 특정 날짜의 사물 배출량 점수를 가져오는 메서드
+    fun getObjectEmissionsForDate(date: Calendar, onScoresRetrieved: (Int) -> Unit) {
+        // 사용자 인증 확인
+        val userRef = getUserReference() ?: run {
+            Toast.makeText(context, "로그인이 필요해요.", Toast.LENGTH_SHORT).show()
+            onScoresRetrieved(0)
+            return
+        }
+
+        // 날짜 포맷팅 및 Firebase 참조 설정
+        val dateString = getFormattedDate(date)
+        val emissionRef = userRef.child("emissions").child(dateString).child("objectEmissions")
+
+        // Firebase에서 데이터 조회
+        emissionRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val emissions = snapshot.getValue(Int::class.java) ?: 0
+                Timber.tag("ServerManager").d("사물 배출량 가져오기 성공: $dateString, 값: $emissions")
+                onScoresRetrieved(emissions)
+            }
+
+            override fun onCancelled(databaseError: DatabaseError) {
+                handleError(databaseError.toException(), "사물 배출량 가져오기")
+                onScoresRetrieved(0)
+            }
+        })
+    }
+
+    // 월별 포인트를 업데이트하는 메서드
     fun updateMonthlyPointsForMonth(month: String, callback: (Boolean) -> Unit) {
+        // 사용자 인증 확인
         val userRef = getUserReference() ?: run {
             Toast.makeText(context, "로그인이 필요해요.", Toast.LENGTH_SHORT).show()
             callback(false)
@@ -81,7 +115,9 @@ class ServerManager(private val context: Context) {
                 snapshot.children.forEach { dateSnapshot ->
                     val productEmissions = dateSnapshot.child("productEmissions").getValue(Int::class.java) ?: 0
                     val transportEmissions = dateSnapshot.child("transportEmissions").getValue(Int::class.java) ?: 0
-                    totalEmissions += productEmissions + transportEmissions
+                    // 사물 배출량 추가
+                    val objectEmissions = dateSnapshot.child("objectEmissions").getValue(Int::class.java) ?: 0
+                    totalEmissions += productEmissions + transportEmissions + objectEmissions
                 }
 
                 // monthly_points 노드에 총합 저장
@@ -108,16 +144,19 @@ class ServerManager(private val context: Context) {
      * 현재 사용자에게 점수를 추가하는 메서드 (트랜잭션 사용)
      */
     fun addScoreToCurrentUser(scoreToAdd: Int, onComplete: (() -> Unit)? = null) {
+        // 사용자 인증 확인
         val userRef = getUserReference() ?: run {
             Toast.makeText(context, "로그인이 필요해요.", Toast.LENGTH_SHORT).show()
             return
         }
 
+        // 새로운 점수 항목 키 생성
         val newScoreKey = userRef.child("scores").push().key ?: run {
             handleError(Exception("Failed to generate push key"), "점수 추가")
             return
         }
 
+        // 점수 추가 트랜잭션 실행
         userRef.runTransaction(object : com.google.firebase.database.Transaction.Handler {
             override fun doTransaction(currentData: com.google.firebase.database.MutableData): com.google.firebase.database.Transaction.Result {
                 val currentScore = currentData.child("score").getValue(Int::class.java) ?: getCachedScore()
@@ -147,11 +186,13 @@ class ServerManager(private val context: Context) {
      * 점수를 업데이트하는 메서드
      */
     fun updateScore(newScore: Int) {
+        // 사용자 인증 확인
         val userRef = getUserReference() ?: run {
             Toast.makeText(context, "로그인이 필요해요.", Toast.LENGTH_SHORT).show()
             return
         }
 
+        // 점수 업데이트
         userRef.child("score").setValue(newScore)
             .addOnSuccessListener {
                 cacheScore(newScore)
@@ -166,15 +207,18 @@ class ServerManager(private val context: Context) {
      * 점수를 가져오는 메서드
      */
     fun getScore(onScoreRetrieved: (Int) -> Unit) {
+        // 캐시된 점수 먼저 반환
         val cachedScore = getCachedScore()
         onScoreRetrieved(cachedScore)
 
+        // 사용자 인증 확인
         val userRef = getUserReference()
         if (userRef == null) {
             onScoreRetrieved(0)
             return
         }
 
+        // Firebase에서 점수 조회
         userRef.child("score").addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(dataSnapshot: DataSnapshot) {
                 val score = dataSnapshot.getValue(Int::class.java) ?: cachedScore
@@ -193,15 +237,18 @@ class ServerManager(private val context: Context) {
      * 특정 날짜의 productEmissions 가져오는 메서드
      */
     fun getProductEmissions(date: Calendar, onScoresRetrieved: (Int) -> Unit) {
+        // 사용자 인증 확인
         val userRef = getUserReference() ?: run {
             Toast.makeText(context, "로그인이 필요해요.", Toast.LENGTH_SHORT).show()
             onScoresRetrieved(0)
             return
         }
 
+        // 날짜 포맷팅 및 Firebase 참조 설정
         val dateString = getFormattedDate(date)
         val emissionRef = userRef.child("emissions").child(dateString).child("productEmissions")
 
+        // Firebase에서 데이터 조회
         emissionRef.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val emissions = snapshot.getValue(Int::class.java) ?: 0
@@ -220,15 +267,18 @@ class ServerManager(private val context: Context) {
      * 특정 날짜의 transportEmissions 가져오는 메서드
      */
     fun getTransportEmissions(date: Calendar, onScoresRetrieved: (Int) -> Unit) {
+        // 사용자 인증 확인
         val userRef = getUserReference() ?: run {
             Toast.makeText(context, "로그인이 필요해요.", Toast.LENGTH_SHORT).show()
             onScoresRetrieved(0)
             return
         }
 
+        // 날짜 포맷팅 및 Firebase 참조 설정
         val dateString = getFormattedDate(date)
         val emissionRef = userRef.child("emissions").child(dateString).child("transportEmissions")
 
+        // Firebase에서 데이터 조회
         emissionRef.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val emissions = snapshot.getValue(Int::class.java) ?: 0
@@ -247,18 +297,21 @@ class ServerManager(private val context: Context) {
      * 특정 날짜의 productEmissions 업데이트 메서드
      */
     fun updateProductEmissions(date: Calendar, emissions: Int, callback: (Boolean) -> Unit) {
+        // 사용자 인증 확인
         val userRef = getUserReference() ?: run {
             Toast.makeText(context, "로그인이 필요해요.", Toast.LENGTH_SHORT).show()
             callback(false)
             return
         }
 
+        // 날짜 포맷팅 및 Firebase 참조 설정
         val dateString = getFormattedDate(date)
         val emissionRef = userRef.child("emissions").child(dateString).child("productEmissions")
 
+        // 데이터 업데이트
         emissionRef.setValue(emissions)
             .addOnSuccessListener {
-                Timber.tag("ServerManager").d("제품 배출량 업데이트 완료: $dateString}, emissions: $emissions")
+                Timber.tag("ServerManager").d("제품 배출량 업데이트 완료: $dateString, emissions: $emissions")
                 callback(true)
             }
             .addOnFailureListener { e ->
@@ -271,15 +324,18 @@ class ServerManager(private val context: Context) {
      * 특정 날짜의 transportEmissions 업데이트 메서드
      */
     fun updateTransportEmissions(date: Calendar, emissions: Int, callback: (Boolean) -> Unit) {
+        // 사용자 인증 확인
         val userRef = getUserReference() ?: run {
             Toast.makeText(context, "로그인이 필요해요.", Toast.LENGTH_SHORT).show()
             callback(false)
             return
         }
 
+        // 날짜 포맷팅 및 Firebase 참조 설정
         val dateString = getFormattedDate(date)
         val emissionRef = userRef.child("emissions").child(dateString).child("transportEmissions")
 
+        // 데이터 업데이트
         emissionRef.setValue(emissions)
             .addOnSuccessListener {
                 Timber.tag("ServerManager").d("이동경로 배출량 업데이트 완료: $dateString, emissions: $emissions")
@@ -289,6 +345,39 @@ class ServerManager(private val context: Context) {
                 handleError(e, "이동경로 배출량 업데이트")
                 callback(false)
             }
+    }
+
+    /**
+     * 특정 날짜의 objectEmissions 업데이트 메서드
+     */
+    fun updateObjectEmissions(date: Calendar, emissions: Int, callback: (Boolean) -> Unit) {
+        // 사용자 인증 확인
+        val userRef = getUserReference() ?: run {
+            Toast.makeText(context, "로그인이 필요해요.", Toast.LENGTH_SHORT).show()
+            callback(false)
+            return
+        }
+
+        // 날짜 포맷팅 및 Firebase 참조 설정
+        val dateString = getFormattedDate(date)
+        val emissionRef = userRef.child("emissions").child(dateString).child("objectEmissions")
+
+        // 기존 배출량 조회 후 누적 업데이트
+        emissionRef.get().addOnSuccessListener { snapshot ->
+            val currentEmissions = snapshot.getValue(Int::class.java) ?: 0
+            emissionRef.setValue(currentEmissions + emissions)
+                .addOnSuccessListener {
+                    Timber.tag("ServerManager").d("사물 배출량 업데이트 완료: $dateString, emissions: ${currentEmissions + emissions}")
+                    callback(true)
+                }
+                .addOnFailureListener { e ->
+                    handleError(e, "사물 배출량 업데이트")
+                    callback(false)
+                }
+        }.addOnFailureListener { e ->
+            handleError(e, "현재 사물 배출량 조회")
+            callback(false)
+        }
     }
 
     /**

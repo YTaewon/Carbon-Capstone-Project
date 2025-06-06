@@ -25,6 +25,22 @@ class CalendarViewModel(private val serverManager: ServerManager) : ViewModel() 
         }
     }
 
+    // 특정 날짜의 objectEmissions 업데이트
+    fun updateObjectEmissions(date: Calendar, emissions: Int, onComplete: (Boolean) -> Unit) {
+        serverManager.updateObjectEmissions(date, emissions) { success ->
+            Timber.tag("CalendarViewModel").d("사물 탄소 배출량 업데이트: ${getFormattedDate(date)}: $emissions, 성공: $success")
+            onComplete(success)
+        }
+    }
+
+    // 특정 날짜의 objectEmissions 조회
+    fun getObjectEmissionsForDate(date: Calendar, onComplete: (Int) -> Unit) {
+        serverManager.getObjectEmissionsForDate(date) { emissions ->
+            Timber.tag("CalendarViewModel").d("사물 탄소 배출량 조회: ${getFormattedDate(date)}: $emissions")
+            onComplete(emissions)
+        }
+    }
+
     // 날짜 포맷팅 (YYYY-MM-DD)
     fun getFormattedDate(date: Calendar): String {
         val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
