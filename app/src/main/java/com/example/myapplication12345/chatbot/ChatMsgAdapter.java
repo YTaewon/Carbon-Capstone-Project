@@ -64,7 +64,7 @@ public class ChatMsgAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
     }
 
     // 내가 보낸 메시지를 띄우기 위한 뷰홀더입니다.
-    static class MyChatViewHolder extends RecyclerView.ViewHolder {
+    class MyChatViewHolder extends RecyclerView.ViewHolder {
         private TextView tvMsg;
         public MyChatViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -77,7 +77,7 @@ public class ChatMsgAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
     }
 
     //챗봇의 메시지를 띄우기 위한 뷰홀더입니다.
-    static class BotChatViewHolder extends RecyclerView.ViewHolder {
+     class BotChatViewHolder extends RecyclerView.ViewHolder {
         private TextView tvMsg;
         public BotChatViewHolder(@NonNull View itemView) {
             super(itemView);
