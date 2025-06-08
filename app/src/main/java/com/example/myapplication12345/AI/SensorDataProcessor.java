@@ -32,7 +32,8 @@ import timber.log.Timber;
 public class SensorDataProcessor {
     private static final String TAG = "SensorDataProcessor";
     private static final String[] MODEL_FILENAMES = {
-            "model/epoch=82-step=31042_optimized.ptl"
+            "model/epoch=82-step=31042_optimized.ptl",
+            "model/epoch=72-step=18177_optimized_ver1.ptl"
     };
     private static final int NUM_MODELS = MODEL_FILENAMES.length;
     private static final int MODEL_INPUT_FEATURE_SIZE = 340;

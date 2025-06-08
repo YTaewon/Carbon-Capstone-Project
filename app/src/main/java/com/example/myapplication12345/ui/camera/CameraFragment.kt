@@ -60,6 +60,9 @@ class CameraFragment : Fragment() {
     private val homeViewModel: HomeViewModel by activityViewModels()
     private val calendarViewModel: CalendarViewModel by activityViewModels()
 
+    // 카메라 시작 상태를 저장할 플래그
+    private var isCameraStarted = false
+
     // 갤러리 이미지 선택을 위한 ActivityResultLauncher
     private val getContentLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         uri?.let {
@@ -122,15 +125,6 @@ class CameraFragment : Fragment() {
 
         binding.resultText.text = "사진 촬영 혹은 갤러리에서 이미지를 선택하세요."
         displaySavedResult()
-
-        // Fragment가 생성될 때 현재 카메라 권한 상태에 따라 시작 버튼의 가시성 조정 (선택 사항)
-        // 이 부분을 추가하면, 앱 재실행 시 권한이 이미 있다면 버튼이 자동으로 숨겨집니다.
-        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
-            binding.startCameraButton.visibility = View.GONE
-            startCamera() // 권한이 있다면 자동으로 카메라 시작
-        } else {
-            binding.startCameraButton.visibility = View.VISIBLE
-        }
     }
 
     // 카메라 권한 확인 및 요청 메서드
@@ -268,10 +262,18 @@ class CameraFragment : Fragment() {
                 cameraProvider.unbindAll()
                 cameraProvider.bindToLifecycle(this, CameraSelector.DEFAULT_BACK_CAMERA, preview, imageCapture)
                 Timber.d("카메라 시작됨")
+
+                // 성공 시 플래그를 true로 설정하고 시작 버튼을 숨깁니다.
+                isCameraStarted = true
+                binding.startCameraButton.visibility = View.GONE
+
             } catch (e: Exception) {
                 Timber.e(e, "카메라 유즈케이스 바인딩 실패")
                 Toast.makeText(requireContext(), "카메라 시작 실패", Toast.LENGTH_SHORT).show()
-                binding.startCameraButton.visibility = View.VISIBLE // 실패 시 다시 시작 버튼 표시
+
+                // 실패 시 플래그를 false로 유지하고 시작 버튼을 다시 보여줍니다.
+                isCameraStarted = false
+                binding.startCameraButton.visibility = View.VISIBLE
             }
         }, ContextCompat.getMainExecutor(requireContext()))
     }
