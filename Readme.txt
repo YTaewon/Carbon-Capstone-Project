@@ -28,29 +28,26 @@
      │          IMUUtils.java               IMU 전처리 도구 모음
      │
      ├─chatbot
-     │      ApiClient.java
-     │      ChatbotUi.java
-     │      ChatGPTApi.java
-     │      ChatGPTRequest.java
-     │      ChatGPTResponse.java
-     │      ChatMsg.java
-     │      ChatMsgAdapter.java
+     │      ApiClient.java                  chatgpt api 요청
+     │      ChatbotUi.java                  chatgpt UI 연결
+     │      ChatGPTApi.java                 chatgpt api 인터페이스
+     │      ChatGPTRequest.java             chatgpt 요청
+     │      ChatGPTResponse.java            chatgpt 응답
+     │      ChatMsg.java                    메세지 변수들
+     │      ChatMsgAdapter.java             메세지 보내는 알고리즘
      │
      └─ui
          ├─sidebar
          │  ├─carbonquiz
-         │  │       QuizActivity.kt
+         │  │       QuizActivity.kt         퀴즈 실행
          │  │
          │  ├─foodcalculator
-         │  │       FilterManager.kt
-         │  │       FoodCalculatorActivity.kt
-         │  │       FoodCategory.kt
-         │  │       FoodDataManager.kt
-         │  │       FoodExpandableListAdapter.kt
-         │  │       FoodItem.kt
-         │  │
-         │  ├─profile
-         │  │       ProfileActivity.kt
+         │  │       FilterManager.kt                카태고리 매니저
+         │  │       FoodCalculatorActivity.kt       음식 탄소 계산기 실행
+         │  │       FoodCategory.kt                 카테고리 분류
+         │  │       FoodDataManager.kt              음식 탄소량 데이터
+         │  │       FoodExpandableListAdapter.kt    음식 탄소 계산기 백엔드
+         │  │       FoodItem.kt                     음식 분류
          │  │
          │  └─setting
          │          SettingActivity.kt
