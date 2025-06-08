@@ -32,7 +32,9 @@ import timber.log.Timber;
 public class SensorDataProcessor {
     private static final String TAG = "SensorDataProcessor";
     private static final String[] MODEL_FILENAMES = {
-            "model/epoch=82-step=31042_optimized.ptl"
+            "model/epoch=82-step=31042_optimized.ptl",
+            "model/epoch=72-step=18177_ver1_optimized.ptl",
+            "model/epoch=45-step=11454_ver2_optimized.ptl"
     };
     private static final int NUM_MODELS = MODEL_FILENAMES.length;
     private static final int MODEL_INPUT_FEATURE_SIZE = 340;
@@ -49,7 +51,7 @@ public class SensorDataProcessor {
             "BUS",         // 4: 버스
             "ETC",       // 5: KTX/기차 TRAIN -> ETC
             "SUBWAY",      // 6: 지하철
-            "CAR",  // 7: 오토바이 MOTORCYCLE -> CAR
+            "BUS",  // 7: 오토바이 MOTORCYCLE -> CAR
             "BIKE",      // 8: 전기자전거  E_BIKE -> BIKE
             "ETC",   // 9: 전동 킥보드 E_SCOOTER -> ETC
             "CAR"         // 10: 택시 (명시적으로 추가) TAXI -> CAR

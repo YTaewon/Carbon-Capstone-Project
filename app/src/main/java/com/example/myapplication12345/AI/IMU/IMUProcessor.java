@@ -7,162 +7,158 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.NavigableMap; // [수정] NavigableMap 임포트
-import java.util.TreeMap;
+import java.util.Set;
+import java.util.TreeSet;
 
 public class IMUProcessor {
 
-    // SensorDataService의 스펙과 일치하는 상수 정의
-    private static final int TARGET_WINDOW_SIZE = 100; // 1초에 100개 샘플 목표
-
     public static List<Map<String, Object>> preImu(List<Map<String, Object>> imu) {
         if (imu == null || imu.isEmpty()) {
-            throw new IllegalArgumentException("⚠ IMU 데이터가 비어 있습니다!");
+            throw new IllegalArgumentException("⚠ IMU 데이터가 비어 있습니다! CSV 파일을 확인하세요.");
         }
 
-        // 1. 타임스탬프별로 데이터 그룹화
-        Map<Long, List<Map<String, Object>>> groupedByTimestamp = groupByTimestamp(imu);
-
-        // 2. [핵심 보강] 각 윈도우를 균일한 100Hz 데이터로 리샘플링 및 패딩
-        Map<String, double[][][]> dfs = createUniformWindows(groupedByTimestamp);
-
-        // 3. 피처 추출
+        List<String> sensors = Arrays.asList("gyro", "accel", "mag", "rot", "pressure", "gravity", "linear_accel");
         List<String> enabledSensors = Arrays.asList("gyro", "accel", "linear_accel", "accel_h", "accel_v", "jerk_h",
                 "jerk_v", "mag", "gravity", "pressure");
 
-        Map<String, Object> calcDfs = new HashMap<>();
-        calcDfs.put("timestamp", createTimestampArray(groupedByTimestamp));
+        Map<String, Integer> channels = new HashMap<>(sensors.size());
+        for (String sensor : sensors) {
+            channels.put(sensor, getSensorChannelCount(sensor));
+        }
+
+        // 타임스탬프별로 그룹화된 데이터 준비
+        Map<Long, List<Map<String, Object>>> groupedByTimestamp = groupByTimestamp(imu);
+
+        Map<String, double[][][]> dfs = new HashMap<>(sensors.size());
+        for (String sensor : sensors) {
+            dfs.put(sensor, null);
+        }
+
+        for (String sensor : sensors) {
+            String usingSensorData = IMUConfig.getUsingSensorData(sensor);
+            if (usingSensorData == null) {
+                usingSensorData = sensor;
+            }
+            double[][] cutData = cutImu(usingSensorData, channels.get(usingSensorData), imu);
+            double[][][] reshapedData = reshapeDataByTimestamp(cutData, groupedByTimestamp);
+            dfs.put(sensor, reshapedData);
+        }
+
+        Map<String, Object> calcDfs = new HashMap<>(enabledSensors.size() + 1);
+        calcDfs.putAll(getUniqueTimestamps(imu));
 
         for (String sensor : enabledSensors) {
-            String dataSourceKey = IMUConfig.getUsingSensorData(sensor);
-            if (!dfs.containsKey(dataSourceKey)) {
-                continue;
-            }
+            int numChannels = IMUConfig.getSensorChannels(sensor);
+            boolean processEachAxis = IMUConfig.isProcessEachAxis(sensor);
+            boolean calculateJerk = IMUConfig.isCalculateJerkEnabled(sensor);
+            String process = IMUConfig.getProcessType(sensor);
 
             Map<String, double[][]> processed = IMUProcessing.processingImu(
-                    dfs.get(dataSourceKey),
-                    IMUConfig.getSensorChannels(sensor),
-                    IMUConfig.getProcessType(sensor),
-                    IMUConfig.isProcessEachAxis(sensor),
-                    IMUConfig.isCalculateJerkEnabled(sensor),
+                    dfs.get(IMUConfig.getUsingSensorData(sensor)),
+                    numChannels,
+                    process,
+                    processEachAxis,
+                    calculateJerk,
                     dfs.get("rot"),
                     dfs.get("gravity"),
                     sensor
             );
+
             calcDfs.putAll(replaceNaNWithZero(processed));
         }
 
-        // 4. 최종 결과 포맷팅
-        return formatToFinalList(calcDfs);
+        return processData(concatenateAll(calcDfs));
     }
 
-    private static Map<String, double[][][]> createUniformWindows(Map<Long, List<Map<String, Object>>> groupedData) {
-        List<String> sensors = Arrays.asList("gyro", "accel", "mag", "rot", "pressure", "gravity", "linear_accel");
-        Map<String, Integer> channels = getSensorChannelCounts();
-        Map<String, double[][][]> finalDfs = new HashMap<>();
-
-        for (String sensor : sensors) {
-            finalDfs.put(sensor, new double[groupedData.size()][TARGET_WINDOW_SIZE][channels.get(sensor)]);
+    /**
+     * Map<String, double[][]> 내의 모든 NaN 값을 0.0으로 변경한 새로운 Map을 반환합니다.
+     * 각 double[][]은 (1, 1) 형태의 스칼라 피처 값을 담고 있다고 가정합니다.
+     *
+     * @param featureMap 원본 피처 맵
+     * @return NaN이 0.0으로 대체된 새로운 피처 맵
+     */
+    public static Map<String, double[][]> replaceNaNWithZero(Map<String, double[][]> featureMap) {
+        if (featureMap == null) {
+            return null; // 또는 new HashMap<>();
         }
 
-        int windowIndex = 0;
-        for (List<Map<String, Object>> windowData : new TreeMap<>(groupedData).values()) {
-            if (windowData.isEmpty()) {
-                windowIndex++;
-                continue;
-            }
+        Map<String, double[][]> newFeatureMap = new HashMap<>();
 
-            // [수정] 변수 타입을 Map에서 NavigableMap으로 변경
-            NavigableMap<Integer, Map<String, Object>> seqMap = new TreeMap<>();
-            for (Map<String, Object> sample : windowData) {
-                seqMap.put((Integer) sample.getOrDefault("seq", 0), sample);
-            }
+        for (Map.Entry<String, double[][]> entry : featureMap.entrySet()) {
+            String key = entry.getKey();
+            double[][] originalValues = entry.getValue();
+            double[][] newValues = null;
 
-            for (String sensor : sensors) {
-                int numChannels = channels.get(sensor);
-                String[] axes = getAxesForSensor(sensor);
-
-                for (int seq = 0; seq < TARGET_WINDOW_SIZE; seq++) {
-                    if (seqMap.containsKey(seq)) {
-                        Map<String, Object> sample = seqMap.get(seq);
-                        for (int ch = 0; ch < numChannels; ch++) {
-                            finalDfs.get(sensor)[windowIndex][seq][ch] = getNumberAsDouble(sample.get(sensor + "." + axes[ch]));
-                        }
-                    } else {
-                        // [수정] 이제 floorEntry, ceilingEntry 등이 정상적으로 동작합니다.
-                        Map.Entry<Integer, Map<String, Object>> before = seqMap.floorEntry(seq);
-                        Map.Entry<Integer, Map<String, Object>> after = seqMap.ceilingEntry(seq);
-
-                        if (before == null) before = seqMap.firstEntry();
-                        if (after == null) after = seqMap.lastEntry();
-
-                        // before가 여전히 null이면 seqMap이 비어있는 예외적인 경우이므로 건너뜀
-                        if (before == null) continue;
-
-                        for (int ch = 0; ch < numChannels; ch++) {
-                            double valBefore = getNumberAsDouble(before.getValue().get(sensor + "." + axes[ch]));
-                            double valAfter = getNumberAsDouble(after.getValue().get(sensor + "." + axes[ch]));
-                            long seqBefore = before.getKey();
-                            long seqAfter = after.getKey();
-
-                            if (seqAfter == seqBefore) {
-                                finalDfs.get(sensor)[windowIndex][seq][ch] = valBefore;
+            if (originalValues != null) {
+                newValues = new double[originalValues.length][];
+                for (int i = 0; i < originalValues.length; i++) {
+                    if (originalValues[i] != null) {
+                        newValues[i] = new double[originalValues[i].length];
+                        for (int j = 0; j < originalValues[i].length; j++) {
+                            if (Double.isNaN(originalValues[i][j])) {
+                                newValues[i][j] = 0.0;
                             } else {
-                                double ratio = (double) (seq - seqBefore) / (seqAfter - seqBefore);
-                                double interpolatedValue = valBefore + (valAfter - valBefore) * ratio;
-                                finalDfs.get(sensor)[windowIndex][seq][ch] = interpolatedValue;
+                                newValues[i][j] = originalValues[i][j];
                             }
                         }
+                    } else {
+                        newValues[i] = null; // 내부 배열이 null이면 그대로 유지
                     }
                 }
             }
-            windowIndex++;
+            newFeatureMap.put(key, newValues);
         }
-        return finalDfs;
+        return newFeatureMap;
     }
 
-    // --- 나머지 유틸리티 및 헬퍼 메서드는 이전과 동일 (생략) ---
+    /**
+     * 타임스탬프 기준으로 IMU 데이터 그룹화
+     */
     private static Map<Long, List<Map<String, Object>>> groupByTimestamp(List<Map<String, Object>> imuData) {
-        Map<Long, List<Map<String, Object>>> grouped = new HashMap<>();
+        Map<Long, List<Map<String, Object>>> groupedByTimestamp = new HashMap<>(imuData.size() / 10);
         for (Map<String, Object> entry : imuData) {
-            long timestamp = getNumberAsLong(entry.get("timestamp"));
-            grouped.computeIfAbsent(timestamp, k -> new ArrayList<>()).add(entry);
+            long timestamp = getFirstValueAsLong(entry.get("timestamp"));
+            groupedByTimestamp.computeIfAbsent(timestamp, k -> new ArrayList<>()).add(entry);
         }
-        return grouped;
+        return groupedByTimestamp;
     }
 
-    public static Map<String, double[][]> replaceNaNWithZero(Map<String, double[][]> featureMap) {
-        if (featureMap == null) return new HashMap<>();
-        Map<String, double[][]> newMap = new HashMap<>();
-        for (Map.Entry<String, double[][]> entry : featureMap.entrySet()) {
-            String key = entry.getKey();
-            double[][] values = entry.getValue();
-            if (values == null) continue;
-            double[][] newValues = new double[values.length][];
-            for (int i = 0; i < values.length; i++) {
-                if(values[i] == null) continue;
-                newValues[i] = new double[values[i].length];
-                for (int j = 0; j < values[i].length; j++) {
-                    newValues[i][j] = Double.isNaN(values[i][j]) ? 0.0 : values[i][j];
-                }
+    /**
+     * 데이터를 타임스탬프별로 3D 배열로 변환
+     */
+    private static double[][][] reshapeDataByTimestamp(double[][] data, Map<Long, List<Map<String, Object>>> groupedByTimestamp) {
+        int numTimestamps = groupedByTimestamp.size();
+        int maxSize = groupedByTimestamp.values().stream().mapToInt(List::size).max().orElse(0);
+        int cols = data[0].length;
+
+        double[][][] reshaped = new double[numTimestamps][maxSize][cols];
+        int timestampIdx = 0;
+        int dataIdx = 0;
+
+        for (List<Map<String, Object>> group : groupedByTimestamp.values()) {
+            for (int i = 0; i < group.size() && dataIdx < data.length; i++) {
+                System.arraycopy(data[dataIdx++], 0, reshaped[timestampIdx][i], 0, cols);
             }
-            newMap.put(key, newValues);
+            timestampIdx++;
         }
-        return newMap;
+        return reshaped;
     }
 
-    private static List<Map<String, Object>> formatToFinalList(Map<String, Object> dataMap) {
-        if (dataMap.isEmpty() || !dataMap.containsKey("timestamp")) return Collections.emptyList();
-        int numRows = ((long[][]) dataMap.get("timestamp")).length;
+    /**
+     * 병합된 데이터를 리스트 형태로 변환
+     */
+    private static List<Map<String, Object>> processData(Map<String, Object> dataMap) {
+        if (dataMap.isEmpty()) return Collections.emptyList();
+        int numRows = ((double[][]) dataMap.values().iterator().next()).length;
         List<Map<String, Object>> resultList = new ArrayList<>(numRows);
 
         for (int rowIndex = 0; rowIndex < numRows; rowIndex++) {
             Map<String, Object> entry = new LinkedHashMap<>();
             for (String header : predefinedHeaders) {
                 Object data = dataMap.get(header);
-                if (data instanceof double[][] && rowIndex < ((double[][]) data).length && ((double[][]) data)[rowIndex].length > 0) {
+                if (data instanceof double[][] && rowIndex < ((double[][]) data).length && ((double[][]) data)[rowIndex].length == 1) {
                     entry.put(header, ((double[][]) data)[rowIndex][0]);
-                } else if (data instanceof long[][] && rowIndex < ((long[][]) data).length && ((long[][]) data)[rowIndex].length > 0) {
+                } else if (data instanceof long[][] && rowIndex < ((long[][]) data).length && ((long[][]) data)[rowIndex].length == 1) {
                     entry.put(header, ((long[][]) data)[rowIndex][0]);
                 }
             }
@@ -171,49 +167,113 @@ public class IMUProcessor {
         return resultList;
     }
 
-    private static long[][] createTimestampArray(Map<Long, List<Map<String, Object>>> groupedData) {
-        long[][] timestampArray = new long[groupedData.size()][1];
+    /**
+     * 유니크 타임스탬프 추출
+     */
+    private static Map<String, long[][]> getUniqueTimestamps(List<Map<String, Object>> imu) {
+        Set<Long> timestamps = new TreeSet<>();
+        for (Map<String, Object> imuEntry : imu) {
+            Object ts = imuEntry.get("timestamp");
+            if (ts != null) timestamps.add(getFirstValueAsLong(ts));
+        }
+
+        long[][] timestampArray = new long[timestamps.size()][1];
         int index = 0;
-        for (Long time : new TreeMap<>(groupedData).keySet()) {
+        for (Long time : timestamps) {
             timestampArray[index++][0] = time;
         }
-        return timestampArray;
+
+        Map<String, long[][]> result = new HashMap<>(1);
+        result.put("timestamp", timestampArray);
+        return result;
     }
 
-    private static double getNumberAsDouble(Object obj) {
-        if (obj instanceof Number) {
-            return ((Number) obj).doubleValue();
-        }
-        return 0.0;
-    }
-
-    private static long getNumberAsLong(Object obj) {
-        if (obj instanceof Number) {
+    /**
+     * 객체에서 Long 값 추출 - Java 11 호환
+     */
+    private static long getFirstValueAsLong(Object obj) {
+        if (obj instanceof List) {
+            List<?> list = (List<?>) obj;
+            if (!list.isEmpty()) {
+                Object first = list.get(0);
+                if (first instanceof Number) {
+                    return ((Number) first).longValue();
+                }
+            }
+        } else if (obj instanceof Number) {
             return ((Number) obj).longValue();
         }
         return 0L;
     }
 
-    private static Map<String, Integer> getSensorChannelCounts() {
-        Map<String, Integer> channels = new HashMap<>();
-        channels.put("gyro", 3);
-        channels.put("accel", 3);
-        channels.put("mag", 3);
-        channels.put("gravity", 3);
-        channels.put("linear_accel", 3);
-        channels.put("rot", 4);
-        channels.put("pressure", 1);
-        return channels;
-    }
+    /**
+     * 센서 데이터 잘라서 반환
+     */
+    private static double[][] cutImu(String sensor, int numChannels, List<Map<String, Object>> imu) {
+        double[][] data = new double[imu.size()][numChannels];
+        int row = 0;
 
-    private static String[] getAxesForSensor(String sensor) {
-        if ("rot".equals(sensor)) {
-            return new String[]{"x", "y", "z", "w"};
+        for (Map<String, Object> imuEntry : imu) {
+            double[] currentRow = data[row++];
+            int col = 0;
+            if (imuEntry.containsKey(sensor + ".x")) currentRow[col++] = getFirstValue(imuEntry.get(sensor + ".x"));
+            if (numChannels > 1 && imuEntry.containsKey(sensor + ".y")) currentRow[col++] = getFirstValue(imuEntry.get(sensor + ".y"));
+            if (numChannels > 2 && imuEntry.containsKey(sensor + ".z")) currentRow[col++] = getFirstValue(imuEntry.get(sensor + ".z"));
+            if (numChannels > 3 && imuEntry.containsKey(sensor + ".w")) currentRow[col] = getFirstValue(imuEntry.get(sensor + ".w"));
         }
-        return new String[]{"x", "y", "z"};
+        return data;
     }
 
-    // predefinedHeaders 리스트는 기존과 동일
+    /**
+     * 객체에서 double 값 추출 - Java 11 호환
+     */
+    private static double getFirstValue(Object obj) {
+        if (obj instanceof List) {
+            List<?> list = (List<?>) obj;
+            if (!list.isEmpty()) {
+                Object first = list.get(0);
+                if (first instanceof Number) {
+                    return ((Number) first).floatValue();
+                }
+            }
+        } else if (obj instanceof Number) {
+            return ((Number) obj).floatValue();
+        }
+        return 0.0f;
+    }
+
+    /**
+     * 모든 데이터를 병합하여 하나의 맵으로 반환
+     */
+    private static Map<String, Object> concatenateAll(Map<String, Object> dataMap) {
+        if (dataMap == null || dataMap.isEmpty()) {
+            throw new IllegalArgumentException("⚠ 데이터 맵이 비어 있습니다.");
+        }
+
+        Map<String, Object> sensorDataMap = new HashMap<>(dataMap.size());
+        for (Map.Entry<String, Object> entry : dataMap.entrySet()) {
+            Object data = entry.getValue();
+            if (data instanceof double[][] && ((double[][]) data).length > 0) {
+                sensorDataMap.put(entry.getKey(), ((double[][]) data).clone());
+            } else if (data instanceof long[][] && ((long[][]) data).length > 0) {
+                sensorDataMap.put(entry.getKey(), ((long[][]) data).clone());
+            }
+        }
+        return sensorDataMap;
+    }
+
+    private static int getSensorChannelCount(String sensor) {
+        if ("gyro".equals(sensor) || "accel".equals(sensor) || "mag".equals(sensor) ||
+                "gravity".equals(sensor) || "linear_accel".equals(sensor)) {
+            return 3;
+        } else if ("rot".equals(sensor)) {
+            return 4;
+        } else if ("pressure".equals(sensor)) {
+            return 1;
+        }
+        return 0;
+    }
+
     private static final List<String> predefinedHeaders = Arrays.asList(
             "timestamp",
             "accelM_mean", "accelM_std", "accelM_max", "accelM_min", "accelM_mad", "accelM_iqr",
