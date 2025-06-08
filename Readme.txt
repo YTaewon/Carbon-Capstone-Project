@@ -1,4 +1,5 @@
-│
+![Image](https://github.com/user-attachments/assets/98050b46-fbe9-4b01-912d-49d2b8eefb0b)
+
  myapplication12345
      │  MainActivity.kt                     메인 네비게이션바 및 상단 툴바 설정
      │  ServerManager.kt                    서버 연결
