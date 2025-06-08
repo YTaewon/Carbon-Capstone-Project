@@ -19,6 +19,7 @@ import android.net.wifi.ScanResult;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Build;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
@@ -39,10 +40,17 @@ import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
@@ -53,7 +61,7 @@ import timber.log.Timber;
 public class SensorDataService extends Service {
     private static final int PROCESS_INTERVAL_01 = 1000; // 1초 간격
     private static final int IMU_INTERVAL_MS = 10; // 10ms 간격
-    private static final int MAX_IMU_PER_SECOND = 200; // 1초에 최대 200개
+    private static final int MAX_IMU_PER_SECOND = 100; // 1초에 최대 200개
     private static final int INITIAL_DELAY_MS = 3000; // 최초 3초 지연
     private static final int MIN_TIMESTAMP_COUNT = 60; // 60초(60개의 고유 타임스탬프)
     private static final String TAG = "SensorDataService";
@@ -405,11 +413,11 @@ public class SensorDataService extends Service {
         sensorManager.registerListener(listener, linearAccelSensor, SensorManager.SENSOR_DELAY_FASTEST);
 
         Runnable imuCollector = new Runnable() {
-            int count = 0;
+            private int seq_counter = 0;
 
             @Override
             public void run() {
-                if (count >= MAX_IMU_PER_SECOND || System.currentTimeMillis() - startTime >= 1000) {
+                if (seq_counter >= MAX_IMU_PER_SECOND || System.currentTimeMillis() - startTime >= 1000) {
                     sensorManager.unregisterListener(listener);
                     if (!tempImuBuffer.isEmpty()) {
                         synchronized (imuBuffer) {
@@ -422,6 +430,7 @@ public class SensorDataService extends Service {
                 if (sensorData.isAllSet()) {
                     Map<String, Object> data = new LinkedHashMap<>();
                     data.put("timestamp", startTime);
+                    data.put("seq", seq_counter++);
                     data.put("accel.x", sensorData.accel[0]);
                     data.put("accel.y", sensorData.accel[1]);
                     data.put("accel.z", sensorData.accel[2]);
@@ -445,7 +454,6 @@ public class SensorDataService extends Service {
                     data.put("linear_accel.y", sensorData.linear[1]);
                     data.put("linear_accel.z", sensorData.linear[2]);
                     tempImuBuffer.add(data);
-                    count++;
                 }
                 handler.postDelayed(this, IMU_INTERVAL_MS);
             }
@@ -468,6 +476,12 @@ public class SensorDataService extends Service {
                                 List<Map<String, Object>> apDataCopy = cloneData(apBuffer);
                                 List<Map<String, Object>> btsDataCopy = cloneData(btsBuffer);
                                 List<Map<String, Object>> imuDataCopy = cloneData(imuBuffer);
+
+                                // =============================================================
+                                // 여기에 CSV 저장 코드를 호출합니다.
+                                // 파일 I/O는 시간이 걸릴 수 있으므로 백그라운드 스레드에서 실행합니다.
+//                                executorService.execute(() -> saveImuDataToCsv(imuDataCopy));
+                                // =============================================================
 
                                 if (dataProcessor != null) {
                                     executorService.execute(() -> {
@@ -510,5 +524,58 @@ public class SensorDataService extends Service {
         processBuffers();
         executorService.shutdown();
         stopForeground(true);
+    }
+
+    /**
+     * IMU 데이터 리스트를 외부 저장소의 Download 폴더에 CSV 파일로 저장합니다.
+     * @param imuDataList 저장할 IMU 데이터.
+     */
+    private void saveImuDataToCsv(List<Map<String, Object>> imuDataList) {
+        // 저장할 데이터가 없으면 아무것도 하지 않음
+        if (imuDataList == null || imuDataList.isEmpty()) {
+            Timber.tag(TAG).w("저장할 IMU 데이터가 없습니다.");
+            return;
+        }
+
+        // 파일 이름에 타임스탬프를 넣어 고유하게 만듭니다.
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
+        String fileName = "imu_data_" + timeStamp + ".csv";
+
+        // 파일을 저장할 경로를 지정합니다. (공용 Download 폴더)
+        File path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+        File file = new File(path, fileName);
+
+        // try-with-resources 구문을 사용하여 파일 쓰기 후 리소스가 자동으로 닫히도록 합니다.
+        try (FileWriter fw = new FileWriter(file);
+             BufferedWriter bw = new BufferedWriter(fw)) {
+
+            // 1. CSV 헤더(머리글) 작성
+            // 첫 번째 데이터의 키들을 가져와 헤더로 사용합니다.
+            Map<String, Object> firstPoint = imuDataList.get(0);
+            StringBuilder header = new StringBuilder();
+            for (String key : firstPoint.keySet()) {
+                header.append(key).append(",");
+            }
+            // 마지막 쉼표 제거 및 줄바꿈
+            bw.write(header.substring(0, header.length() - 1));
+            bw.newLine();
+
+            // 2. 데이터 행 작성
+            for (Map<String, Object> dataPoint : imuDataList) {
+                StringBuilder row = new StringBuilder();
+                for (Object value : dataPoint.values()) {
+                    row.append(value.toString()).append(",");
+                }
+                // 마지막 쉼표 제거 및 줄바꿈
+                bw.write(row.substring(0, row.length() - 1));
+                bw.newLine();
+            }
+
+            bw.flush(); // 버퍼에 남은 내용을 파일에 모두 씁니다.
+            Timber.tag(TAG).d("IMU 데이터가 CSV 파일로 성공적으로 저장되었습니다: %s", file.getAbsolutePath());
+
+        } catch (IOException e) {
+            Timber.tag(TAG).e(e, "IMU 데이터를 CSV 파일로 저장하는 중 오류 발생");
+        }
     }
 }
