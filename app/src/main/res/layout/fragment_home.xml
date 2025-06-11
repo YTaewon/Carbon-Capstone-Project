@@ -492,19 +492,18 @@
                             android:id="@+id/news_title"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="@{homeViewModel.news != null ? homeViewModel.news.title : `뉴스 제목`}"
+                            android:text="@{homeViewModel.news != null ? homeViewModel.news.decodedTitle : `뉴스 제목`}"
                             android:textColor="@color/black"
                             android:textSize="16sp"
                             android:textStyle="bold" />
 
                         <TextView
-                            android:id="@+id/news_summary"
+                            android:id="@+id/news_description"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="@{homeViewModel.news != null ? homeViewModel.news.description : `뉴스 요약`}"
+                            android:text="@{homeViewModel.news != null ? homeViewModel.news.decodedDescription : `뉴스 요약`}"
                             android:textColor="@color/black"
-                            android:textSize="12sp"
-                            android:layout_marginTop="4dp" />
+                            android:textSize="14sp" />
 
                         <LinearLayout
                             android:layout_width="match_parent"
