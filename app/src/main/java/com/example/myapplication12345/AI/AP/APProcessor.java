@@ -22,7 +22,7 @@ public class APProcessor {
             for (Map<String, Object> record : apData) {
                 long timestamp = (long) record.get("timestamp");
                 if (timestamp >= curTime && timestamp < windowEnd) {
-                    uniqueBSSIDs.add((String) record.getOrDefault("wifibssid", "N/A"));
+                    uniqueBSSIDs.add((String) record.getOrDefault("bssid", "N/A"));
                 }
             }
 
