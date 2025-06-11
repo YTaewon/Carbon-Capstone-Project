@@ -131,8 +131,8 @@
 
                     <ImageView
                         android:id="@+id/Img3"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
+                        android:layout_width="33dp"
+                        android:layout_height="33dp"
                         android:layout_marginStart="3dp"
                         app:srcCompat="@drawable/garnet" />
 
@@ -188,9 +188,9 @@
 
                     <ImageView
                         android:id="@+id/imageView"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginBottom="-2dp"
+                        android:layout_width="60dp"
+                        android:layout_height="60dp"
+                        android:layout_marginBottom="-10dp"
                         app:layout_constraintBottom_toTopOf="@+id/iv_profile1"
                         app:layout_constraintEnd_toEndOf="@+id/iv_profile1"
                         app:layout_constraintStart_toStartOf="@+id/iv_profile1"
@@ -218,8 +218,8 @@
 
                     <ImageView
                         android:id="@+id/imageView22"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
+                        android:layout_width="33dp"
+                        android:layout_height="33dp"
                         android:layout_marginStart="3dp"
                         app:srcCompat="@drawable/garnet" />
 
@@ -295,8 +295,8 @@
 
                     <ImageView
                         android:id="@+id/imageView2"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
+                        android:layout_width="33dp"
+                        android:layout_height="33dp"
                         android:layout_marginStart="3dp"
                         app:srcCompat="@drawable/garnet" />
 

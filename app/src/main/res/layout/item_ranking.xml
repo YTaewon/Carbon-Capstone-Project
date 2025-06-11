@@ -43,8 +43,8 @@
 
     <ImageView
         android:id="@+id/imageView5"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="33dp"
+        android:layout_height="33dp"
         app:srcCompat="@drawable/garnet" />
 
     <TextView
