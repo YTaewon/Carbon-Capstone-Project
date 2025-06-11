@@ -1,12 +1,12 @@
 ![Image](https://github.com/user-attachments/assets/98050b46-fbe9-4b01-912d-49d2b8eefb0b)
 
 ```
- myapplication12345
-     │  MainActivity.kt                     메인 네비게이션바 및 상단 툴바 설정
+myapplication12345
+     │  MainActivity.kt                     메인 내비게이션 바 및 상단 툴바 설정
      │  ServerManager.kt                    서버 연결
-     │  SplashActivity.kt                   로딩 화면 및 퍼미셜
+     │  SplashActivity.kt                   로딩 화면 및 퍼미션
      │  ViewPagerAdapter.kt                 네비게이션바 설정
-     │  AlarmBootReceiver.kt                알람
+     │  AlarmBootReceiver.kt                알림
      │
      ├─AI
      │  │  MovementAnalyzer.java            이동 거리 계산
@@ -44,7 +44,7 @@
          │  │       QuizActivity.kt         퀴즈 실행
          │  │
          │  ├─foodcalculator
-         │  │       FilterManager.kt                카태고리 매니저
+         │  │       FilterManager.kt                카테고리 매니저
          │  │       FoodCalculatorActivity.kt       음식 탄소 계산기 실행
          │  │       FoodCategory.kt                 카테고리 분류
          │  │       FoodDataManager.kt              음식 탄소량 데이터
