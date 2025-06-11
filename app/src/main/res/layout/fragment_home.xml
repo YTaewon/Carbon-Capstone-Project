@@ -355,7 +355,7 @@
                         <ImageView
                             android:layout_width="28dp"
                             android:layout_height="28dp"
-                            android:src="@drawable/ic_stepper2_24dp"
+                            android:src="@drawable/ic_run"
                             app:tint="#16A34A" />
                         <TextView
                             android:id="@+id/tv_total_trees"
