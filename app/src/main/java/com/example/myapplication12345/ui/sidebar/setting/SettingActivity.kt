@@ -69,10 +69,10 @@ class SettingActivity : AppCompatActivity() {
         }
 
         // 3. 저장 버튼 처리
-        binding.saveButton.setOnClickListener {
-            // 여기에 새로고침 또는 설정 저장 로직 구현
-            Toast.makeText(this, "저장 완료", Toast.LENGTH_SHORT).show()
-        }
+//        binding.saveButton.setOnClickListener {
+//            // 여기에 새로고침 또는 설정 저장 로직 구현
+//            Toast.makeText(this, "저장 완료", Toast.LENGTH_SHORT).show()
+//        }
 
         // 4. 프로필 이미지 변경 버튼 처리
         binding.profileImageChange.setOnClickListener {

@@ -40,15 +40,6 @@
                 android:textColor="@android:color/white"
                 android:layout_gravity="center" />
 
-            <ImageView
-                android:id="@+id/save_button"
-                android:layout_width="30dp"
-                android:layout_height="30dp"
-                android:layout_gravity="end"
-                android:layout_marginRight="16dp"
-                android:src="@drawable/ic_save"
-                android:contentDescription="새로고침"/>
-
         </androidx.appcompat.widget.Toolbar>
 
         <View
@@ -176,7 +167,7 @@
                     android:clickable="true"
                     android:focusable="true"
                     android:visibility="gone"
-                    app:drawableEndCompat="@drawable/ic_chevron_right" />
+                    app:drawableEndCompat="@drawable/ic_next_month" />
 
                 <TextView
                     android:id="@+id/setting_app_info"
@@ -192,7 +183,7 @@
                     android:background="?attr/selectableItemBackground"
                     android:clickable="true"
                     android:focusable="true"
-                    app:drawableEndCompat="@drawable/ic_chevron_right" />
+                    app:drawableEndCompat="@drawable/ic_next_month" />
 
                 <View
                     android:layout_width="match_parent"

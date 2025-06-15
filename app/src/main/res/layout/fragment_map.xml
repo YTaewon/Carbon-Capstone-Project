@@ -52,10 +52,12 @@
             android:padding="5dp"
             android:layout_alignParentEnd="true"
             android:layout_centerVertical="true"
-            android:src="@drawable/ic_reload_green"
+            android:src="@drawable/ic_reload"
+            android:tint="@color/headerBackground"
             android:clickable="true"
             android:focusable="true"
-            android:background="?attr/selectableItemBackgroundBorderless" /> <!-- 클릭 효과 추가 -->
+            android:background="?attr/selectableItemBackgroundBorderless"
+            tools:ignore="UseAppTint" />
 
         <ImageView
             android:id="@+id/select_transport_button"
@@ -66,10 +68,11 @@
             android:layout_toStartOf="@id/load_button"
             android:layout_centerVertical="true"
             android:layout_marginEnd="8dp"
-            android:src="@drawable/ic_filter_green"
+            android:src="@drawable/ic_filter"
             android:clickable="true"
             android:focusable="true"
-            android:background="?attr/selectableItemBackgroundBorderless" />
+            android:background="?attr/selectableItemBackgroundBorderless"
+            app:tint="@color/headerBackground" />
 
     </RelativeLayout>
 
