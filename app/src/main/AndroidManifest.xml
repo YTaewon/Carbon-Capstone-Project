@@ -82,6 +82,7 @@
         <activity
             android:name=".SplashActivity"
             android:exported="true">
+
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -96,9 +97,11 @@
             android:exported="false" />
         <activity
             android:name=".ui.login.JoinActivity"
+            android:theme="@style/Theme.MyApplication12345.Auth"
             android:exported="false" />
         <activity
             android:name=".ui.login.IntroActivity"
+            android:theme="@style/Theme.MyApplication12345.Auth"
             android:exported="false" />
 
         <activity

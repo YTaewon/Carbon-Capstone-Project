@@ -1,6 +1,7 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Base application theme. -->
     <style name="Base.Theme.MyApplication12345" parent="Theme.MaterialComponents.Light.NoActionBar">
+        <item name="android:statusBarColor" >@color/headerBackground</item>
         <!-- Customize your light theme here. -->
         <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
     </style>
@@ -9,6 +10,15 @@
         <item name="android:background">@android:color/transparent</item>
         <item name="android:textSize">20sp</item>
         <item name="android:layout_margin">10dp</item>
+    </style>
+
+    <!-- 로그인/회원가입 화면 전용 테마 -->
+    <style name="Theme.MyApplication12345.Auth" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- 상태 표시줄 색상을 검은색으로 설정 -->
+        <item name="android:statusBarColor">@android:color/black</item>
+
+        <!-- 상태 표시줄 배경이 어두우므로, 아이콘(시간, 배터리 등)은 밝은 색(흰색)으로 표시 -->
+        <item name="android:windowLightStatusBar">false</item>
     </style>
 
     <style name="DatePickerTheme" parent="Theme.AppCompat.Light.Dialog">
