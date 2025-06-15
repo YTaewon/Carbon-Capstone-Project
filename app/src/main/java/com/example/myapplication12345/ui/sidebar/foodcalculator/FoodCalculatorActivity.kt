@@ -1,7 +1,6 @@
 package com.example.myapplication12345.ui.sidebar.foodcalculator
 
 import android.os.Bundle
-import android.widget.ImageView
 import androidx.appcompat.app.AppCompatActivity
 import com.example.myapplication12345.databinding.ActivityFoodCalculatorBinding
 
@@ -17,20 +16,17 @@ class FoodCalculatorActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         // 뒤로가기 버튼
-        val backButton = binding.backButton
-        backButton.setOnClickListener {
+        binding.backButton.setOnClickListener {
             finish()
         }
 
         // 필터 버튼
-        val filterButton = binding.selectTransportButton
-        filterButton.setOnClickListener {
+        binding.selectTransportButton.setOnClickListener {
             filterManager.showFilter()
         }
 
         // 새로고침 버튼
-        val loadButton = binding.loadButton
-        loadButton.setOnClickListener {
+        binding.loadButton.setOnClickListener {
             filterManager.resetFilter()
         }
 
@@ -38,9 +34,9 @@ class FoodCalculatorActivity : AppCompatActivity() {
         val foodDataManager = FoodDataManager()
         categories = foodDataManager.getFoodCategories()
 
-        // 어댑터 설정
+        // 어댑터 설정 (수정된 어댑터 사용)
         adapter = FoodExpandableListAdapter(this, categories)
-        binding.expandableListView.setAdapter(adapter) // setAdapter 사용
+        binding.expandableListView.setAdapter(adapter)
 
         // FilterManager 초기화
         filterManager = FilterManager(this, categories) {
@@ -52,12 +48,14 @@ class FoodCalculatorActivity : AppCompatActivity() {
             var totalCarbon = 0.0
             categories.filter { it.isSelected }.forEach { category ->
                 category.items.forEach { food ->
-                    totalCarbon += food.carbonValue * food.quantity
+                    // *** 중요: 계산 로직 수정 ***
+                    // carbonValue는 100g당 배출량이므로, g단위로 입력된 quantity를 100으로 나눠서 곱해야 합니다.
+                    if (food.quantity > 0) {
+                        totalCarbon += food.carbonValue * (food.quantity / 100.0)
+                    }
                 }
             }
-            binding.textViewResult.text = buildString {
-                append("결과: %.2f gCO2e")
-            }.format(totalCarbon)
+            binding.textViewResult.text = "결과: %.2f gCO2e".format(totalCarbon)
         }
     }
 }

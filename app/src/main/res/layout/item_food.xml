@@ -16,8 +16,15 @@
         android:id="@+id/food_quantity"
         android:layout_width="100dp"
         android:layout_height="wrap_content"
-        android:hint="개"
         android:textAlignment="textEnd"
         android:inputType="number"
         android:textSize="16sp" />
+
+    <!-- 단위 표시 TextView -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text=" g"
+        android:textSize="16sp" />
+
 </LinearLayout>
