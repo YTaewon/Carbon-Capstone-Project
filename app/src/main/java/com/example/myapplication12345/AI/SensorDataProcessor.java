@@ -33,8 +33,8 @@ public class SensorDataProcessor {
     private static final String TAG = "SensorDataProcessor";
     private static final String[] MODEL_FILENAMES = {
             "model/epoch=72-step=18177_ver1_optimized.ptl",
-            "model/epoch=55-step=13944_ver2_optimized.ptl",
-            "model/epoch=49-step=12450_ver3_optimized.ptl"
+            "model/epoch=74-step=18675_ver2_optimized.ptl",
+            "model/epoch=80-step=20169_ver3_optimized.ptl"
     };
     private static final int NUM_MODELS = MODEL_FILENAMES.length;
     private static final int MODEL_INPUT_FEATURE_SIZE = 340;
