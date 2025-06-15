@@ -40,7 +40,7 @@
                 android:textStyle="bold"
                 android:textSize="20dp"
                 android:padding="5dp"
-                android:text="탄소 계산기(음식)"
+                android:text="음식 탄소 계산기(100g 당)"
                 android:textColor="@android:color/white"
                 android:layout_gravity="center" />
 

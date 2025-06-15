@@ -92,14 +92,6 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"/>
 
-        <!-- 이메일 입력 -->
-
-        <!-- 이메일 입력 하단 구분선 -->
-
-        <!-- 이메일 아이콘 -->
-
-        <!-- 비밀번호 입력 -->
-
         <EditText
             android:id="@+id/emailEditText"
             android:layout_width="0dp"

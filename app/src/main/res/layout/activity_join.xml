@@ -1,185 +1,272 @@
+<?xml version="1.0" encoding="utf-8"?>
 <layout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools">
-<androidx.constraintlayout.widget.ConstraintLayout
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="@color/backgroundColor"
-    android:padding="16dp">
-
-    <!-- 이메일 입력 -->
-    <EditText
-        android:id="@+id/emailEditText"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:background="@null"
-        android:hint="Email"
-        android:imeOptions="actionNext"
-        android:inputType="textEmailAddress"
-        android:minHeight="48dp"
-        android:paddingStart="40dp"
-        android:paddingEnd="10dp"
-        android:textColor="@color/colorTextPrimary"
-        android:textSize="20dp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
-    <!-- 이메일 아이콘 -->
-
-    <ImageView
-        android:layout_width="20dp"
-        android:layout_height="20dp"
-        android:layout_marginBottom="12dp"
-        android:contentDescription="@string/app_name"
-        android:src="@drawable/ic_email"
-        app:layout_constraintBottom_toBottomOf="@+id/emailEditText"
-        app:layout_constraintStart_toStartOf="@+id/emailEditText" />
-
-    <!-- 닉네임 입력 -->
-
-    <View
-        android:id="@+id/viewDivEmail"
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/main"
         android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:layout_marginTop="8dp"
-        android:background="@color/colorTextHint"
-        app:layout_constraintTop_toBottomOf="@+id/emailEditText"
-        tools:ignore="MissingConstraints"
-        tools:layout_editor_absoluteX="16dp" />
+        android:layout_height="match_parent">
 
-    <EditText
-        android:id="@+id/nicknameEditText"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:background="@null"
-        android:hint="Nickname"
-        android:imeOptions="actionNext"
-        android:minHeight="48dp"
-        android:paddingStart="40dp"
-        android:paddingEnd="10dp"
-        android:textColor="@color/colorTextPrimary"
-        android:textSize="20dp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.0"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/emailEditText" />
+        <!-- 헤더 이미지 -->
+        <ImageView
+            android:id="@+id/imageHeader"
+            android:layout_width="0dp"
+            android:layout_height="280dp"
+            android:contentDescription="@string/app_name"
+            android:scaleType="centerCrop"
+            android:src="@drawable/pic1"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"/>
 
-    <!-- 비밀번호 입력 -->
+        <!-- 헤더 이미지 위에 반투명 레이어 -->
+        <View
+            android:id="@+id/headerOverlay"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:background="@drawable/header_layer"
+            app:layout_constraintTop_toTopOf="@id/imageHeader"
+            app:layout_constraintBottom_toBottomOf="@id/imageHeader"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"/>
 
-    <ImageView
-        android:layout_width="20dp"
-        android:layout_height="20dp"
-        android:layout_marginBottom="12dp"
-        android:contentDescription="@string/app_name"
-        android:src="@drawable/user"
-        app:layout_constraintBottom_toBottomOf="@+id/nicknameEditText"
-        app:layout_constraintStart_toStartOf="@+id/nicknameEditText" />
+        <!-- 헤더에 표시될 텍스트 (제목 및 부제목) -->
+        <LinearLayout
+            android:id="@+id/headerTextLayout"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="18dp"
+            android:gravity="center_vertical"
+            android:orientation="vertical"
+            app:layout_constraintBottom_toBottomOf="@id/imageHeader"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="@id/imageHeader">
 
-    <View
-        android:id="@+id/viewDivNickname"
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:layout_marginTop="4dp"
-        android:background="@color/colorTextHint"
-        app:layout_constraintTop_toBottomOf="@+id/nicknameEditText"
-        tools:ignore="MissingConstraints"
-        tools:layout_editor_absoluteX="19dp" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:includeFontPadding="false"
+                android:text="탄소배출절약앱"
+                android:textColor="@color/colorWhite"
+                android:textSize="25sp"
+                android:textStyle="bold"/>
+        </LinearLayout>
 
-    <EditText
-        android:id="@+id/passwordEditText"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:background="@null"
-        android:hint="Password"
-        android:imeOptions="actionNext"
-        android:inputType="textPassword"
-        android:minHeight="48dp"
-        android:paddingStart="40dp"
-        android:paddingEnd="10dp"
-        android:textColor="@color/colorTextPrimary"
-        android:textSize="20dp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.0"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/nicknameEditText" />
+        <!-- 헤더와 내용 사이 구분용 View -->
+        <View
+            android:id="@+id/viewSupporter"
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_marginBottom="30dp"
+            app:layout_constraintBottom_toBottomOf="@id/imageHeader"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"/>
 
-    <!-- 비밀번호 확인 -->
+        <!-- 메인 콘텐츠 영역 -->
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/mainContent"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:background="@drawable/background_login"
+            android:paddingStart="30dp"
+            android:paddingEnd="30dp"
+            app:layout_constraintTop_toBottomOf="@id/viewSupporter"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
 
-    <ImageView
-        android:layout_width="20dp"
-        android:layout_height="20dp"
-        android:layout_marginBottom="12dp"
-        android:contentDescription="@string/app_name"
-        android:src="@drawable/ic_lock"
-        app:layout_constraintBottom_toBottomOf="@+id/passwordEditText"
-        app:layout_constraintStart_toStartOf="@+id/passwordEditText" />
+            <!-- 환영 메시지 -->
+            <TextView
+                android:id="@+id/textWelcome"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:text="@string/welcom"
+                android:textColor="@color/colorTextPrimary"
+                android:layout_marginTop="25dp"
+                android:layout_marginStart="10dp"
+                android:layout_marginEnd="10dp"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"/>
 
-    <View
-        android:id="@+id/viewDivPassword"
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:layout_marginTop="8dp"
-        android:background="@color/colorTextHint"
-        app:layout_constraintTop_toBottomOf="@+id/passwordEditText"
-        tools:ignore="MissingConstraints"
-        tools:layout_editor_absoluteX="16dp" />
+            <!-- 이메일 입력 -->
+            <EditText
+                android:id="@+id/emailEditText"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:background="@null"
+                android:hint="email"
+                android:imeOptions="actionNext"
+                android:inputType="textEmailAddress"
+                android:minHeight="48dp"
+                android:paddingStart="40dp"
+                android:paddingEnd="10dp"
+                android:textColor="@color/colorTextPrimary"
+                android:textSize="15sp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/textWelcome"
+                app:layout_constraintStart_toStartOf="parent"
+                />
 
-    <EditText
-        android:id="@+id/confirmPasswordEditText"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:background="@null"
-        android:hint="Confirmpassword"
-        android:imeOptions="actionNext"
-        android:inputType="textPassword"
-        android:minHeight="48dp"
-        android:paddingStart="40dp"
-        android:paddingEnd="10dp"
-        android:textColor="@color/colorTextPrimary"
-        android:textSize="20dp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.0"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/passwordEditText" />
+            <!-- 이메일 아이콘 -->
 
-    <!-- 회원가입 버튼 -->
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_marginBottom="12dp"
+                android:contentDescription="@string/app_name"
+                android:src="@drawable/ic_email"
+                app:layout_constraintBottom_toBottomOf="@+id/emailEditText"
+                app:layout_constraintStart_toStartOf="@+id/emailEditText" />
 
-    <ImageView
-        android:layout_width="20dp"
-        android:layout_height="20dp"
-        android:layout_marginBottom="12dp"
-        android:contentDescription="@string/app_name"
-        android:src="@drawable/ic_check"
-        app:layout_constraintBottom_toBottomOf="@+id/confirmPasswordEditText"
-        app:layout_constraintStart_toStartOf="@+id/confirmPasswordEditText" />
+            <!-- 닉네임 입력 -->
 
-    <View
-        android:id="@+id/viewDivcofirmPassword"
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:layout_marginTop="8dp"
-        android:background="@color/colorTextHint"
-        app:layout_constraintTop_toBottomOf="@+id/confirmPasswordEditText"
-        tools:ignore="MissingConstraints"
-        tools:layout_editor_absoluteX="6dp" />
+            <View
+                android:id="@+id/viewDivEmail"
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="8dp"
+                android:background="@color/colorTextHint"
+                app:layout_constraintTop_toBottomOf="@+id/emailEditText"
+                tools:ignore="MissingConstraints"
+                tools:layout_editor_absoluteX="16dp" />
 
-    <androidx.constraintlayout.utils.widget.MotionButton
-        android:id="@+id/joinBtn"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="40dp"
-        android:background="@drawable/login_button_background"
-        android:textColor="@android:color/white"
-        android:textStyle="bold"
-        android:text="회원가입"
-        app:layout_constraintTop_toBottomOf="@id/confirmPasswordEditText"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+            <EditText
+                android:id="@+id/nicknameEditText"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:background="@null"
+                android:hint="nickname"
+                android:imeOptions="actionNext"
+                android:minHeight="48dp"
+                android:paddingStart="40dp"
+                android:paddingEnd="10dp"
+                android:textColor="@color/colorTextPrimary"
+                android:textSize="15sp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="0.0"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/emailEditText" />
+
+            <!-- 비밀번호 입력 -->
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_marginBottom="12dp"
+                android:contentDescription="@string/app_name"
+                android:src="@drawable/user"
+                app:layout_constraintBottom_toBottomOf="@+id/nicknameEditText"
+                app:layout_constraintStart_toStartOf="@+id/nicknameEditText" />
+
+            <View
+                android:id="@+id/viewDivNickname"
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="4dp"
+                android:background="@color/colorTextHint"
+                app:layout_constraintTop_toBottomOf="@+id/nicknameEditText"
+                tools:ignore="MissingConstraints"
+                tools:layout_editor_absoluteX="19dp" />
+
+            <EditText
+                android:id="@+id/passwordEditText"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:background="@null"
+                android:hint="password"
+                android:imeOptions="actionNext"
+                android:inputType="textPassword"
+                android:minHeight="48dp"
+                android:paddingStart="40dp"
+                android:paddingEnd="10dp"
+                android:textColor="@color/colorTextPrimary"
+                android:textSize="15sp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="0.0"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/nicknameEditText" />
+
+            <!-- 비밀번호 확인 -->
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_marginBottom="12dp"
+                android:contentDescription="@string/app_name"
+                android:src="@drawable/ic_lock"
+                app:layout_constraintBottom_toBottomOf="@+id/passwordEditText"
+                app:layout_constraintStart_toStartOf="@+id/passwordEditText" />
+
+            <View
+                android:id="@+id/viewDivPassword"
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="8dp"
+                android:background="@color/colorTextHint"
+                app:layout_constraintTop_toBottomOf="@+id/passwordEditText"
+                tools:ignore="MissingConstraints"
+                tools:layout_editor_absoluteX="16dp" />
+
+            <EditText
+                android:id="@+id/confirmPasswordEditText"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:background="@null"
+                android:hint="confirmpassword"
+                android:imeOptions="actionNext"
+                android:inputType="textPassword"
+                android:minHeight="48dp"
+                android:paddingStart="40dp"
+                android:paddingEnd="10dp"
+                android:textColor="@color/colorTextPrimary"
+                android:textSize="15sp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="0.0"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/passwordEditText" />
+
+            <!-- 회원가입 버튼 -->
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_marginBottom="12dp"
+                android:contentDescription="@string/app_name"
+                android:src="@drawable/ic_check"
+                app:layout_constraintBottom_toBottomOf="@+id/confirmPasswordEditText"
+                app:layout_constraintStart_toStartOf="@+id/confirmPasswordEditText" />
+
+            <View
+                android:id="@+id/viewDivcofirmPassword"
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="8dp"
+                android:background="@color/colorTextHint"
+                app:layout_constraintTop_toBottomOf="@+id/confirmPasswordEditText"
+                tools:ignore="MissingConstraints"
+                tools:layout_editor_absoluteX="6dp" />
+
+            <androidx.constraintlayout.utils.widget.MotionButton
+                android:id="@+id/joinBtn"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="40dp"
+                android:background="@drawable/login_button_background"
+                android:textColor="@android:color/white"
+                android:textStyle="bold"
+                android:text="회원가입"
+                app:layout_constraintTop_toBottomOf="@id/confirmPasswordEditText"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent" />
 
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+        </androidx.constraintlayout.widget.ConstraintLayout>
+    </androidx.constraintlayout.widget.ConstraintLayout>
 </layout>
