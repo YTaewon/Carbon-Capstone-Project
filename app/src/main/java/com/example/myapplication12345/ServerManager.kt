@@ -316,4 +316,35 @@ class ServerManager(private val context: Context) {
             }
         })
     }
+
+    /**
+     * 특정 날짜의 productEmissions를 가져오는 suspend 함수
+     */
+    suspend fun getProductEmissionsSuspend(date: Calendar): Int {
+        // suspendCancellableCoroutine은 코루틴을 일시 중단하고,
+        // 콜백이 호출되면 다시 재개(resume)시키는 역할을 합니다.
+        return suspendCancellableCoroutine { continuation ->
+            // 기존의 콜백 기반 함수를 호출합니다.
+            getProductEmissions(date) { emissions ->
+                // 코루틴이 아직 활성 상태일 때만 결과를 전달합니다.
+                // (Fragment가 파괴되는 등 코루틴이 취소된 경우를 대비)
+                if (continuation.isActive) {
+                    continuation.resume(emissions) // 콜백 결과를 코루틴의 반환값으로 전달
+                }
+            }
+        }
+    }
+
+    /**
+     * 특정 날짜의 transportEmissions를 가져오는 suspend 함수
+     */
+    suspend fun getTransportEmissionsSuspend(date: Calendar): Int {
+        return suspendCancellableCoroutine { continuation ->
+            getTransportEmissions(date) { emissions ->
+                if (continuation.isActive) {
+                    continuation.resume(emissions)
+                }
+            }
+        }
+    }
 }

@@ -13,4 +13,6 @@
     <string name="password">password</string>
     <string name="email">email</string>
     <string name="map">Map</string>
+    <string name="previous_month">이전 달</string>
+    <string name="next_month">다음 달</string>
 </resources>

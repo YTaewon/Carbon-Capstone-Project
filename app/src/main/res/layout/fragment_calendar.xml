@@ -1,76 +1,92 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/backgroundColor">
 
-    <LinearLayout
+    <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical">
+        android:layout_height="match_parent">
 
-        <!-- 이전/다음 달 이동 버튼 -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center"
-            android:paddingTop="16dp">
+            android:orientation="vertical">
 
-            <ImageButton
-                android:id="@+id/btn_prev_month"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:importantForAccessibility="no"
-                android:src="@drawable/ic_previous_month"
-                android:background="?attr/selectableItemBackgroundBorderless"/>
+            <!-- 이전/다음 달 이동 버튼 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:orientation="horizontal"
+                android:paddingTop="16dp">
+
+                <ImageButton
+                    android:id="@+id/btn_prev_month"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/previous_month"
+                    android:src="@drawable/ic_previous_month" />
+
+                <TextView
+                    android:id="@+id/tv_date"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:layout_marginLeft="20dp"
+                    android:layout_marginRight="20dp"
+                    android:text="2025년 03월"
+                    android:textColor="@color/black"
+                    android:textSize="20sp"
+                    android:textStyle="bold" />
+
+                <ImageButton
+                    android:id="@+id/btn_next_month"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/next_month"
+                    android:src="@drawable/ic_next_month" />
+            </LinearLayout>
+
+            <!-- 달력 그리드뷰 -->
+            <GridView
+                android:id="@+id/gridview"
+                android:layout_width="match_parent"
+                android:layout_height="480dp"
+                android:layout_marginLeft="16dp"
+                android:layout_marginTop="8dp"
+                android:layout_marginRight="16dp"
+                android:background="@drawable/background_white"
+                android:elevation="4dp"
+                android:gravity="center"
+                android:horizontalSpacing="4dp"
+                android:numColumns="7"
+                android:stretchMode="columnWidth"
+                android:verticalSpacing="4dp" />
 
             <TextView
-                android:id="@+id/tv_date"
-                android:layout_width="wrap_content"
+                android:id="@+id/tv_day_result"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginLeft="20dp"
-                android:layout_marginRight="20dp"
-                android:textSize="20sp"
-                android:textStyle="bold"
-                android:textColor="@color/black"
-                android:text="2025년 03월"
-                android:layout_gravity="center" />
+                android:layout_margin="16dp"
+                android:background="@drawable/background_white"
+                android:elevation="4dp"
+                android:padding="16dp"
+                android:textSize="16sp" />
 
-            <ImageButton
-                android:id="@+id/btn_next_month"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:importantForAccessibility="no"
-                android:src="@drawable/ic_next_month"
-                android:background="?attr/selectableItemBackgroundBorderless"/>
         </LinearLayout>
+    </ScrollView>
 
-        <!-- 달력 그리드뷰 -->
-        <GridView
-            android:id="@+id/gridview"
-            android:layout_width="match_parent"
-            android:layout_height="480dp"
-            android:gravity="center"
-            android:layout_marginTop="8dp"
-            android:layout_marginRight="16dp"
-            android:layout_marginLeft="16dp"
-            android:background="@drawable/background_white"
-            android:elevation="4dp"
-            android:horizontalSpacing="4dp"
-            android:numColumns="7"
-            android:stretchMode="columnWidth"
-            android:verticalSpacing="4dp" />
+    <!-- 로딩 인디케이터: 화면 중앙에 표시 -->
+    <ProgressBar
+        android:id="@+id/calendar_progress_bar"
+        style="?android:attr/progressBarStyle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:visibility="gone" /> <!-- 처음에는 숨겨둠 -->
 
-        <TextView
-            android:id="@+id/tv_day_result"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_margin="16dp"
-            android:padding="16dp"
-            android:elevation="4dp"
-            android:background="@drawable/background_white"
-            android:textSize="16sp" />
-
-    </LinearLayout>
-</ScrollView>
+</FrameLayout>
