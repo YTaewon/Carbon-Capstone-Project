@@ -50,7 +50,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var drawerLayout: DrawerLayout
 
     private lateinit var sidebarProfileImage: ImageView
-    private lateinit var sidebarProfileImageChange: Button
     private lateinit var sidebarSetting: ImageView
 
     private var selectedImageUri: Uri? = null
@@ -95,13 +94,7 @@ class MainActivity : AppCompatActivity() {
         val headerView = navView.getHeaderView(0) // 헤더 뷰 가져오기
         val profileName = headerView.findViewById<TextView>(R.id.sidebar_profile_name)
         sidebarProfileImage = headerView.findViewById<ImageView>(R.id.sidebar_profile_image)
-        sidebarProfileImageChange = headerView.findViewById<Button>(R.id.sidebar_profile_image_change)
         sidebarSetting = headerView.findViewById<ImageView>(R.id.sidebar_setting)
-
-
-        sidebarProfileImageChange.setOnClickListener {
-            openGallery()
-        }
 
         sidebarSetting.setOnClickListener {
             val intent = Intent(this, SettingActivity::class.java)
@@ -170,11 +163,6 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         })
-    }
-
-    private fun openGallery() {
-        val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
-        galleryLauncher.launch(intent)
     }
 
     // Firebase Storage에 이미지 업로드
