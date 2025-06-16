@@ -5,8 +5,6 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.provider.MediaStore
-import android.widget.Button
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.TextView
@@ -25,7 +23,6 @@ import com.bumptech.glide.Glide
 import com.example.myapplication12345.AI.SensorDataService
 import com.example.myapplication12345.chatbot.ChatbotUi
 import com.example.myapplication12345.databinding.ActivityMainBinding
-import com.example.myapplication12345.ui.login.IntroActivity
 import com.example.myapplication12345.ui.sidebar.carbonquiz.QuizActivity
 import com.example.myapplication12345.ui.sidebar.foodcalculator.FoodCalculatorActivity
 import com.example.myapplication12345.ui.sidebar.setting.SettingActivity
@@ -208,10 +205,7 @@ class MainActivity : AppCompatActivity() {
                         .load(imageUrl)
                         .placeholder(R.drawable.user) // 기본 이미지
                         .error(R.drawable.user) // 로드 실패 시 기본 이미지
-                        .placeholder(R.drawable.user)
-                        .error(R.drawable.user)
                         .into(sidebarProfileImage)
-
                 } else {
                     sidebarProfileImage.setImageResource(R.drawable.user) // 기본 이미지 설정
                 }

@@ -76,11 +76,15 @@ class SettingActivity : AppCompatActivity() {
                 }
 
                 val imageUrl = snapshot.getValue(String::class.java)
-                Glide.with(this@SettingActivity)
-                    .load(imageUrl)
-                    .placeholder(R.drawable.user) // 로딩 중에 보여줄 이미지
-                    .error(R.drawable.user)       // 로드 실패 시 보여줄 이미지
-                    .into(binding.profileImage)
+                if (imageUrl != null) {
+                    Glide.with(this@SettingActivity)
+                        .load(imageUrl)
+                        .placeholder(R.drawable.user) // 로딩 중에 보여줄 이미지
+                        .error(R.drawable.user)       // 로드 실패 시 보여줄 이미지
+                        .into(binding.profileImage)
+                }  else {
+                    binding.profileImage.setImageResource(R.drawable.user) // 기본 이미지 설정
+                }
             }
 
             override fun onCancelled(error: DatabaseError) {
