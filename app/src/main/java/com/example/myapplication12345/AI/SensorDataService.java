@@ -343,6 +343,7 @@ public class SensorDataService extends Service {
         if (gravitySensor == null) Timber.w("중력 센서(GRAVITY)가 없습니다.");
         if (linearAccelSensor == null) Timber.w("선형 가속도 센서(LINEAR_ACCELERATION)가 없습니다.");
 
+
         final List<Map<String, Object>> tempImuBuffer = new ArrayList<>(MAX_IMU_PER_SECOND);
         final long startTime = timestamp;
 
@@ -355,43 +356,33 @@ public class SensorDataService extends Service {
             final float[] pressure = new float[1];
             final float[] gravity = new float[3];
             final float[] linear = new float[3];
-            boolean accelSet, gyroSet, magSet, rotSet, pressureSet, gravitySet, linearSet;
 
             void update(SensorEvent event) {
                 switch (event.sensor.getType()) {
                     case Sensor.TYPE_ACCELEROMETER:
                         System.arraycopy(event.values, 0, accel, 0, 3);
-                        accelSet = true;
                         break;
                     case Sensor.TYPE_GYROSCOPE:
                         System.arraycopy(event.values, 0, gyro, 0, 3);
-                        gyroSet = true;
                         break;
                     case Sensor.TYPE_MAGNETIC_FIELD:
                         System.arraycopy(event.values, 0, mag, 0, 3);
-                        magSet = true;
                         break;
                     case Sensor.TYPE_ROTATION_VECTOR:
-                        System.arraycopy(event.values, 0, rot, 0, Math.min(event.values.length, 4));
-                        rotSet = true;
+                        // Rotation Vector는 값이 3, 4, 5개일 수 있으므로 안전하게 처리
+                        int rotLength = Math.min(event.values.length, 4);
+                        System.arraycopy(event.values, 0, rot, 0, rotLength);
                         break;
                     case Sensor.TYPE_PRESSURE:
                         pressure[0] = event.values[0];
-                        pressureSet = true;
                         break;
                     case Sensor.TYPE_GRAVITY:
                         System.arraycopy(event.values, 0, gravity, 0, 3);
-                        gravitySet = true;
                         break;
                     case Sensor.TYPE_LINEAR_ACCELERATION:
                         System.arraycopy(event.values, 0, linear, 0, 3);
-                        linearSet = true;
                         break;
                 }
-            }
-
-            boolean isAllSet() {
-                return accelSet && gyroSet && magSet && rotSet && pressureSet && gravitySet && linearSet;
             }
         }
 
@@ -408,13 +399,15 @@ public class SensorDataService extends Service {
             public void onAccuracyChanged(Sensor sensor, int accuracy) {}
         };
 
-        sensorManager.registerListener(listener, accelerometer, SensorManager.SENSOR_DELAY_FASTEST);
-        sensorManager.registerListener(listener, gyroscope, SensorManager.SENSOR_DELAY_FASTEST);
-        sensorManager.registerListener(listener, magnetometer, SensorManager.SENSOR_DELAY_FASTEST);
-        sensorManager.registerListener(listener, rotationVector, SensorManager.SENSOR_DELAY_FASTEST);
-        sensorManager.registerListener(listener, pressureSensor, SensorManager.SENSOR_DELAY_FASTEST);
-        sensorManager.registerListener(listener, gravitySensor, SensorManager.SENSOR_DELAY_FASTEST);
-        sensorManager.registerListener(listener, linearAccelSensor, SensorManager.SENSOR_DELAY_FASTEST);
+        // 존재하는 센서만 리스너에 등록
+        if (accelerometer != null) sensorManager.registerListener(listener, accelerometer, SensorManager.SENSOR_DELAY_FASTEST);
+        if (gyroscope != null) sensorManager.registerListener(listener, gyroscope, SensorManager.SENSOR_DELAY_FASTEST);
+        if (magnetometer != null) sensorManager.registerListener(listener, magnetometer, SensorManager.SENSOR_DELAY_FASTEST);
+        if (rotationVector != null) sensorManager.registerListener(listener, rotationVector, SensorManager.SENSOR_DELAY_FASTEST);
+        if (pressureSensor != null) sensorManager.registerListener(listener, pressureSensor, SensorManager.SENSOR_DELAY_FASTEST);
+        if (gravitySensor != null) sensorManager.registerListener(listener, gravitySensor, SensorManager.SENSOR_DELAY_FASTEST);
+        if (linearAccelSensor != null) sensorManager.registerListener(listener, linearAccelSensor, SensorManager.SENSOR_DELAY_FASTEST);
+
 
         Runnable imuCollector = new Runnable() {
             private int seq_counter = 0;
@@ -433,34 +426,38 @@ public class SensorDataService extends Service {
                     return;
                 }
 
-                if (sensorData.isAllSet()) {
-                    Map<String, Object> data = new LinkedHashMap<>();
-                    data.put("timestamp", startTime);
-                    data.put("seq", seq_counter++);
-                    data.put("accel.x", sensorData.accel[0]);
-                    data.put("accel.y", sensorData.accel[1]);
-                    data.put("accel.z", sensorData.accel[2]);
-                    data.put("gyro.x", sensorData.gyro[0]);
-                    data.put("gyro.y", sensorData.gyro[1]);
-                    data.put("gyro.z", sensorData.gyro[2]);
-                    data.put("mag.x", sensorData.mag[0]);
-                    data.put("mag.y", sensorData.mag[1]);
-                    data.put("mag.z", sensorData.mag[2]);
-                    float[] quat = new float[4];
-                    SensorManager.getQuaternionFromVector(quat, sensorData.rot);
-                    data.put("rot.w", quat[0]);
-                    data.put("rot.x", quat[1]);
-                    data.put("rot.y", quat[2]);
-                    data.put("rot.z", quat[3]);
-                    data.put("pressure", sensorData.pressure[0]);
-                    data.put("gravity.x", sensorData.gravity[0]);
-                    data.put("gravity.y", sensorData.gravity[1]);
-                    data.put("gravity.z", sensorData.gravity[2]);
-                    data.put("linear_accel.x", sensorData.linear[0]);
-                    data.put("linear_accel.y", sensorData.linear[1]);
-                    data.put("linear_accel.z", sensorData.linear[2]);
-                    tempImuBuffer.add(data);
-                }
+                // *** 핵심 변경점: isAllSet() 조건을 제거하고, 현재까지 수집된 값을 그대로 기록 ***
+                Map<String, Object> data = new LinkedHashMap<>();
+                data.put("timestamp", startTime);
+                data.put("seq", seq_counter++);
+                data.put("accel.x", sensorData.accel[0]);
+                data.put("accel.y", sensorData.accel[1]);
+                data.put("accel.z", sensorData.accel[2]);
+                data.put("gyro.x", sensorData.gyro[0]);
+                data.put("gyro.y", sensorData.gyro[1]);
+                data.put("gyro.z", sensorData.gyro[2]);
+                data.put("mag.x", sensorData.mag[0]);
+                data.put("mag.y", sensorData.mag[1]);
+                data.put("mag.z", sensorData.mag[2]);
+
+                float[] quat = new float[4];
+                // 회전 벡터 값으로부터 쿼터니언을 계산합니다.
+                SensorManager.getQuaternionFromVector(quat, sensorData.rot);
+                data.put("rot.w", quat[0]);
+                data.put("rot.x", quat[1]);
+                data.put("rot.y", quat[2]);
+                data.put("rot.z", quat[3]);
+
+                data.put("pressure", sensorData.pressure[0]);
+                data.put("gravity.x", sensorData.gravity[0]);
+                data.put("gravity.y", sensorData.gravity[1]);
+                data.put("gravity.z", sensorData.gravity[2]);
+                data.put("linear_accel.x", sensorData.linear[0]);
+                data.put("linear_accel.y", sensorData.linear[1]);
+                data.put("linear_accel.z", sensorData.linear[2]);
+                tempImuBuffer.add(data);
+
+                handler.postDelayed(this, IMU_INTERVAL_MS);
             }
         };
 
