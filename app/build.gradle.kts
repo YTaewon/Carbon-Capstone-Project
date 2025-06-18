@@ -1,4 +1,5 @@
 import java.util.Properties
+import kotlin.math.abs
 
 plugins {
     alias(libs.plugins.android.application)
@@ -173,8 +174,8 @@ dependencies {
     //math
     implementation("org.apache.commons:commons-math3:3.6.1")
     //AI 작동
-    implementation("org.pytorch:pytorch_android:1.10.0")
-    implementation("org.pytorch:pytorch_android_torchvision:1.10.0")
+// https://mvnrepository.com/artifact/org.pytorch/executorch-android
+    implementation("org.pytorch:executorch-android:0.6.0")
 
     //지도
     implementation ("com.google.android.gms:play-services-maps:18.2.0")

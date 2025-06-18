@@ -8,9 +8,9 @@ import com.example.myapplication12345.AI.BTS.BTSProcessor;
 import com.example.myapplication12345.AI.GPS.GPSProcessor;
 import com.example.myapplication12345.AI.IMU.IMUProcessor;
 
-import org.pytorch.IValue;
-import org.pytorch.Module;
-import org.pytorch.Tensor;
+import org.pytorch.executorch.EValue;
+import org.pytorch.executorch.Module;
+import org.pytorch.executorch.Tensor;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -32,9 +32,9 @@ import timber.log.Timber;
 public class SensorDataProcessor {
     private static final String TAG = "SensorDataProcessor";
     private static final String[] MODEL_FILENAMES = {
-            "model/epoch=72-step=18177_ver1_optimized.ptl",
-            "model/epoch=74-step=18675_ver2_optimized.ptl",
-            "model/epoch=80-step=20169_ver3_optimized.ptl"
+            "model/ver1.pte",
+            "model/ver2.pte",
+            "model/ver3.pte"
     };
     private static final int NUM_MODELS = MODEL_FILENAMES.length;
     private static final int MODEL_INPUT_FEATURE_SIZE = 340;
@@ -312,9 +312,20 @@ public class SensorDataProcessor {
             for (int i = 0; i < models.size(); i++) {
                 Module model = models.get(i);
                 try {
-                    IValue output = model.forward(IValue.from(inputTensor));
-                    Tensor outputTensor = output.toTensor();
+                    // 모델 추론 실행
+                    EValue[] output = model.forward(EValue.from(inputTensor));
+
+                    // --- 수정된 부분 시작 ---
+                    // 1. 출력 배열 유효성 검사 (Null 또는 빈 배열 확인)
+                    if (output == null || output.length == 0) {
+                        Timber.tag(TAG).e("모델 %d의 출력이 비어있습니다(null or empty). 이 모델의 예측은 건너뜁니다.", i);
+                        continue; // 다음 모델로 넘어감
+                    }
+
+                    // 2. 배열의 첫 번째 요소에서 Tensor 추출
+                    Tensor outputTensor = output[0].toTensor();
                     float[] logits = outputTensor.getDataAsFloatArray();
+                    // --- 수정된 부분 끝 ---
 
                     if (logits.length != EXPECTED_MODEL_OUTPUT_SIZE) {
                         Timber.tag(TAG).e("모델 %d의 출력 크기가 예상(%d)과 다름: %d. 이 모델의 예측은 건너뜁니다.",
@@ -322,6 +333,7 @@ public class SensorDataProcessor {
                         continue;
                     }
                     allModelProbabilities.add(softmax(logits));
+
                 } catch (Exception e) {
                     Timber.tag(TAG).e(e, "개별 모델(모델 %d) 추론 중 오류. 이 모델의 예측은 건너뜁니다.", i);
                 }
@@ -396,7 +408,7 @@ public class SensorDataProcessor {
             // --- 세그먼트 저장 (STOP이 아닌 경우만) ---
             if (gpsData != null && gpsData.size() >= MIN_TIMESTAMP_COUNT) {
                 int totalSegments = gpsData.size() / SEGMENT_SIZE;
-                double distancePerSegment = (double) totalDistance / totalSegments;
+                double distancePerSegment = (totalSegments > 0) ? (double) totalDistance / totalSegments : 0.0;
 
                 Timber.tag(TAG).d("앙상블 배치 총 이동 거리: %.2f m. %d개 세그먼트 저장 시작. 최종 모드: %s", totalDistance, totalSegments, finalTransportMode);
                 if(totalDistance > 30) {
@@ -431,7 +443,7 @@ public class SensorDataProcessor {
                             Timber.tag(TAG).e(e, "앙상블 세그먼트 %d 처리 중 예외 발생", segment);
                         }
                     }
-                }else{
+                } else {
                     Timber.tag(TAG).d("앙상블 배치 총 이동 거리: %.2f m. '30m 이하' 이므로 세그먼트 저장 스킵", totalDistance);
                 }
             } else {
