@@ -188,23 +188,33 @@ public class SensorDataProcessor {
             return;
         }
 
+        final float DURATION_SECONDS = MIN_TIMESTAMP_COUNT;
+
         //최소 하나 이상의 모델이 로드 되었는 지 확인
         if (models.isEmpty()) {
             Timber.tag(TAG).e("로드된 모델이 없음. 예측 스킵.");
+            // --- 이 부분이 수정됩니다 ---
             MovementAnalyzer tempAnalyzer = new MovementAnalyzer(gpsData, imuData);
-            float tempSpeed = (tempAnalyzer.calculateAverageSpeedFromIMU(imuData)) * 3.6f; // Km/h
             tempAnalyzer.analyze();
-            float tempDistance = tempAnalyzer.getDistance(); // 이 배치의 총 이동 거리 (m)
-            saveSegmentsWithFallback(gpsData, tempDistance, DEFAULT_MODE_UNKNOWN, tempSpeed);
+            float tempDistance = tempAnalyzer.getDistance();
+
+            float averageSpeedMps = tempDistance / DURATION_SECONDS;
+            float tempSpeedKmh = averageSpeedMps * 3.6f;
+
+            saveSegmentsWithFallback(gpsData, tempDistance, DEFAULT_MODE_UNKNOWN, tempSpeedKmh);
             return;
         }
 
-        // 거리와 속도 먼저 계산 (1분(MIN_TIMESTAMP_COUNT) 동안의 데이터 기준)
+        // 거리와 속도 먼저 계산
         MovementAnalyzer analyzer = new MovementAnalyzer(gpsData, imuData);
-        float speed = (analyzer.calculateAverageSpeedFromIMU(imuData))* 3.6f; // IMU 기반 속도 (Km/h)
-        Timber.tag(TAG).d("평균 속도: "+ speed +"Km/h");
         analyzer.analyze();
-        float distance = analyzer.getDistance(); // 이 배치의 총 이동 거리 (m)
+        float distance = analyzer.getDistance();
+
+        // 평균 속도 계산 (거리 / 60초)
+        float speedMps = distance / DURATION_SECONDS;
+        float speedKmh = speedMps * 3.6f;
+
+        Timber.tag(TAG).d("평균 속도 : %.2f Km/h, 이동 거리: %.2f m", speedKmh, distance);
 
         Timber.tag(TAG).d("수신된 데이터 크기 - GPS: %d, AP: %d, BTS: %d, IMU: %d",
                 (gpsData != null ? gpsData.size() : 0),
@@ -218,7 +228,7 @@ public class SensorDataProcessor {
                 btsData == null || btsData.isEmpty() ||
                 imuData == null || imuData.size() < MIN_TIMESTAMP_COUNT) {
             Timber.tag(TAG).w("필요한 최소 데이터 요구사항 충족되지 않음 (GPS >= %d, IMU >= %d, AP/BTS 비어있지 않아야 함)", MIN_TIMESTAMP_COUNT, MIN_TIMESTAMP_COUNT);
-            saveSegmentsWithFallback(gpsData, distance, DEFAULT_MODE_UNKNOWN, speed); // 데이터 부족 시 예측 없이 fallback
+            saveSegmentsWithFallback(gpsData, distance, DEFAULT_MODE_UNKNOWN, speedKmh); // 데이터 부족 시 예측 없이 fallback
             return;
         }
 
@@ -237,7 +247,7 @@ public class SensorDataProcessor {
         // 전처리 후 데이터 유효성 검사
         if (processedAP.isEmpty() || processedBTS.isEmpty() || processedGPS.isEmpty() || processedIMU.isEmpty()) {
             Timber.tag(TAG).w("데이터 전처리 실패 - 하나 이상의 센서 데이터가 전처리 후 비어 있음");
-            saveSegmentsWithFallback(gpsData, distance, DEFAULT_MODE_UNKNOWN, speed); // 처리 실패 시 fallback
+            saveSegmentsWithFallback(gpsData, distance, DEFAULT_MODE_UNKNOWN, speedKmh); // 처리 실패 시 fallback
             return;
         }
 
@@ -246,14 +256,14 @@ public class SensorDataProcessor {
             Tensor inputTensor = getProcessedFeatureVector(processedAP, processedBTS, processedGPS, processedIMU);
             if (inputTensor == null) {
                 Timber.tag(TAG).e("입력 텐서 생성 실패");
-                saveSegmentsWithFallback(gpsData, distance, DEFAULT_MODE_UNKNOWN, speed); // 텐서 생성 실패 시 fallback
+                saveSegmentsWithFallback(gpsData, distance, DEFAULT_MODE_UNKNOWN, speedKmh); // 텐서 생성 실패 시 fallback
                 return;
             }
             // predictMovingModeWithEnsemble 내부에서 lastPredictedResult 업데이트 및 세그먼트 저장
-            predictMovingModeWithEnsemble(inputTensor, gpsData, distance, speed);
+            predictMovingModeWithEnsemble(inputTensor, gpsData, distance, speedKmh);
         } catch (Exception e) {
             Timber.tag(TAG).e(e, "데이터 처리 또는 예측 중 오류 발생");
-            saveSegmentsWithFallback(gpsData, distance, DEFAULT_MODE_UNKNOWN, speed); // 일반 오류 시 fallback
+            saveSegmentsWithFallback(gpsData, distance, DEFAULT_MODE_UNKNOWN, speedKmh); // 일반 오류 시 fallback
         }
     }
 
