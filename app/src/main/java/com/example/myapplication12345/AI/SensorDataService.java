@@ -2,6 +2,7 @@ package com.example.myapplication12345.AI;
 
 import static com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY;
 
+import android.Manifest;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -55,45 +56,55 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import timber.log.Timber;
 
-public class SensorDataService extends Service {
-    private static final int PROCESS_INTERVAL_01 = 1000; // 1초 간격
-    private static final int IMU_INTERVAL_MS = 10; // 10ms 간격
-    private static final int MAX_IMU_PER_SECOND = 100; // 1초에 최대 100개
-    private static final int INITIAL_DELAY_MS = 3000; // 최초 3초 지연
-    private static final int MIN_TIMESTAMP_COUNT = 60; // 60초(60개의 고유 타임스탬프)
+public class SensorDataService extends Service implements SensorEventListener {
+    // --- 상수 정의 ---
+    private static final long DATA_PROCESS_INTERVAL_MS = 1000;
+    private static final int SENSOR_SAMPLING_PERIOD_US = 10000;
+    private static final int IMU_SAMPLE_INTERVAL_MS = 10;
+    private static final int MAX_IMU_SAMPLES_PER_SECOND = 100;
+    private static final int MIN_UNIQUE_TIMESTAMPS = 60;
+    // ================== [변경] 초기 웜업 시간 추가 ==================
+    private static final int INITIAL_WARMUP_DELAY_MS = 3000; // 3초의 준비 시간
+    // ==============================================================
     private static final String TAG = "SensorDataService";
     private static final String NOTIFICATION_CHANNEL_ID = "sensor_service_channel";
     private static final int NOTIFICATION_ID = 1;
-    // 서비스 정지 액션 정의
     public static final String ACTION_STOP_SERVICE = "com.example.myapplication12345.AI.ACTION_STOP_SERVICE";
 
+    // ... (다른 멤버 변수들은 이전과 동일)
     private WifiManager wifiManager;
     private TelephonyManager telephonyManager;
     private FusedLocationProviderClient fusedLocationProviderClient;
     private SensorManager sensorManager;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final ExecutorService executorService = Executors.newSingleThreadExecutor();
-
-    // 센서 데이터 버퍼
     private final List<Map<String, Object>> gpsBuffer = new ArrayList<>();
     private final List<Map<String, Object>> apBuffer = new ArrayList<>();
     private final List<Map<String, Object>> btsBuffer = new ArrayList<>();
     private final List<Map<String, Object>> imuBuffer = new ArrayList<>();
-
-    // 고유 타임스탬프 추적
+    private final Object bufferLock = new Object();
     private final Set<Long> uniqueTimestamps = new HashSet<>();
-
     private SensorDataProcessor dataProcessor;
     private LocationCallback locationCallback;
     private Location lastKnownLocation;
+    private Sensor accelerometer, gyroscope, magnetometer, rotationVector, pressureSensor, gravitySensor, linearAccelSensor;
+    private final float[] accelValues = new float[3];
+    private final float[] gyroValues = new float[3];
+    private final float[] magValues = new float[3];
+    private final float[] rotValues = new float[4];
+    private final float[] pressureValues = new float[1];
+    private final float[] gravityValues = new float[3];
+    private final float[] linearValues = new float[3];
+
 
     @Override
     public void onCreate() {
         super.onCreate();
-
         startForeground(NOTIFICATION_ID, createForegroundNotification());
 
         wifiManager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
@@ -102,149 +113,187 @@ public class SensorDataService extends Service {
         fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
 
         if (!checkPermissions()) {
-            Timber.tag(TAG).e("필수 권한이 없음. 서비스 중단");
+            Timber.tag(TAG).e("필수 권한이 없어 서비스를 중단합니다.");
             stopSelf();
             return;
         }
 
-        executorService.execute(() -> {
-            dataProcessor = SensorDataProcessor.getInstance(this);
-            Timber.tag(TAG).d("SensorDataProcessor 초기화 완료 (비동기)");
-        });
+        executorService.execute(() -> dataProcessor = SensorDataProcessor.getInstance(this));
 
-        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            fusedLocationProviderClient.getLastLocation()
-                    .addOnSuccessListener(location -> {
-                        if (location != null) {
-                            lastKnownLocation = location;
-                            Timber.tag(TAG).d("초기 마지막 위치 설정: %f, %f", location.getLatitude(), location.getLongitude());
-                        }
-                    });
+        // ================== [변경] 초기 위치 정보 즉시 요청 추가 ==================
+        if (checkPermission(Manifest.permission.ACCESS_FINE_LOCATION)) {
+            fusedLocationProviderClient.getLastLocation().addOnSuccessListener(location -> {
+                if (location != null) {
+                    lastKnownLocation = location;
+                    Timber.d("초기 마지막 위치 확보: Lat: %f, Lon: %f", location.getLatitude(), location.getLongitude());
+                }
+            });
         }
+        // ======================================================================
 
-        handler.postDelayed(this::startDataCollection, INITIAL_DELAY_MS);
-    }
-
-    private Notification createForegroundNotification() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(
-                    NOTIFICATION_CHANNEL_ID,
-                    "Sensor Service Channel",
-                    NotificationManager.IMPORTANCE_DEFAULT
-            );
-            channel.setDescription("센서 데이터 수집 서비스 알림");
-            NotificationManager notificationManager = getSystemService(NotificationManager.class);
-            notificationManager.createNotificationChannel(channel);
-        }
-
-        // 1. 알림 본문을 클릭했을 때 열릴 MainActivity에 대한 Intent 생성
-        Intent notificationIntent = new Intent(this, SplashActivity.class);
-        // 이미 실행 중인 Activity 스택을 재활용하고, MainActivity를 최상단으로 가져옴
-        notificationIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-
-        // 2. Intent를 감싸는 PendingIntent 생성
-        // FLAG_IMMUTABLE은 Android 12(API 31) 이상에서 필수
-        // FLAG_UPDATE_CURRENT는 기존 PendingIntent가 있다면 업데이트하도록 함
-        PendingIntent pendingIntent = PendingIntent.getActivity(
-                this,
-                0, // requestCode, 여러 PendingIntent를 구분하기 위한 고유 ID
-                notificationIntent,
-                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
-        );
-
-        // 서비스 정지 Intent 생성
-        Intent stopSelfIntent = new Intent(this, SensorDataService.class);
-        stopSelfIntent.setAction(ACTION_STOP_SERVICE); // 정의한 액션 설정
-
-        PendingIntent stopPendingIntent = PendingIntent.getService(
-                this,
-                0, // requestCode, 여러 PendingIntent를 구분하기 위한 고유 ID
-                stopSelfIntent,
-                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
-        );
-
-        return new NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
-                .setSmallIcon(R.drawable.img_logo)
-                .setContentTitle("센서 데이터 수집 서비스")
-                .setContentText("백그라운드에서 센서 데이터를 수집 중입니다.")
-                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-                .setOngoing(true)
-                .setContentIntent(pendingIntent)
-                .addAction(android.R.drawable.ic_delete, "서비스 정지", stopPendingIntent)
-                .build();
-    }
-
-    private boolean checkPermissions() {
-        return ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_WIFI_STATE) == PackageManager.PERMISSION_GRANTED &&
-                ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED &&
-                ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED;
-    }
-
-    @Override
-    public int onStartCommand(Intent intent, int flags, int startId) {
-        // 인텐트가 null이 아니고, 정지 액션을 포함하는지 확인
-        if (intent != null && ACTION_STOP_SERVICE.equals(intent.getAction())) {
-            Timber.tag(TAG).d("정지 요청 액션 수신. 서비스 종료.");
-            stopSelf(); // 서비스 종료
-            return START_NOT_STICKY; // 서비스가 종료되면 다시 시작하지 않도록 설정
-        }
-        return START_STICKY; // 기본 동작: 시스템에 의해 종료되면 다시 시작 시도
-    }
-
-    @Override
-    public IBinder onBind(Intent intent) {
-        return null;
+        startDataCollection();
     }
 
     private void startDataCollection() {
+        Timber.tag(TAG).d("데이터 수집을 시작합니다. (웜업 대기: %dms)", INITIAL_WARMUP_DELAY_MS);
         startGPSUpdates();
+        startIMUListener();
 
-        Runnable dataCollectionRunnable = new Runnable() {
-            @Override
-            public void run() {
-                long timestamp = System.currentTimeMillis();
-                collectIMUData(timestamp);
-                collectAPData(timestamp);
-                collectBTSData(timestamp);
-                collectGPSData(timestamp);
-
-                synchronized (uniqueTimestamps) {
-                    uniqueTimestamps.add(timestamp);
-                    if (uniqueTimestamps.size() >= MIN_TIMESTAMP_COUNT) {
-                        processBuffers();
-                    }
-                }
-
-                handler.postDelayed(this, PROCESS_INTERVAL_01);
-            }
-        };
-        handler.post(dataCollectionRunnable);
+        // ================== [변경] 초기 지연 시간을 두고 수집 루프 시작 ==================
+        handler.postDelayed(dataCollectionRunnable, INITIAL_WARMUP_DELAY_MS);
+        // ===========================================================================
     }
 
+    private final Runnable dataCollectionRunnable = new Runnable() {
+        @Override
+        public void run() {
+            long timestamp = System.currentTimeMillis();
+            Timber.d("dataCollectionRunnable 실행. Timestamp: %d", timestamp);
+
+            collectGPSData(timestamp);
+            collectAPData(timestamp);
+            collectBTSData(timestamp);
+            collectIMUDataForOneSecond(timestamp);
+
+            synchronized (bufferLock) {
+                uniqueTimestamps.add(timestamp);
+                if (uniqueTimestamps.size() >= MIN_UNIQUE_TIMESTAMPS) {
+                    processBuffers();
+                }
+            }
+            handler.postDelayed(this, DATA_PROCESS_INTERVAL_MS);
+        }
+    };
+
+    // ... 나머지 코드는 이전과 동일합니다 ...
     private void startGPSUpdates() {
-        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            // LocationRequest.Builder 사용
-            LocationRequest locationRequest = new LocationRequest.Builder(PRIORITY_HIGH_ACCURACY, PROCESS_INTERVAL_01)
-                    .setMinUpdateIntervalMillis(PROCESS_INTERVAL_01 / 2) // setFastestInterval 대체
+        if (checkPermission(Manifest.permission.ACCESS_FINE_LOCATION)) {
+            LocationRequest locationRequest = new LocationRequest.Builder(PRIORITY_HIGH_ACCURACY, DATA_PROCESS_INTERVAL_MS)
+                    .setMinUpdateIntervalMillis(DATA_PROCESS_INTERVAL_MS / 2)
                     .build();
 
             locationCallback = new LocationCallback() {
                 @Override
                 public void onLocationResult(@NonNull LocationResult locationResult) {
-                    Location location = locationResult.getLastLocation();
-                    if (location != null) {
-                        lastKnownLocation = location;
-//                            Timber.tag(TAG).d("GPS 업데이트 수신: %f, %f", location.getLatitude(), location.getLongitude());
-                    }
+                    lastKnownLocation = locationResult.getLastLocation();
                 }
             };
-
             fusedLocationProviderClient.requestLocationUpdates(locationRequest, locationCallback, Looper.getMainLooper());
         }
     }
 
+    private void startIMUListener() {
+        accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+        gyroscope = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
+        magnetometer = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
+        rotationVector = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
+        pressureSensor = sensorManager.getDefaultSensor(Sensor.TYPE_PRESSURE);
+        gravitySensor = sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY);
+        linearAccelSensor = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
+
+        if (accelerometer == null || gyroscope == null || magnetometer == null) {
+            Timber.tag(TAG).e("필수 IMU 센서(가속도, 자이로, 지자기)가 없습니다.");
+            return;
+        }
+
+        Timber.d("IMU 센서 리스너를 등록합니다.");
+        sensorManager.registerListener(this, accelerometer, SENSOR_SAMPLING_PERIOD_US);
+        sensorManager.registerListener(this, gyroscope, SENSOR_SAMPLING_PERIOD_US);
+        sensorManager.registerListener(this, magnetometer, SENSOR_SAMPLING_PERIOD_US);
+        if (rotationVector != null) sensorManager.registerListener(this, rotationVector, SENSOR_SAMPLING_PERIOD_US);
+        if (pressureSensor != null) sensorManager.registerListener(this, pressureSensor, SENSOR_SAMPLING_PERIOD_US);
+        if (gravitySensor != null) sensorManager.registerListener(this, gravitySensor, SENSOR_SAMPLING_PERIOD_US);
+        if (linearAccelSensor != null) sensorManager.registerListener(this, linearAccelSensor, SENSOR_SAMPLING_PERIOD_US);
+    }
+
+    @Override
+    public void onSensorChanged(SensorEvent event) {
+        synchronized (this) {
+            switch (event.sensor.getType()) {
+                case Sensor.TYPE_ACCELEROMETER:
+                    System.arraycopy(event.values, 0, accelValues, 0, 3);
+                    break;
+                case Sensor.TYPE_GYROSCOPE:
+                    System.arraycopy(event.values, 0, gyroValues, 0, 3);
+                    break;
+                case Sensor.TYPE_MAGNETIC_FIELD:
+                    System.arraycopy(event.values, 0, magValues, 0, 3);
+                    break;
+                case Sensor.TYPE_ROTATION_VECTOR:
+                    int rotLength = Math.min(event.values.length, 4);
+                    System.arraycopy(event.values, 0, rotValues, 0, rotLength);
+                    break;
+                case Sensor.TYPE_PRESSURE:
+                    pressureValues[0] = event.values[0];
+                    break;
+                case Sensor.TYPE_GRAVITY:
+                    System.arraycopy(event.values, 0, gravityValues, 0, 3);
+                    break;
+                case Sensor.TYPE_LINEAR_ACCELERATION:
+                    System.arraycopy(event.values, 0, linearValues, 0, 3);
+                    break;
+            }
+        }
+    }
+
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {}
+
+    private void collectIMUDataForOneSecond(final long timestamp) {
+        final AtomicInteger seqCounter = new AtomicInteger(0);
+
+        Runnable imuSampler = new Runnable() {
+            @Override
+            public void run() {
+                int currentSeq = seqCounter.getAndIncrement();
+                if (currentSeq >= MAX_IMU_SAMPLES_PER_SECOND) {
+                    return;
+                }
+
+                Map<String, Object> data = new LinkedHashMap<>();
+                data.put("timestamp", timestamp);
+                data.put("seq", currentSeq);
+
+                synchronized (SensorDataService.this) {
+                    data.put("accel.x", accelValues[0]);
+                    data.put("accel.y", accelValues[1]);
+                    data.put("accel.z", accelValues[2]);
+                    data.put("gyro.x", gyroValues[0]);
+                    data.put("gyro.y", gyroValues[1]);
+                    data.put("gyro.z", gyroValues[2]);
+                    data.put("mag.x", magValues[0]);
+                    data.put("mag.y", magValues[1]);
+                    data.put("mag.z", magValues[2]);
+
+                    float[] quat = new float[4];
+                    SensorManager.getQuaternionFromVector(quat, rotValues);
+                    data.put("rot.w", quat[0]);
+                    data.put("rot.x", quat[1]);
+                    data.put("rot.y", quat[2]);
+                    data.put("rot.z", quat[3]);
+
+                    data.put("pressure", pressureValues[0]);
+                    data.put("gravity.x", gravityValues[0]);
+                    data.put("gravity.y", gravityValues[1]);
+                    data.put("gravity.z", gravityValues[2]);
+                    data.put("linear_accel.x", linearValues[0]);
+                    data.put("linear_accel.y", linearValues[1]);
+                    data.put("linear_accel.z", linearValues[2]);
+                }
+
+                synchronized (bufferLock) {
+                    imuBuffer.add(data);
+                }
+
+                if (currentSeq < MAX_IMU_SAMPLES_PER_SECOND - 1) {
+                    handler.postDelayed(this, IMU_SAMPLE_INTERVAL_MS);
+                }
+            }
+        };
+        handler.post(imuSampler);
+    }
     private void collectGPSData(long timestamp) {
-        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+        if (checkPermission(Manifest.permission.ACCESS_FINE_LOCATION)) {
             Map<String, Object> data = new LinkedHashMap<>();
             data.put("timestamp", timestamp);
 
@@ -252,32 +301,26 @@ public class SensorDataService extends Service {
                 data.put("latitude", lastKnownLocation.getLatitude());
                 data.put("longitude", lastKnownLocation.getLongitude());
                 data.put("accuracy", lastKnownLocation.getAccuracy());
-//                Timber.tag(TAG).d("GPS 데이터 추가: %f, %f", lastKnownLocation.getLatitude(), lastKnownLocation.getLongitude());
             } else {
                 data.put("latitude", 0.0);
                 data.put("longitude", 0.0);
                 data.put("accuracy", 0.0f);
-                Timber.tag(TAG).w("GPS 데이터 없음, 기본값 사용");
             }
-
-            synchronized (gpsBuffer) {
+            synchronized (bufferLock) {
                 gpsBuffer.add(data);
             }
         }
     }
-
     private void collectAPData(long timestamp) {
-        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_WIFI_STATE) == PackageManager.PERMISSION_GRANTED) {
+        if (checkPermission(Manifest.permission.ACCESS_WIFI_STATE) && checkPermission(Manifest.permission.ACCESS_FINE_LOCATION)) {
             try {
                 if (wifiManager != null) {
                     List<ScanResult> scanResults = wifiManager.getScanResults();
                     if (!scanResults.isEmpty()) {
                         ScanResult scanResult = scanResults.get(0);
-                        String ssid = "UNKNOWN_SSID";
-                        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-                            WifiInfo wifiInfo = wifiManager.getConnectionInfo();
-                            ssid = wifiInfo.getSSID();
-                        }
+                        WifiInfo wifiInfo = wifiManager.getConnectionInfo();
+                        String ssid = (wifiInfo != null) ? wifiInfo.getSSID() : "UNKNOWN_SSID";
+
                         Map<String, Object> data = new LinkedHashMap<>();
                         data.put("timestamp", timestamp);
                         data.put("bssid", scanResult.BSSID);
@@ -285,7 +328,7 @@ public class SensorDataService extends Service {
                         data.put("level", (float) scanResult.level);
                         data.put("frequency", (float) scanResult.frequency);
                         data.put("capabilities", scanResult.capabilities);
-                        synchronized (apBuffer) {
+                        synchronized (bufferLock) {
                             apBuffer.add(data);
                         }
                     }
@@ -295,22 +338,22 @@ public class SensorDataService extends Service {
             }
         }
     }
-
     private void collectBTSData(long timestamp) {
-        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED) {
+        if (checkPermission(Manifest.permission.READ_PHONE_STATE) && checkPermission(Manifest.permission.ACCESS_FINE_LOCATION)) {
             try {
                 if (telephonyManager != null) {
                     List<CellInfo> cellInfoList = telephonyManager.getAllCellInfo();
                     for (CellInfo cellInfo : cellInfoList) {
-                        if (cellInfo instanceof CellInfoLte) {
+                        if (cellInfo instanceof CellInfoLte && cellInfo.isRegistered()) {
                             CellIdentityLte cellIdentity = ((CellInfoLte) cellInfo).getCellIdentity();
                             Map<String, Object> data = new LinkedHashMap<>();
                             data.put("timestamp", timestamp);
                             data.put("ci", cellIdentity.getCi());
                             data.put("pci", cellIdentity.getPci());
-                            synchronized (btsBuffer) {
+                            synchronized (bufferLock) {
                                 btsBuffer.add(data);
                             }
+                            break;
                         }
                     }
                 }
@@ -319,269 +362,141 @@ public class SensorDataService extends Service {
             }
         }
     }
-
-    private void collectIMUData(long timestamp) {
-        if (sensorManager == null) {
-            Timber.tag(TAG).e("SensorManager가 초기화되지 않음");
-            return;
-        }
-
-        // 각 센서가 존재하는지 확인하고, 없으면 경고 로그를 남깁니다.
-        Sensor accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-        Sensor gyroscope = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
-        Sensor magnetometer = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
-        Sensor rotationVector = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
-        Sensor pressureSensor = sensorManager.getDefaultSensor(Sensor.TYPE_PRESSURE);
-        Sensor gravitySensor = sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY);
-        Sensor linearAccelSensor = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
-
-        if (accelerometer == null || gyroscope == null || magnetometer == null ||
-                rotationVector == null || pressureSensor == null ||
-                gravitySensor == null || linearAccelSensor == null) {
-            Timber.tag(TAG).e("필요한 센서가 장치에 없음");
-            return;
-        }
-
-        final List<Map<String, Object>> tempImuBuffer = new ArrayList<>(MAX_IMU_PER_SECOND);
-        final long startTime = timestamp;
-
-        // isAllSet() 과 boolean 플래그를 제거하고, 단순히 최신 값을 저장하는 홀더로 변경
-        class SensorDataHolder {
-            final float[] accel = new float[3];
-            final float[] gyro = new float[3];
-            final float[] mag = new float[3];
-            final float[] rot = new float[4];
-            final float[] pressure = new float[1];
-            final float[] gravity = new float[3];
-            final float[] linear = new float[3];
-            boolean accelSet, gyroSet, magSet, rotSet, pressureSet, gravitySet, linearSet;
-
-            void update(SensorEvent event) {
-                switch (event.sensor.getType()) {
-                    case Sensor.TYPE_ACCELEROMETER:
-                        System.arraycopy(event.values, 0, accel, 0, 3);
-                        accelSet = true;
-                        break;
-                    case Sensor.TYPE_GYROSCOPE:
-                        System.arraycopy(event.values, 0, gyro, 0, 3);
-                        gyroSet = true;
-                        break;
-                    case Sensor.TYPE_MAGNETIC_FIELD:
-                        System.arraycopy(event.values, 0, mag, 0, 3);
-                        magSet = true;
-                        break;
-                    case Sensor.TYPE_ROTATION_VECTOR:
-                        System.arraycopy(event.values, 0, rot, 0, Math.min(event.values.length, 4));
-                        rotSet = true;
-                        // Rotation Vector는 값이 3, 4, 5개일 수 있으므로 안전하게 처리
-                        int rotLength = Math.min(event.values.length, 4);
-                        System.arraycopy(event.values, 0, rot, 0, rotLength);
-                        break;
-                    case Sensor.TYPE_PRESSURE:
-                        pressure[0] = event.values[0];
-                        pressureSet = true;
-                        break;
-                    case Sensor.TYPE_GRAVITY:
-                        System.arraycopy(event.values, 0, gravity, 0, 3);
-                        gravitySet = true;
-                        break;
-                    case Sensor.TYPE_LINEAR_ACCELERATION:
-                        System.arraycopy(event.values, 0, linear, 0, 3);
-                        linearSet = true;
-                        break;
-                }
-            }
-
-            boolean isAllSet() {
-                return accelSet && gyroSet && magSet && rotSet && pressureSet && gravitySet && linearSet;
-            }
-        }
-
-        final SensorDataHolder sensorData = new SensorDataHolder();
-
-        SensorEventListener listener = new SensorEventListener() {
-            @Override
-            public void onSensorChanged(SensorEvent event) {
-                // 센서 이벤트가 발생할 때마다 홀더의 값을 최신으로 업데이트
-                sensorData.update(event);
-            }
-
-            @Override
-            public void onAccuracyChanged(Sensor sensor, int accuracy) {}
-        };
-
-        sensorManager.registerListener(listener, accelerometer, SensorManager.SENSOR_DELAY_FASTEST);
-        sensorManager.registerListener(listener, gyroscope, SensorManager.SENSOR_DELAY_FASTEST);
-        sensorManager.registerListener(listener, magnetometer, SensorManager.SENSOR_DELAY_FASTEST);
-        sensorManager.registerListener(listener, rotationVector, SensorManager.SENSOR_DELAY_FASTEST);
-        sensorManager.registerListener(listener, pressureSensor, SensorManager.SENSOR_DELAY_FASTEST);
-        sensorManager.registerListener(listener, gravitySensor, SensorManager.SENSOR_DELAY_FASTEST);
-        sensorManager.registerListener(listener, linearAccelSensor, SensorManager.SENSOR_DELAY_FASTEST);
-
-        Runnable imuCollector = new Runnable() {
-            private int seq_counter = 0;
-
-            @Override
-            public void run() {
-                if (seq_counter >= MAX_IMU_PER_SECOND || System.currentTimeMillis() - startTime >= 1000) {
-                    // 1초가 지나거나 최대 샘플 수에 도달하면 모든 센서 리스너를 해제
-                    sensorManager.unregisterListener(listener);
-                    if (!tempImuBuffer.isEmpty()) {
-                        synchronized (imuBuffer) {
-                            imuBuffer.addAll(tempImuBuffer);
-                        }
-                    }
-                    Timber.d("IMU 1초 수집 완료, 샘플 수: %d", tempImuBuffer.size());
-                    return;
-                }
-
-                if (sensorData.isAllSet()) {
-                    Map<String, Object> data = new LinkedHashMap<>();
-                    data.put("timestamp", startTime);
-                    data.put("seq", seq_counter++);
-                    data.put("accel.x", sensorData.accel[0]);
-                    data.put("accel.y", sensorData.accel[1]);
-                    data.put("accel.z", sensorData.accel[2]);
-                    data.put("gyro.x", sensorData.gyro[0]);
-                    data.put("gyro.y", sensorData.gyro[1]);
-                    data.put("gyro.z", sensorData.gyro[2]);
-                    data.put("mag.x", sensorData.mag[0]);
-                    data.put("mag.y", sensorData.mag[1]);
-                    data.put("mag.z", sensorData.mag[2]);
-                    float[] quat = new float[4];
-                    SensorManager.getQuaternionFromVector(quat, sensorData.rot);
-                    data.put("rot.w", quat[0]);
-                    data.put("rot.x", quat[1]);
-                    data.put("rot.y", quat[2]);
-                    data.put("rot.z", quat[3]);
-                    data.put("pressure", sensorData.pressure[0]);
-                    data.put("gravity.x", sensorData.gravity[0]);
-                    data.put("gravity.y", sensorData.gravity[1]);
-                    data.put("gravity.z", sensorData.gravity[2]);
-                    data.put("linear_accel.x", sensorData.linear[0]);
-                    data.put("linear_accel.y", sensorData.linear[1]);
-                    data.put("linear_accel.z", sensorData.linear[2]);
-                    tempImuBuffer.add(data);
-                }
-                handler.postDelayed(this, IMU_INTERVAL_MS);
-            }
-        };
-
-        handler.post(imuCollector);
-    }
-
     private void processBuffers() {
-        synchronized (gpsBuffer) {
-            synchronized (apBuffer) {
-                synchronized (btsBuffer) {
-                    synchronized (imuBuffer) {
-                        synchronized (uniqueTimestamps) {
-                            if (uniqueTimestamps.size() >= MIN_TIMESTAMP_COUNT) {
-                                Timber.tag(TAG).d("60초 데이터 수집 완료 - GPS: %d, AP: %d, BTS: %d, IMU: %d",
-                                        gpsBuffer.size(), apBuffer.size(), btsBuffer.size(), imuBuffer.size());
-
-                                List<Map<String, Object>> gpsDataCopy = cloneData(gpsBuffer);
-                                List<Map<String, Object>> apDataCopy = cloneData(apBuffer);
-                                List<Map<String, Object>> btsDataCopy = cloneData(btsBuffer);
-                                List<Map<String, Object>> imuDataCopy = cloneData(imuBuffer);
-
-                                // =============================================================
-                                // 여기에 CSV 저장 코드를 호출합니다.
-                                // 파일 I/O는 시간이 걸릴 수 있으므로 백그라운드 스레드에서 실행합니다.
-//                                executorService.execute(() -> saveImuDataToCsv(imuDataCopy));
-                                // =============================================================
-
-                                if (dataProcessor != null) {
-                                    executorService.execute(() -> {
-                                        dataProcessor.processSensorData(gpsDataCopy, apDataCopy, btsDataCopy, imuDataCopy);
-                                        Timber.tag(TAG).d("SensorDataProcessor 처리 완료");
-                                    });
-                                } else {
-                                    Timber.tag(TAG).w("SensorDataProcessor가 초기화 되지 않음");
-                                }
-
-                                gpsBuffer.clear();
-                                apBuffer.clear();
-                                btsBuffer.clear();
-                                imuBuffer.clear();
-                                uniqueTimestamps.clear();
-                            }
-                        }
-                    }
-                }
+        synchronized (bufferLock) {
+            Timber.tag(TAG).d("60초 데이터 처리 시작 - GPS: %d, AP: %d, BTS: %d, IMU: %d",
+                    gpsBuffer.size(), apBuffer.size(), btsBuffer.size(), imuBuffer.size());
+            if (gpsBuffer.isEmpty() && apBuffer.isEmpty() && btsBuffer.isEmpty() && imuBuffer.isEmpty()) {
+                Timber.tag(TAG).w("처리할 데이터가 없어 버퍼를 비우고 계속합니다.");
+                uniqueTimestamps.clear();
+                return;
+            }
+            List<Map<String, Object>> gpsDataCopy = new ArrayList<>(gpsBuffer);
+            List<Map<String, Object>> apDataCopy = new ArrayList<>(apBuffer);
+            List<Map<String, Object>> btsDataCopy = new ArrayList<>(btsBuffer);
+            List<Map<String, Object>> imuDataCopy = new ArrayList<>(imuBuffer);
+            gpsBuffer.clear();
+            apBuffer.clear();
+            btsBuffer.clear();
+            imuBuffer.clear();
+            uniqueTimestamps.clear();
+            if (dataProcessor != null) {
+                executorService.execute(() -> {
+                    dataProcessor.processSensorData(gpsDataCopy, apDataCopy, btsDataCopy, imuDataCopy);
+                    Timber.tag(TAG).d("SensorDataProcessor 처리 완료");
+                    saveImuDataToCsv(imuDataCopy);
+                });
+            } else {
+                Timber.tag(TAG).w("SensorDataProcessor가 초기화되지 않았습니다.");
             }
         }
     }
-
-    private List<Map<String, Object>> cloneData(List<Map<String, Object>> originalList) {
-        List<Map<String, Object>> clonedList = new ArrayList<>();
-        for (Map<String, Object> originalMap : originalList) {
-            Map<String, Object> clonedMap = new LinkedHashMap<>(originalMap);
-            clonedList.add(clonedMap);
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        if (intent != null && ACTION_STOP_SERVICE.equals(intent.getAction())) {
+            Timber.tag(TAG).d("서비스 정지 액션 수신. 서비스를 종료합니다.");
+            stopSelf();
+            return START_NOT_STICKY;
         }
-        return clonedList;
+        return START_STICKY;
     }
-
     @Override
     public void onDestroy() {
         super.onDestroy();
-        handler.removeCallbacksAndMessages(null);
-        if (locationCallback != null) {
-            fusedLocationProviderClient.removeLocationUpdates(locationCallback);
-        }
+        Timber.tag(TAG).d("서비스를 종료합니다.");
+        stopDataCollection();
         processBuffers();
         executorService.shutdown();
+        try {
+            if (!executorService.awaitTermination(5, TimeUnit.SECONDS)) {
+                executorService.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            executorService.shutdownNow();
+        }
         stopForeground(true);
     }
-
-    /**
-     * IMU 데이터 리스트를 외부 저장소의 Download 폴더에 CSV 파일로 저장합니다.
-     * @param imuDataList 저장할 IMU 데이터.
-     */
+    private void stopDataCollection() {
+        handler.removeCallbacksAndMessages(null);
+        if (fusedLocationProviderClient != null && locationCallback != null) {
+            fusedLocationProviderClient.removeLocationUpdates(locationCallback);
+        }
+        if (sensorManager != null) {
+            Timber.d("IMU 센서 리스너를 해제합니다.");
+            sensorManager.unregisterListener(this);
+        }
+    }
+    @Override
+    public IBinder onBind(Intent intent) { return null; }
+    private boolean checkPermissions() {
+        return checkPermission(Manifest.permission.ACCESS_WIFI_STATE) &&
+                checkPermission(Manifest.permission.ACCESS_FINE_LOCATION) &&
+                checkPermission(Manifest.permission.READ_PHONE_STATE);
+    }
+    private boolean checkPermission(String permission) {
+        return ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED;
+    }
+    private Notification createForegroundNotification() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(
+                    NOTIFICATION_CHANNEL_ID, "Sensor Service Channel", NotificationManager.IMPORTANCE_LOW
+            );
+            getSystemService(NotificationManager.class).createNotificationChannel(channel);
+        }
+        Intent notificationIntent = new Intent(this, SplashActivity.class);
+        notificationIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        PendingIntent pendingIntent = PendingIntent.getActivity(
+                this, 0, notificationIntent, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
+        );
+        Intent stopSelfIntent = new Intent(this, SensorDataService.class);
+        stopSelfIntent.setAction(ACTION_STOP_SERVICE);
+        PendingIntent stopPendingIntent = PendingIntent.getService(
+                this, 0, stopSelfIntent, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
+        );
+        return new NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+                .setSmallIcon(R.drawable.img_logo)
+                .setContentTitle("센서 데이터 수집 서비스")
+                .setContentText("백그라운드에서 센서 데이터를 수집 중입니다.")
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setOngoing(true)
+                .setContentIntent(pendingIntent)
+                .addAction(android.R.drawable.ic_delete, "서비스 정지", stopPendingIntent)
+                .build();
+    }
     private void saveImuDataToCsv(List<Map<String, Object>> imuDataList) {
-        // 저장할 데이터가 없으면 아무것도 하지 않음
         if (imuDataList == null || imuDataList.isEmpty()) {
             Timber.tag(TAG).w("저장할 IMU 데이터가 없습니다.");
             return;
         }
-
-        // 파일 이름에 타임스탬프를 넣어 고유하게 만듭니다.
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
         String fileName = "imu_data_" + timeStamp + ".csv";
-
-        // 파일을 저장할 경로를 지정합니다. (공용 Download 폴더)
-        File path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+        File path = getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS);
+        if (path == null) {
+            Timber.tag(TAG).e("외부 저장소 경로를 가져올 수 없습니다.");
+            return;
+        }
+        if (!path.exists()) {
+            path.mkdirs();
+        }
         File file = new File(path, fileName);
-
-        // try-with-resources 구문을 사용하여 파일 쓰기 후 리소스가 자동으로 닫히도록 합니다.
         try (FileWriter fw = new FileWriter(file);
              BufferedWriter bw = new BufferedWriter(fw)) {
-
-            // 1. CSV 헤더(머리글) 작성
-            // 첫 번째 데이터의 키들을 가져와 헤더로 사용합니다.
             Map<String, Object> firstPoint = imuDataList.get(0);
             StringBuilder header = new StringBuilder();
             for (String key : firstPoint.keySet()) {
                 header.append(key).append(",");
             }
-            // 마지막 쉼표 제거 및 줄바꿈
             bw.write(header.substring(0, header.length() - 1));
             bw.newLine();
-
-            // 2. 데이터 행 작성
             for (Map<String, Object> dataPoint : imuDataList) {
                 StringBuilder row = new StringBuilder();
                 for (Object value : dataPoint.values()) {
                     row.append(value.toString()).append(",");
                 }
-                // 마지막 쉼표 제거 및 줄바꿈
                 bw.write(row.substring(0, row.length() - 1));
                 bw.newLine();
             }
-
-            bw.flush(); // 버퍼에 남은 내용을 파일에 모두 씁니다.
             Timber.tag(TAG).d("IMU 데이터가 CSV 파일로 성공적으로 저장되었습니다: %s", file.getAbsolutePath());
-
         } catch (IOException e) {
             Timber.tag(TAG).e(e, "IMU 데이터를 CSV 파일로 저장하는 중 오류 발생");
         }
