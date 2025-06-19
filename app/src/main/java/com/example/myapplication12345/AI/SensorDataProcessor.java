@@ -32,9 +32,9 @@ import timber.log.Timber;
 public class SensorDataProcessor {
     private static final String TAG = "SensorDataProcessor";
     private static final String[] MODEL_FILENAMES = {
-            "model/ver1.pte",
-            "model/ver2.pte",
-            "model/ver3.pte"
+            "model/ver1_fixed.pte",
+            "model/ver2_fixed.pte",
+            "model/ver3_fixed.pte"
     };
     private static final int NUM_MODELS = MODEL_FILENAMES.length;
     private static final int MODEL_INPUT_FEATURE_SIZE = 340;

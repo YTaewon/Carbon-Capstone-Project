@@ -49,7 +49,7 @@ import androidx.core.view.isVisible
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.lifecycleScope // lifecycleScope 임포트
+import androidx.lifecycle.lifecycleScope
 import com.example.myapplication12345.ServerManager
 import com.example.myapplication12345.ui.calendar.CalendarViewModel
 import kotlinx.coroutines.Dispatchers
@@ -62,11 +62,10 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         private const val TAG = "MapFragment"
         private val dateFormat = SimpleDateFormat("yyyyMMdd", Locale.KOREAN)
 
-        // 이 함수는 파일 I/O를 포함하므로 백그라운드 스레드에서 호출해야 합니다.
         suspend fun createTestCsvFile(context: Context, date: Date) = withContext(Dispatchers.IO) {
             val mapDataDir = File(context.getExternalFilesDir(null), "Map").apply { mkdirs() }
             val file = File(mapDataDir, "${dateFormat.format(date)}_predictions.csv")
-            if (file.exists()) return@withContext // 파일이 이미 존재하면 생성하지 않음
+            if (file.exists()) return@withContext
 
             try {
                 FileWriter(file).use { writer ->
@@ -122,6 +121,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private val calendarViewModel: CalendarViewModel by activityViewModels {
         object : ViewModelProvider.Factory {
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                // requireContext()가 null이 아님을 보장하기 위해 isAdded 체크가 필요할 수 있으나,
+                // activityViewModels는 Fragment가 Activity에 attach된 후에 초기화되므로 일반적으로 안전합니다.
                 return CalendarViewModel(ServerManager(requireContext())) as T
             }
         }
@@ -168,7 +169,6 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             uiSettings.isMyLocationButtonEnabled = false
         }
 
-        // ViewPager2 스와이프 충돌 방지
         val viewPager = activity?.findViewById<ViewPager2>(R.id.viewPager)
         googleMap?.setOnCameraMoveStartedListener { reason ->
             if (reason == GoogleMap.OnCameraMoveStartedListener.REASON_GESTURE) {
@@ -195,26 +195,20 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         }
     }
 
-    // --- 주요 수정 부분: 파일 I/O를 백그라운드로 ---
-
     private fun loadAndDisplayPredictionData(date: String) {
         if (!isAdded || googleMap == null) return
 
         googleMap?.clear()
 
-        // lifecycleScope.launch를 사용하여 코루틴 시작
         viewLifecycleOwner.lifecycleScope.launch {
-            // 메인 스레드: UI 업데이트 (로딩 시작)
             textDistanceInfo.text = "데이터 로딩 중..."
 
-            // withContext(Dispatchers.IO)로 백그라운드 스레드로 전환하여 파일 작업 수행
             val predictionData = withContext(Dispatchers.IO) {
                 val file = File(requireContext().getExternalFilesDir(null), "Map/${date}_predictions.csv")
                 if (file.exists()) loadCsvData(file) else null
             }
 
-            // 메인 스레드로 자동 복귀하여 UI 업데이트
-            if (!isAdded) return@launch // 작업 완료 후 fragment가 detached 되었는지 확인
+            if (!isAdded) return@launch
 
             if (predictionData == null) {
                 "데이터 없음: $date".also { textDistanceInfo.text = it }
@@ -253,7 +247,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             try {
                 val dateObj = withContext(Dispatchers.Default) { dateFormat.parse(parsedDateStr) }
                 if (dateObj != null) {
-                    createTestCsvFile(requireContext(), dateObj) // suspend 함수 호출
+                    createTestCsvFile(requireContext(), dateObj)
                     loadAndDisplayPredictionData(parsedDateStr)
                     Toast.makeText(requireContext(), "$parsedDateStr 테스트 CSV 생성 완료", Toast.LENGTH_SHORT).show()
                 } else {
@@ -274,8 +268,6 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             if(isAdded) testMapButton.isEnabled = !fileExists
         }
     }
-
-    // --- 나머지 코드 (UI 및 로직 관련, 큰 변경 없음) ---
 
     private fun initializeViews(view: View) {
         mapView = view.findViewById(R.id.map_view)
@@ -357,7 +349,6 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         }
     }
 
-    // ... (showDatePickerDialog, updateDateText, parseDateFromText, toggleDistanceInfoVisibility, showTransportSelectionDialog 등은 변경 없음)
     private fun showDatePickerDialog() {
         val calendar = Calendar.getInstance()
         DatePickerDialog(requireContext(), R.style.DatePickerTheme, { _, year, month, day ->
@@ -375,8 +366,21 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         }
     }
 
+    // --- 안정 적인 날짜 파싱 함수 ---
     private fun parseDateFromText(dateTextString: String): String =
-        dateTextString.replace("[^0-9]".toRegex(), "")
+        try {
+            val parts = dateTextString.replace("년 ", "-").replace("월 ", "-").replace("일", "").split("-")
+            if (parts.size == 3) {
+                // 월과 일이 한 자리 수일 경우(e.g., "5" -> "05")를 대비해 padStart 사용
+                "${parts[0]}${parts[1].padStart(2, '0')}${parts[2].padStart(2, '0')}"
+            } else {
+                Timber.tag(TAG).w("텍스트에서 날짜 파싱 실패: $dateTextString, 현재 날짜 사용.")
+                dateFormat.format(System.currentTimeMillis()) // 파싱 실패 시 현재 날짜 반환
+            }
+        } catch (e: Exception) {
+            Timber.tag(TAG).e(e, "텍스트에서 날짜 파싱 중 예외 발생: $dateTextString, 현재 날짜 사용.")
+            dateFormat.format(System.currentTimeMillis()) // 예외 발생 시 현재 날짜 반환
+        }
 
     private fun toggleDistanceInfoVisibility() {
         isDistanceInfoVisible = !isDistanceInfoVisible
@@ -405,6 +409,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             .setNegativeButton("취소", null).show()
     }
 
+    // --- [수정됨] 캘린더 업데이트 기능이 추가된 함수 ---
     @SuppressLint("DefaultLocale")
     private fun displayPredictionOnMap(predictionData: List<Map<String, String>>) {
         if (!isAdded || googleMap == null) return
@@ -424,6 +429,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
         if (filteredData.isEmpty()) {
             textDistanceInfo.text = "선택된 이동수단에 대한 데이터 없음"
+            updateCalendarAndServer(0.0)
             return
         }
 
@@ -458,10 +464,51 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             distanceInfo.append(String.format(Locale.KOREAN, "총 탄소 배출량: %.2f g CO₂", totalTransportEmissions))
             textDistanceInfo.text = distanceInfo.toString()
             firstPoint?.let { googleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(it, 17f)) }
+
+            // [추가됨] 계산된 총 탄소 배출량으로 캘린더 및 서버 데이터 업데이트
+            updateCalendarAndServer(totalTransportEmissions)
+
         } else {
             textDistanceInfo.text = "표시할 데이터 없음 (필터링 후)"
+            // [추가됨] 필터링 후 데이터가 없을 때도 0으로 업데이트
+            updateCalendarAndServer(0.0)
         }
     }
+
+    // --- [신규 추가] 캘린더 및 서버 업데이트 로직을 별도 함수로 분리 ---
+    private fun updateCalendarAndServer(totalEmissions: Double) {
+        if (!isAdded) return // Fragment가 detach된 경우 실행하지 않음
+
+        val parsedDateStr = parseDateFromText(dateText.text.toString())
+        try {
+            val dateObj = dateFormat.parse(parsedDateStr)
+            if (dateObj != null) {
+                val calendar = Calendar.getInstance().apply { time = dateObj }
+                // CalendarViewModel을 통해 해당 날짜의 이동수단 탄소 배출량 업데이트
+                calendarViewModel.updateTransportEmissions(calendar, totalEmissions.toInt()) { success ->
+                    if (success) {
+                        Timber.tag(TAG).d("캘린더 이동경로 탄소 배출량 업데이트 완료: ${totalEmissions.toInt()} g CO₂ for $parsedDateStr")
+
+                        // 월별 포인트 업데이트를 위해 ServerManager 호출
+                        val serverManager = ServerManager(requireContext())
+                        val yearMonth = SimpleDateFormat("yyyy-MM", Locale.getDefault()).format(dateObj)
+                        serverManager.updateMonthlyPointsForMonth(yearMonth) { updateSuccess ->
+                            if (updateSuccess) {
+                                Timber.tag(TAG).d("월별 포인트 업데이트 성공: $yearMonth")
+                            } else {
+                                Timber.tag(TAG).e("월별 포인트 업데이트 실패: $yearMonth")
+                            }
+                        }
+                    } else {
+                        Timber.tag(TAG).e("캘린더 이동경로 탄소 배출량 업데이트 실패: $parsedDateStr")
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Timber.tag(TAG).e(e, "날짜 파싱 오류로 캘린더 업데이트 실패: $parsedDateStr")
+        }
+    }
+
 
     private fun getEmissionFactor(mode: String): Double = when (mode.uppercase(Locale.ROOT)) {
         "WALK", "BIKE" -> 0.0
@@ -497,7 +544,6 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     override fun onDestroyView() {
         super.onDestroyView()
-        // lifecycleScope는 자동으로 취소되므로 수동 취소 불필요.
         if (::fusedLocationClient.isInitialized) {
             fusedLocationClient.removeLocationUpdates(locationCallback)
         }
