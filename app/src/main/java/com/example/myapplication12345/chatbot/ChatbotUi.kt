@@ -1,200 +1,176 @@
-package com.example.myapplication12345.chatbot;
+package com.example.myapplication12345.chatbot
 
-import android.content.Context;
-import android.content.pm.ApplicationInfo;
-import android.content.pm.PackageManager;
-import android.os.Bundle;
-import android.text.Editable;
-import android.text.TextWatcher;
-import android.view.View;
-import android.view.WindowManager;
-import android.view.inputmethod.InputMethodManager;
-import android.widget.EditText;
-import android.widget.ImageButton;
-import android.widget.ImageView;
-import android.widget.ProgressBar;
+import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Bundle
+import android.view.View
+import android.view.WindowManager
+import android.view.inputmethod.InputMethodManager
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.widget.doAfterTextChanged
+import androidx.recyclerview.widget.LinearLayoutManager
+import com.example.myapplication12345.R
+import com.example.myapplication12345.databinding.ActivityChatbotBinding
+import com.google.gson.Gson
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
+import timber.log.Timber
 
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
+class ChatbotUi : AppCompatActivity() {
 
-import com.example.myapplication12345.R;
+    // ViewBinding을 사용하여 UI 요소에 안전하게 접근
+    private lateinit var binding: ActivityChatbotBinding
+    private lateinit var adapter: ChatMsgAdapter
+    private val chatMsgList: MutableList<ChatMsg> = mutableListOf()
 
-import java.util.ArrayList;
-import java.util.List;
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        // ViewBinding 초기화
+        binding = ActivityChatbotBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
-import timber.log.Timber;
-
-public class ChatbotUi extends AppCompatActivity {
-
-    private static final String TAG = "ChatbotUi";
-    RecyclerView recyclerView;
-    ChatMsgAdapter adapter;
-    ImageButton btnSend;
-    ImageView backButton;
-    EditText etMsg;
-    ProgressBar progressBar;
-    List<ChatMsg> chatMsgList;
-
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_chatbot);
-        //뷰 객체 연결
-        recyclerView = findViewById(R.id.recyclerView);
-        btnSend = findViewById(R.id.btn_send);
-        etMsg = findViewById(R.id.et_msg);
-        progressBar = findViewById(R.id.progressBar);
-        backButton = findViewById(R.id.back_button);
-
-        //채팅 메시지 데이터를 담을 list 생성
-        chatMsgList = new ArrayList<>();
-        //리사이클러뷰 초기화
-        recyclerView.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false));
-        adapter = new ChatMsgAdapter();
-        adapter.setDataList(chatMsgList);
-        recyclerView.setAdapter(adapter);
-
-        backButton.setOnClickListener(v -> finish());
-
-        //EditText 객체에 text가 변경될 때 실행될 리스너 설정
-        etMsg.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-
-            }
-
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-
-            }
-
-            @Override
-            public void afterTextChanged(Editable s) {
-                //입력창에 메시지가 입력되었을 때만 버튼이 클릭 가능하도록 설정
-                btnSend.setEnabled(s.length() > 0);
-            }
-        });
-
-
-        //메시지 전송버튼 클릭 리스너 설정 (람다식으로 작성함)
-        btnSend.setOnClickListener(v -> {
-            //etMsg에 쓰여있는 텍스트를 가져옵니다.
-            String msg = etMsg.getText().toString();
-            //새로운 ChatMsg 객체를 생성하여 어댑터에 추가합니다.
-            ChatMsg chatMsg = new ChatMsg(ChatMsg.ROLE_USER, msg);
-            adapter.addChatMsg(chatMsg);
-            //etMsg의 텍스트를 초기화합니다.
-            etMsg.setText(null);
-            //키보드를 내립니다.
-            InputMethodManager manager = (InputMethodManager)getSystemService(INPUT_METHOD_SERVICE);
-            manager.hideSoftInputFromWindow(getCurrentFocus().getWindowToken(), InputMethodManager.HIDE_NOT_ALWAYS);
-
-            //응답 기다리는 동안 로딩바 보이게 하기
-            progressBar.setVisibility(View.VISIBLE);
-            //응답 기다리는 동안 화면 터치 막기
-            getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE, WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
-            //Retrofit으로 요청 보내고 응답받기
-            sendMsgToChatGPT();
-
-        });
+        setupRecyclerView()
+        setupClickListeners()
+        setupTextWatcher()
     }
 
-    /**
-     * Context를 사용하여 AndroidManifest.xml의 meta-data에서 OpenAI API 키를 읽어옵니다.
-     *
-     * @param context 컨텍스트 객체
-     * @return OpenAI API 키 문자열. 찾지 못하거나 오류 발생 시 null 반환.
-     */
-    public static String getOpenAiApiKey(Context context) {
-        // AndroidManifest.xml의 <meta-data> 태그에 지정된 android:name 값
-        final String META_DATA_KEY = "com.example.myapplication12345.OPENAI_API_KEY";
+    private fun setupRecyclerView() {
+        adapter = ChatMsgAdapter()
+        adapter.setDataList(chatMsgList)
+        binding.recyclerView.layoutManager = LinearLayoutManager(this)
+        binding.recyclerView.adapter = adapter
+    }
 
-        if (context == null) {
-            Timber.tag(TAG).e("Context is null. Cannot retrieve API key.");
-            // 또는 Log.e(TAG, "Context is null. Cannot retrieve API key.");
-            return null;
-        }
+    private fun setupClickListeners() {
+        binding.backButton.setOnClickListener { finish() }
 
-        try {
-            // PackageManager 가져오기
-            PackageManager packageManager = context.getPackageManager();
-            // 앱의 패키지 이름 가져오기
-            String packageName = context.getPackageName();
+        binding.btnSend.setOnClickListener {
+            val msg = binding.etMsg.text.toString().trim() // 공백 제거 추가
+            if (msg.isEmpty()) return@setOnClickListener
 
-            // ApplicationInfo 가져오기 (메타데이터 포함)
-            ApplicationInfo appInfo = packageManager.getApplicationInfo(
-                    packageName,
-                    PackageManager.GET_META_DATA // 메타데이터 포함 플래그
-            );
+            // 1. 액티비티가 관리하는 리스트에 먼저 메시지를 추가합니다.
+            val userMessage = ChatMsg(ChatMsg.ROLE_USER, msg)
+            chatMsgList.add(userMessage)
 
-            // 메타데이터 번들 가져오기 (null 체크 포함)
-            Bundle bundle = appInfo.metaData;
-            if (bundle != null) {
-                // 번들에서 키 값 가져오기 (키가 없거나 값이 null이면 null 반환)
-                String apiKey = bundle.getString(META_DATA_KEY);
-                if (apiKey == null) {
-                    Timber.tag(TAG).w("Meta-data key not found or value is null.");
-                    // 또는 Log.w(TAG, "Meta-data key '" + META_DATA_KEY + "' not found or value is null.");
-                }
-                return apiKey; // 찾은 값 또는 null 반환
-            } else {
-                Timber.tag(TAG).w("Meta-data bundle is null. Cannot retrieve key.");
-                // 또는 Log.w(TAG, "Meta-data bundle is null. Cannot retrieve key: " + META_DATA_KEY);
-                return null;
-            }
+            // 2. 어댑터에게 마지막 아이템이 추가되었음을 알립니다.
+            adapter.notifyItemInserted(chatMsgList.size - 1)
 
-        } catch (PackageManager.NameNotFoundException e) {
-            // 패키지를 찾지 못한 경우
-            Timber.tag(TAG).e(e, "Failed to load meta-data, package not found");
-            // 또는 Log.e(TAG, "Failed to load meta-data, package not found: " + context.getPackageName(), e);
-            return null;
-        } catch (NullPointerException e) {
-            // appInfo.metaData가 null일 때 bundle.getString 호출 시 발생 가능성 (이론상 위 null 체크로 방지)
-            Timber.tag(TAG).e(e, "Failed to load meta-data due to NullPointerException for key");
-            // 또는 Log.e(TAG, "Failed to load meta-data due to NullPointerException for key: " + META_DATA_KEY, e);
-            return null;
+            // UI 업데이트
+            binding.etMsg.text.clear()
+            hideKeyboard()
+            scrollToBottom()
+
+            // 3. 이제 리스트에 메시지가 담긴 상태로 API를 호출합니다.
+            sendMsgToChatGPT()
         }
     }
 
+    private fun setupTextWatcher() {
+        // KTX 확장 함수를 사용하여 TextWatcher를 간결하게 구현
+        binding.etMsg.doAfterTextChanged { text ->
+            binding.btnSend.isEnabled = text.toString().isNotEmpty()
+        }
+    }
 
-    private void sendMsgToChatGPT() {
-        String apiKey = getOpenAiApiKey(this);
+    private fun sendMsgToChatGPT() {
+        // 로딩 UI 시작
+        binding.progressBar.visibility = View.VISIBLE
+        window.setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE, WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
 
-        ChatGPTApi api = ApiClient.getChatGPTApi(apiKey);
+        val apiKey = getOpenAiApiKey(this)
+        // API 키가 없는 경우 처리
+        if (apiKey == null) {
+            Timber.e("OpenAI API Key is not found.")
+            handleError("API 키를 찾을 수 없습니다.")
+            return
+        }
 
-        ChatGPTRequest request = new ChatGPTRequest(
-                "gpt-3.5-turbo",
-                chatMsgList
-        );
+        val api = ApiClient.getChatGPTApi(apiKey)
+        val request = ChatGPTRequest("gpt-3.5-turbo", chatMsgList)
 
-        api.getChatResponse(request).enqueue(new Callback<ChatGPTResponse>() {
-            @Override
-            public void onResponse(Call<ChatGPTResponse> call, Response<ChatGPTResponse> response) {
-                //응답을 성공적으로 받은 경우
-                if (response.isSuccessful() && response.body() != null) {
-                    //응답에서 gpt 답변 가져오기
-                    String chatResponse = response.body().getChoices().get(0).getMessage().content;
-                    //리사이클러뷰에 답변 추가하기
-                    adapter.addChatMsg(new ChatMsg(ChatMsg.ROLE_ASSISTANT, chatResponse));
-                    //로딩바 숨기기
-                    progressBar.setVisibility(View.GONE);
-                    //화면 터치 차단 해제
-                    getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+        api.getChatResponse(request).enqueue(object : Callback<ChatGPTResponse> {
+            override fun onResponse(call: Call<ChatGPTResponse>, response: Response<ChatGPTResponse>) {
+                if (response.isSuccessful && response.body() != null) {
+                    // --- 성공 로직 (기존과 동일) ---
+                    val chatResponse = response.body()?.choices?.firstOrNull()?.message?.content ?: "응답이 없습니다."
+                    val botMessage = ChatMsg(ChatMsg.ROLE_ASSISTANT, chatResponse)
+                    adapter.addChatMsg(botMessage)
+                    scrollToBottom()
                 } else {
-                    //응답 오류
-                    Timber.tag("getChatResponse").e("Error: %s", response.message());
+                    val errorBody = response.errorBody()?.string()
+                    Timber.e("GPT 응답 오류: $errorBody")
+
+                    var errorMessage = "응답을 받지 못했습니다. (에러: ${response.code()})"
+
+                    // 오류 JSON 파싱 시도
+                    if (errorBody != null) {
+                        try {
+                            val gson = Gson()
+                            val errorResponse = gson.fromJson(errorBody, ErrorResponse::class.java)
+                            errorResponse.errorDetail?.message?.let {
+                                errorMessage = it // 챗봇이 말하는 형식이므로 상세 메시지만 전달
+                            }
+                        } catch (e: Exception) {
+                            Timber.e(e, "오류 응답 JSON 파싱 실패")
+                        }
+                    }
+                    // 기존 handleError 함수를 사용하여 오류 메시지를 채팅창에 표시
+                    handleError(errorMessage)
                 }
+                // 로딩 UI 종료
+                hideLoading()
             }
 
-            @Override
-            public void onFailure(Call<ChatGPTResponse> call, Throwable t) {
-                //응답 오류
-                Timber.tag("getChatResponse").e(t, "onFailure: ");
+            override fun onFailure(call: Call<ChatGPTResponse>, t: Throwable) {
+                Timber.e(t, "onFailure")
+                handleError("네트워크 오류가 발생했습니다.")
+                // 로딩 UI 종료
+                hideLoading()
             }
-        });
+        })
+    }
+
+    private fun handleError(errorMessage: String) {
+        val botMessage = ChatMsg(ChatMsg.ROLE_ASSISTANT, errorMessage)
+        adapter.addChatMsg(botMessage)
+        scrollToBottom()
+    }
+
+    private fun hideLoading() {
+        binding.progressBar.visibility = View.GONE
+        window.clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
+    }
+
+    private fun hideKeyboard() {
+        val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+        currentFocus?.let {
+            imm.hideSoftInputFromWindow(it.windowToken, 0)
+        }
+    }
+
+    private fun scrollToBottom() {
+        binding.recyclerView.scrollToPosition(adapter.itemCount - 1)
+    }
+
+    companion object {
+        private const val TAG = "ChatbotUi"
+
+        /**
+         * Context를 사용하여 AndroidManifest.xml의 meta-data에서 OpenAI API 키를 읽어옵니다.
+         */
+        fun getOpenAiApiKey(context: Context): String? {
+            val metaDataKey = "com.example.myapplication12345.OPENAI_API_KEY"
+            return try {
+                val appInfo = context.packageManager.getApplicationInfo(
+                    context.packageName,
+                    PackageManager.GET_META_DATA
+                )
+                appInfo.metaData?.getString(metaDataKey)
+            } catch (e: PackageManager.NameNotFoundException) {
+                Timber.tag(TAG).e(e, "Failed to load meta-data, package not found.")
+                null
+            }
+        }
     }
 }

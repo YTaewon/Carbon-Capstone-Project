@@ -1,90 +1,86 @@
-package com.example.myapplication12345.chatbot;
+package com.example.myapplication12345.chatbot
 
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.TextView;
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.TextView
+import androidx.recyclerview.widget.RecyclerView
+import com.example.myapplication12345.R
 
-import androidx.annotation.NonNull;
-import androidx.recyclerview.widget.RecyclerView;
+class ChatMsgAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
-import com.example.myapplication12345.R;
+    // Nullable 대신 초기 빈 리스트를 할당하여 Null-safety를 강화합니다.
+    private var dataList: MutableList<ChatMsg> = mutableListOf()
 
-import java.util.List;
-
-public class ChatMsgAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
-    List<ChatMsg> dataList;
-
-    //데이터 리스트를 세팅하기 위한 메서드입니다.
-    public void setDataList(List<ChatMsg> dataList) {
-        this.dataList = dataList;
-        notifyDataSetChanged();
+    fun setDataList(list: MutableList<ChatMsg>) {
+        this.dataList = list
+        notifyDataSetChanged()
     }
 
-    //채팅 메시지가 추가되었을 때 어댑터에 반영해주기 위한 메서드입니다.
-    public void addChatMsg(ChatMsg chatMsg) {
-        dataList.add(chatMsg);
-        notifyItemInserted(dataList.size());
+    fun addChatMsg(chatMsg: ChatMsg) {
+        dataList.add(chatMsg)
+        notifyItemInserted(dataList.size - 1)
     }
 
-
-    //각 아이템의 뷰타입 호출시 ChatMsg 클래스의 role에 따라 내 메시지는 0 / 챗봇의 메시지는 1을 반환하도록 아래와 같이 오버라이드 합니다.
-    @Override
-    public int getItemViewType(int position) {
-        if (dataList.get(position).role.equals(ChatMsg.ROLE_USER)) return 0;
-        return 1;
-    }
-
-    @NonNull
-    @Override
-    public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        LayoutInflater inflater = LayoutInflater.from(parent.getContext());
-        // 뷰타입이 0 이면 MyChatViewHolder를 반환
-        if (viewType == 0) {
-            return new MyChatViewHolder(inflater.inflate(R.layout.item_my_chat, parent, false));
-        }
-        // 아니면 BotChatViewHolder 반환
-        return new BotChatViewHolder(inflater.inflate(R.layout.item_bot_chat, parent, false));
-    }
-
-
-    @Override
-    public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
-        ChatMsg chatMsg = dataList.get(position);
-        if (chatMsg.role.equals(ChatMsg.ROLE_USER)) {
-            ((MyChatViewHolder) holder).setMsg(chatMsg);
-        } else {
-            ((BotChatViewHolder) holder).setMsg(chatMsg);
+    // if-else 대신 when 표현식을 사용하여 더 간결하게 표현합니다.
+    override fun getItemViewType(position: Int): Int {
+        return when (dataList[position].role) {
+            ChatMsg.ROLE_USER -> VIEW_TYPE_MY_CHAT
+            else -> VIEW_TYPE_BOT_CHAT
         }
     }
 
-    @Override
-    public int getItemCount() {
-        return dataList == null ? 0 : dataList.size();
-    }
-
-    // 내가 보낸 메시지를 띄우기 위한 뷰홀더입니다.
-    class MyChatViewHolder extends RecyclerView.ViewHolder {
-        private TextView tvMsg;
-        public MyChatViewHolder(@NonNull View itemView) {
-            super(itemView);
-            tvMsg = itemView.findViewById(R.id.tv_msg);
-        }
-
-        public void setMsg(ChatMsg chatMsg) {
-            tvMsg.setText(chatMsg.content);
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+        val inflater = LayoutInflater.from(parent.context)
+        return when (viewType) {
+            VIEW_TYPE_MY_CHAT -> {
+                val view = inflater.inflate(R.layout.item_my_chat, parent, false)
+                MyChatViewHolder(view)
+            }
+            else -> {
+                val view = inflater.inflate(R.layout.item_bot_chat, parent, false)
+                BotChatViewHolder(view)
+            }
         }
     }
 
-    //챗봇의 메시지를 띄우기 위한 뷰홀더입니다.
-     class BotChatViewHolder extends RecyclerView.ViewHolder {
-        private TextView tvMsg;
-        public BotChatViewHolder(@NonNull View itemView) {
-            super(itemView);
-            tvMsg = itemView.findViewById(R.id.tv_msg);
+    // is 키워드를 사용하여 타입 체크와 동시에 스마트 캐스팅을 활용합니다.
+    override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+        val chatMsg = dataList[position]
+        when (holder) {
+            is MyChatViewHolder -> holder.bind(chatMsg)
+            is BotChatViewHolder -> holder.bind(chatMsg)
         }
-        public void setMsg(ChatMsg chatMsg) {
-            tvMsg.setText(chatMsg.content);
+    }
+
+    override fun getItemCount(): Int = dataList.size
+
+    // 내가 보낸 메시지를 띄우기 위한 뷰홀더
+    inner class MyChatViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        private val tvMsg: TextView = itemView.findViewById(R.id.tv_msg)
+
+        fun bind(chatMsg: ChatMsg) {
+            // content가 String일 경우에만 텍스트를 설정 (스마트 캐스팅)
+            if (chatMsg.content is String) {
+                tvMsg.text = chatMsg.content
+            }
         }
+    }
+
+    // 챗봇의 메시지를 띄우기 위한 뷰홀더
+    inner class BotChatViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        private val tvMsg: TextView = itemView.findViewById(R.id.tv_msg)
+
+        fun bind(chatMsg: ChatMsg) {
+            if (chatMsg.content is String) {
+                tvMsg.text = chatMsg.content
+            }
+        }
+    }
+
+    // 뷰 타입을 상수로 정의하여 가독성을 높입니다.
+    companion object {
+        private const val VIEW_TYPE_MY_CHAT = 0
+        private const val VIEW_TYPE_BOT_CHAT = 1
     }
 }
