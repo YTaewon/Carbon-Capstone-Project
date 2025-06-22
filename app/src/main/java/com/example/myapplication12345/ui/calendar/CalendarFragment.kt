@@ -27,15 +27,21 @@ import java.util.Calendar
 import java.util.Locale
 
 class CalendarFragment : Fragment() {
-
+    // View binding 객체 선언
     private var _binding: FragmentCalendarBinding? = null
     private val binding get() = _binding!!
 
+    // 날짜 데이터 리스트
     private val dayList = mutableListOf<Day>()
+    // 그리드뷰 어댑터
     private lateinit var gridAdapter: GridAdapter
+    // 캘린더 인스턴스
     private val mCal: Calendar = Calendar.getInstance()
+    // 뷰모델 인스턴스
     private lateinit var calendarViewModel: CalendarViewModel
+    // 선택된 날짜의 위치
     private var selectedPosition: Int = -1
+    // 서버 매니저 인스턴스
     private lateinit var serverManager: ServerManager
 
     override fun onCreateView(
@@ -102,11 +108,11 @@ class CalendarFragment : Fragment() {
         val newDayList = mutableListOf<Day>()
 
         val daysOfWeek = arrayOf("일", "월", "화", "수", "목", "금", "토")
-        daysOfWeek.forEach { newDayList.add(Day(it, -1, -1)) }
+        daysOfWeek.forEach { newDayList.add(Day(it, -1, -1, -1)) }
 
         tempCal.set(Calendar.DAY_OF_MONTH, 1)
         val startDayOfWeek = tempCal.get(Calendar.DAY_OF_WEEK)
-        repeat(startDayOfWeek - 1) { newDayList.add(Day("", 0, 0)) }
+        repeat(startDayOfWeek - 1) { newDayList.add(Day("", 0, 0, 0)) }
 
         val daysInMonth = tempCal.getActualMaximum(Calendar.DAY_OF_MONTH)
         val deferredEmissions = (1..daysInMonth).map { day ->
@@ -116,8 +122,9 @@ class CalendarFragment : Fragment() {
                 // ServerManager에 추가한 확장 suspend 함수 사용
                 val productEmissionDeferred = async { serverManager.getProductEmissionsSuspend(date) }
                 val transportEmissionDeferred = async { serverManager.getTransportEmissionsSuspend(date) }
+                val objectEmissionDeferred = async { serverManager.getObjectEmissionsForDateSuspend(date) }
 
-                Day(day.toString(), productEmissionDeferred.await(), transportEmissionDeferred.await())
+                Day(day.toString(), productEmissionDeferred.await(), transportEmissionDeferred.await(), objectEmissionDeferred.await())
             }
         }
 
@@ -125,7 +132,7 @@ class CalendarFragment : Fragment() {
         return newDayList
     }
 
-    data class Day(val date: String, var productEmissions: Int, var transportEmissions: Int)
+    data class Day(val date: String, var productEmissions: Int, var transportEmissions: Int, var objectEmissions: Int)
 
     private inner class GridAdapter(private val list: List<Day>) : BaseAdapter() {
         override fun getCount(): Int = list.size
@@ -153,7 +160,7 @@ class CalendarFragment : Fragment() {
             holder.tvItemGridView.text = day.date
 
             if (day.date.isNotEmpty() && day.date.all { it.isDigit() }) { // 유효한 날짜인 경우
-                val totalEmissions = day.productEmissions + day.transportEmissions
+                val totalEmissions = day.productEmissions + day.transportEmissions + day.objectEmissions
                 holder.tvPoints.text = if (totalEmissions > 0) totalEmissions.toString() else ""
 
                 val today = Calendar.getInstance()
@@ -205,11 +212,12 @@ class CalendarFragment : Fragment() {
 
 
     private fun showPointView(day: Day) {
-        val totalEmissions = day.productEmissions + day.transportEmissions
+        val totalEmissions = day.productEmissions + day.transportEmissions + day.objectEmissions
         val resultText = """
             현재 총 배출량: $totalEmissions
             전기 탄소 배출량: ${day.productEmissions}
             이동경로 탄소 배출량: ${day.transportEmissions}
+            사물 탄소 배출량: ${day.objectEmissions}
         """.trimIndent()
         binding.tvDayResult.text = resultText
     }
@@ -220,13 +228,16 @@ class CalendarFragment : Fragment() {
 
         val productLabel = TextView(requireContext()).apply { text = "전기 탄소 배출량" }
         val transportLabel = TextView(requireContext()).apply { text = "이동경로 탄소 배출량" }
+        val objectLabel = TextView(requireContext()).apply { text = "사물 탄소 배출량" }
         val productInput = EditText(requireContext()).apply { setText(day.productEmissions.toString()) }
         val transportInput = EditText(requireContext()).apply { setText(day.transportEmissions.toString()) }
+        val objectInput = EditText(requireContext()).apply { setText(day.objectEmissions.toString()) }
 
         val layout = LinearLayout(requireContext()).apply {
             orientation = LinearLayout.VERTICAL
             addView(productLabel); addView(productInput)
             addView(transportLabel); addView(transportInput)
+            addView(objectLabel); addView(objectInput)
         }
         builder.setView(layout)
 
@@ -240,11 +251,12 @@ class CalendarFragment : Fragment() {
     }
 
     private fun showPointVeiw(day: Day) {
-        val totalEmissions = day.productEmissions + day.transportEmissions
+        val totalEmissions = day.productEmissions + day.transportEmissions + day.objectEmissions
         val resultText = """
         현재 총 배출량: $totalEmissions
         전기 탄소 배출량: ${day.productEmissions}
         이동경로 탄소 배출량: ${day.transportEmissions}
+        사물 탄소 배출량: ${day.objectEmissions}
     """.trimIndent()
         binding.tvDayResult.text = resultText
         Timber.d("Displayed point view for date ${day.date}: productEmissions=${day.productEmissions}")

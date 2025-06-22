@@ -66,6 +66,34 @@ class ServerManager(private val context: Context) {
         getTransportEmissions(date, onScoresRetrieved)
     }
 
+    // 특정 날짜의 사물 배출량 점수를 가져오는 메서드
+    fun getObjectEmissionsForDate(date: Calendar, onScoresRetrieved: (Int) -> Unit) {
+        // 사용자 인증 확인
+        val userRef = getUserReference() ?: run {
+            Toast.makeText(context, "로그인이 필요해요.", Toast.LENGTH_SHORT).show()
+            onScoresRetrieved(0)
+            return
+        }
+
+        // 날짜 포맷팅 및 Firebase 참조 설정
+        val dateString = getFormattedDate(date)
+        val emissionRef = userRef.child("emissions").child(dateString).child("objectEmissions")
+
+        // Firebase에서 데이터 조회
+        emissionRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val emissions = snapshot.getValue(Int::class.java) ?: 0
+                Timber.tag("ServerManager").d("사물 배출량 가져오기 성공: $dateString, 값: $emissions")
+                onScoresRetrieved(emissions)
+            }
+
+            override fun onCancelled(databaseError: DatabaseError) {
+                handleError(databaseError.toException(), "사물 배출량 가져오기")
+                onScoresRetrieved(0)
+            }
+        })
+    }
+
     fun updateMonthlyPointsForMonth(month: String, callback: (Boolean) -> Unit) {
         val userRef = getUserReference() ?: run {
             Toast.makeText(context, "로그인이 필요해요.", Toast.LENGTH_SHORT).show()
@@ -243,6 +271,36 @@ class ServerManager(private val context: Context) {
         })
     }
 
+    fun updateObjectEmissions(date: Calendar, emissions: Int, callback: (Boolean) -> Unit) {
+        // 사용자 인증 확인
+        val userRef = getUserReference() ?: run {
+            Toast.makeText(context, "로그인이 필요해요.", Toast.LENGTH_SHORT).show()
+            callback(false)
+            return
+        }
+
+        // 날짜 포맷팅 및 Firebase 참조 설정
+        val dateString = getFormattedDate(date)
+        val emissionRef = userRef.child("emissions").child(dateString).child("objectEmissions")
+
+        // 기존 배출량 조회 후 누적 업데이트
+        emissionRef.get().addOnSuccessListener { snapshot ->
+            val currentEmissions = snapshot.getValue(Int::class.java) ?: 0
+            emissionRef.setValue(currentEmissions + emissions)
+                .addOnSuccessListener {
+                    Timber.tag("ServerManager").d("사물 배출량 업데이트 완료: $dateString, emissions: ${currentEmissions + emissions}")
+                    callback(true)
+                }
+                .addOnFailureListener { e ->
+                    handleError(e, "사물 배출량 업데이트")
+                    callback(false)
+                }
+        }.addOnFailureListener { e ->
+            handleError(e, "현재 사물 배출량 조회")
+            callback(false)
+        }
+    }
+
     /**
      * 특정 날짜의 productEmissions 업데이트 메서드
      */
@@ -326,6 +384,21 @@ class ServerManager(private val context: Context) {
         return suspendCancellableCoroutine { continuation ->
             // 기존의 콜백 기반 함수를 호출합니다.
             getProductEmissions(date) { emissions ->
+                // 코루틴이 아직 활성 상태일 때만 결과를 전달합니다.
+                // (Fragment가 파괴되는 등 코루틴이 취소된 경우를 대비)
+                if (continuation.isActive) {
+                    continuation.resume(emissions) // 콜백 결과를 코루틴의 반환값으로 전달
+                }
+            }
+        }
+    }
+
+    suspend fun getObjectEmissionsForDateSuspend(date: Calendar): Int {
+        // suspendCancellableCoroutine은 코루틴을 일시 중단하고,
+        // 콜백이 호출되면 다시 재개(resume)시키는 역할을 합니다.
+        return suspendCancellableCoroutine { continuation ->
+            // 기존의 콜백 기반 함수를 호출합니다.
+            getObjectEmissionsForDate(date) { emissions ->
                 // 코루틴이 아직 활성 상태일 때만 결과를 전달합니다.
                 // (Fragment가 파괴되는 등 코루틴이 취소된 경우를 대비)
                 if (continuation.isActive) {
