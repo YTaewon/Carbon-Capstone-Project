@@ -7,6 +7,7 @@ import android.app.DatePickerDialog
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.os.FileObserver
 import android.os.Looper
 import android.view.LayoutInflater
 import android.view.MotionEvent
@@ -20,6 +21,7 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.ActivityCompat
 import androidx.core.graphics.toColorInt
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.viewpager2.widget.ViewPager2
 import com.example.myapplication12345.R
@@ -34,6 +36,7 @@ import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.MapView
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.Polyline
 import com.google.android.gms.maps.model.PolylineOptions
 import timber.log.Timber
 import java.io.BufferedReader
@@ -45,13 +48,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
-import androidx.core.view.isVisible
-import androidx.fragment.app.activityViewModels
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.lifecycleScope // lifecycleScope 임포트
-import com.example.myapplication12345.ServerManager
-import com.example.myapplication12345.ui.calendar.CalendarViewModel
+import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -62,7 +59,6 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         private const val TAG = "MapFragment"
         private val dateFormat = SimpleDateFormat("yyyyMMdd", Locale.KOREAN)
 
-        // 이 함수는 파일 I/O를 포함하므로 백그라운드 스레드에서 호출해야 합니다.
         suspend fun createTestCsvFile(context: Context, date: Date) = withContext(Dispatchers.IO) {
             val mapDataDir = File(context.getExternalFilesDir(null), "Map").apply { mkdirs() }
             val file = File(mapDataDir, "${dateFormat.format(date)}_predictions.csv")
@@ -90,7 +86,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                 }
                 Timber.tag(TAG).d("테스트 CSV 생성 완료: $file")
             } catch (e: Exception) {
-                Timber.tag(TAG).e("테스트 CSV 생성 실패: ${e.message}")
+                Timber.tag(TAG).e(e, "테스트 CSV 생성 실패")
             }
         }
     }
@@ -113,19 +109,16 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private lateinit var locationRequest: LocationRequest
 
     // 상태 변수
+    private val currentPolylines = mutableListOf<Polyline>()
+    private var fileObserver: FileObserver? = null
     private val TRANSPORT_MODES = listOf("WALK", "BIKE", "BUS", "CAR", "SUBWAY", "ETC")
     private val selectedModes = mutableSetOf<String>().apply { addAll(TRANSPORT_MODES) }
     private var isDistanceInfoVisible = true
     private var isMyLocationShown = false
     private var userInteractedWithMap = false
 
-    private val calendarViewModel: CalendarViewModel by activityViewModels {
-        object : ViewModelProvider.Factory {
-            override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                return CalendarViewModel(ServerManager(requireContext())) as T
-            }
-        }
-    }
+    // 미사용 ViewModel 제거
+    // private val calendarViewModel: CalendarViewModel by activityViewModels { ... }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -168,12 +161,14 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             uiSettings.isMyLocationButtonEnabled = false
         }
 
-        // ViewPager2 스와이프 충돌 방지
         val viewPager = activity?.findViewById<ViewPager2>(R.id.viewPager)
         googleMap?.setOnCameraMoveStartedListener { reason ->
             if (reason == GoogleMap.OnCameraMoveStartedListener.REASON_GESTURE) {
                 viewPager?.isUserInputEnabled = false
-                if (isMyLocationShown) userInteractedWithMap = true
+                if (isMyLocationShown) {
+                    userInteractedWithMap = true
+                    findnowlocateButton.setImageResource(R.drawable.ic_location_searching)
+                }
             }
         }
         googleMap?.setOnCameraIdleListener {
@@ -195,35 +190,24 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         }
     }
 
-    // --- 주요 수정 부분: 파일 I/O를 백그라운드로 ---
-
-    private fun loadAndDisplayPredictionData(date: String) {
+    private fun loadAndDisplayPredictionData(date: String, moveCameraOnLoad: Boolean = true) {
         if (!isAdded || googleMap == null) return
 
-        googleMap?.clear()
-
-        // lifecycleScope.launch를 사용하여 코루틴 시작
         viewLifecycleOwner.lifecycleScope.launch {
-            // 메인 스레드: UI 업데이트 (로딩 시작)
+            clearCurrentPolylines()
             textDistanceInfo.text = "데이터 로딩 중..."
-
-            // withContext(Dispatchers.IO)로 백그라운드 스레드로 전환하여 파일 작업 수행
             val predictionData = withContext(Dispatchers.IO) {
                 val file = File(requireContext().getExternalFilesDir(null), "Map/${date}_predictions.csv")
                 if (file.exists()) loadCsvData(file) else null
             }
-
-            // 메인 스레드로 자동 복귀하여 UI 업데이트
-            if (!isAdded) return@launch // 작업 완료 후 fragment가 detached 되었는지 확인
+            if (!isAdded) return@launch
 
             if (predictionData == null) {
                 "데이터 없음: $date".also { textDistanceInfo.text = it }
-                googleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(35.177306, 128.567773), 15f))
             } else if (predictionData.isEmpty()) {
                 "데이터 없음: $date (파일 내용 없음)".also { textDistanceInfo.text = it }
-                googleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(35.177306, 128.567773), 15f))
             } else {
-                displayPredictionOnMap(predictionData)
+                displayPredictionOnMap(predictionData, date, moveCameraOnLoad)
             }
             updateTestMapButtonState(date)
         }
@@ -247,57 +231,76 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         return data
     }
 
-    private fun handleTestMapButtonClick() {
-        viewLifecycleOwner.lifecycleScope.launch {
-            val parsedDateStr = parseDateFromText(dateText.text.toString())
-            try {
-                val dateObj = withContext(Dispatchers.Default) { dateFormat.parse(parsedDateStr) }
-                if (dateObj != null) {
-                    createTestCsvFile(requireContext(), dateObj) // suspend 함수 호출
-                    loadAndDisplayPredictionData(parsedDateStr)
-                    Toast.makeText(requireContext(), "$parsedDateStr 테스트 CSV 생성 완료", Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(requireContext(), "유효하지 않은 날짜입니다.", Toast.LENGTH_SHORT).show()
+    @SuppressLint("DefaultLocale")
+    private fun displayPredictionOnMap(predictionData: List<Map<String, String>>, date: String, moveCamera: Boolean) {
+        if (!isAdded || googleMap == null) return
+
+        val distanceInfo = StringBuilder("이동 거리 합계:\n")
+        var firstPoint: LatLng? = null
+        var lastPoint: LatLng? = null
+        var totalOverallDistance = 0.0
+        var totalTransportEmissions = 0.0
+
+        val modeNames = mapOf("WALK" to "걷기", "BIKE" to "자전거", "CAR" to "자동차", "BUS" to "버스", "SUBWAY" to "지하철", "ETC" to "기타")
+        val definedModes = TRANSPORT_MODES.toSet()
+
+        val filteredData = predictionData.map { data ->
+            val mode = data["transport_mode"]?.uppercase(Locale.ROOT)
+            if (mode != null && definedModes.contains(mode)) data else data + ("transport_mode" to "ETC")
+        }.filter { selectedModes.contains(it["transport_mode"]) }
+
+        if (filteredData.isEmpty()) {
+            textDistanceInfo.text = "선택된 이동수단에 대한 데이터 없음"
+            return
+        }
+
+        filteredData.groupBy { it["transport_mode"]!! }.forEach { (mode, dataList) ->
+            var distanceForMode = 0.0
+            dataList.forEach { data ->
+                val dist = data["distance_meters"]?.toDoubleOrNull() ?: 0.0
+                val startLat = data["start_latitude"]?.toDoubleOrNull()
+                val startLon = data["start_longitude"]?.toDoubleOrNull()
+                val endLat = data["end_latitude"]?.toDoubleOrNull()
+                val endLon = data["end_longitude"]?.toDoubleOrNull()
+
+                if (startLat != null && startLon != null && endLat != null && endLon != null) {
+                    val start = LatLng(startLat, startLon)
+                    val end = LatLng(endLat, endLon)
+                    distanceForMode += dist
+                    if (firstPoint == null) firstPoint = start
+                    lastPoint = end
+
+                    val polylineOptions = PolylineOptions().add(start, end).color(getTransportColor(mode)).width(8f)
+                    googleMap?.addPolyline(polylineOptions)?.let { polyline ->
+                        currentPolylines.add(polyline)
+                    }
                 }
-            } catch (e: Exception) {
-                Timber.tag(TAG).e(e, "handleTestMapButtonClick에서 오류: $parsedDateStr")
-                Toast.makeText(requireContext(), "날짜 형식 오류입니다.", Toast.LENGTH_SHORT).show()
+            }
+            if (distanceForMode > 0) {
+                totalOverallDistance += distanceForMode
+                val emissions = (distanceForMode / 100.0) * getEmissionFactor(mode)
+                totalTransportEmissions += emissions
+                distanceInfo.append(String.format(Locale.KOREAN, "%s: %.2f m (%.2f g CO₂)\n", modeNames[mode] ?: mode, distanceForMode, emissions))
             }
         }
-    }
 
-    private fun updateTestMapButtonState(date: String) {
-        viewLifecycleOwner.lifecycleScope.launch {
-            val fileExists = withContext(Dispatchers.IO) {
-                File(requireContext().getExternalFilesDir(null), "Map/${date}_predictions.csv").exists()
+        if (totalOverallDistance > 0) {
+            distanceInfo.append("--------------------\n")
+            distanceInfo.append(String.format(Locale.KOREAN, "총 이동거리: %.2f m\n", totalOverallDistance))
+            distanceInfo.append(String.format(Locale.KOREAN, "총 탄소 배출량: %.2f g CO₂", totalTransportEmissions))
+            textDistanceInfo.text = distanceInfo.toString()
+
+            if (moveCamera) {
+                val todayDate = dateFormat.format(System.currentTimeMillis())
+                val isToday = (date == todayDate)
+                val initialCameraPosition = if (isToday) lastPoint else firstPoint
+
+                initialCameraPosition?.let {
+                    googleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(it, 17f))
+                }
             }
-            if(isAdded) testMapButton.isEnabled = !fileExists
-        }
-    }
-
-    // --- 나머지 코드 (UI 및 로직 관련, 큰 변경 없음) ---
-
-    private fun initializeViews(view: View) {
-        mapView = view.findViewById(R.id.map_view)
-        textDistanceInfo = view.findViewById(R.id.text_distance_info)
-        loadButton = view.findViewById(R.id.load_button)
-        selectTransportButton = view.findViewById(R.id.select_transport_button)
-        toggleDistanceButton = view.findViewById(R.id.toggle_distance_button)
-        calendarButton = view.findViewById(R.id.calendar_button)
-        dateText = view.findViewById(R.id.date_text)
-        testMapButton = view.findViewById(R.id.test_map)
-        findnowlocateButton = view.findViewById(R.id.find_now_locate_button)
-        isDistanceInfoVisible = this.textDistanceInfo.isVisible
-    }
-
-    @SuppressLint("ClickableViewAccessibility")
-    private fun setupMapView(savedInstanceState: Bundle?) {
-        mapView?.onCreate(savedInstanceState)
-        mapView?.getMapAsync(this)
-        mapView?.setOnTouchListener { v, event ->
-            v.parent?.requestDisallowInterceptTouchEvent(event.action != MotionEvent.ACTION_UP && event.action != MotionEvent.ACTION_CANCEL)
-            if (event.action == MotionEvent.ACTION_UP) v.performClick()
-            false
+        } else {
+            textDistanceInfo.text = "표시할 데이터 없음 (필터링 후)"
         }
     }
 
@@ -310,8 +313,17 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         calendarButton.setOnClickListener { showDatePickerDialog() }
         dateText.setOnClickListener { showDatePickerDialog() }
         testMapButton.setOnClickListener { handleTestMapButtonClick() }
+
         findnowlocateButton.setOnClickListener {
-            if (!isMyLocationShown) enableMyLocationAndStartUpdates() else disableMyLocationAndStopUpdates()
+            if (!isMyLocationShown) {
+                enableMyLocationAndStartUpdates()
+            } else {
+                if (userInteractedWithMap) {
+                    recenterAndResumeFollowing()
+                } else {
+                    disableMyLocationAndStopUpdates()
+                }
+            }
         }
     }
 
@@ -348,16 +360,73 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         userInteractedWithMap = false
     }
 
-    private fun hasLocationPermission(): Boolean =
-        ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+    @SuppressLint("MissingPermission")
+    private fun recenterAndResumeFollowing() {
+        if (!isAdded || googleMap == null || !hasLocationPermission()) return
 
-    private val locationPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
-        if (isGranted) enableMyLocationAndStartUpdates() else {
-            if(isAdded) Toast.makeText(requireContext(), "위치 권한이 거부되어 현재 위치를 표시할 수 없습니다.", Toast.LENGTH_LONG).show()
+        userInteractedWithMap = false
+        findnowlocateButton.setImageResource(R.drawable.ic_location_searching_true)
+
+        fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+            if (location != null && isAdded) {
+                val currentLatLng = LatLng(location.latitude, location.longitude)
+                googleMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 18f))
+            } else {
+                Toast.makeText(requireContext(), "현재 위치를 가져오는 중입니다...", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
-    // ... (showDatePickerDialog, updateDateText, parseDateFromText, toggleDistanceInfoVisibility, showTransportSelectionDialog 등은 변경 없음)
+    // ## [수정됨] FileObserver API 호환성 문제 해결 ##
+    private fun startFileObserver() {
+        if (fileObserver != null) return
+        val mapDataDir = File(requireContext().getExternalFilesDir(null), "Map")
+        if (!mapDataDir.exists()) { mapDataDir.mkdirs() }
+
+        // File 객체 대신 String 경로를 전달하여 구버전(API 24)과 호환되도록 수정
+        fileObserver = object : FileObserver(mapDataDir.absolutePath, CLOSE_WRITE) {
+            override fun onEvent(event: Int, path: String?) {
+                if (path == null) return
+
+                val currentDateStr = parseDateFromText(dateText.text.toString())
+                if (path == "${currentDateStr}_predictions.csv") {
+                    Timber.tag(TAG).d("FileObserver: 감지된 파일 업데이트 - $path")
+                    // FileObserver 콜백은 백그라운드 스레드에서 올 수 있으므로 UI 작업은 메인 스레드에서 실행
+                    activity?.runOnUiThread {
+                        loadAndDisplayPredictionData(currentDateStr, moveCameraOnLoad = false)
+                    }
+                }
+            }
+        }
+        fileObserver?.startWatching()
+        Timber.tag(TAG).d("FileObserver 시작: ${mapDataDir.path}")
+    }
+
+    private fun stopFileObserver() {
+        fileObserver?.stopWatching()
+        fileObserver = null
+        Timber.tag(TAG).d("FileObserver 중지됨.")
+    }
+
+    private fun handleTestMapButtonClick() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            val parsedDateStr = parseDateFromText(dateText.text.toString())
+            try {
+                val dateObj = withContext(Dispatchers.Default) { dateFormat.parse(parsedDateStr) }
+                if (dateObj != null) {
+                    createTestCsvFile(requireContext(), dateObj)
+                    loadAndDisplayPredictionData(parsedDateStr) // CSV 생성 후 바로 로드
+                    Toast.makeText(requireContext(), "$parsedDateStr 테스트 CSV 생성 완료", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(requireContext(), "유효하지 않은 날짜입니다.", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Timber.tag(TAG).e(e, "handleTestMapButtonClick에서 오류: $parsedDateStr")
+                Toast.makeText(requireContext(), "날짜 형식 오류입니다.", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
     private fun showDatePickerDialog() {
         val calendar = Calendar.getInstance()
         DatePickerDialog(requireContext(), R.style.DatePickerTheme, { _, year, month, day ->
@@ -365,23 +434,6 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             updateDateText(selectedDate)
             loadAndDisplayPredictionData(selectedDate)
         }, calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH)).show()
-    }
-
-    private fun updateDateText(date: String) {
-        if (date.length == 8) {
-            "${date.substring(0, 4)}년 ${date.substring(4, 6)}월 ${date.substring(6, 8)}일".also { dateText.text = it }
-        } else {
-            dateText.text = "날짜 형식 오류"
-        }
-    }
-
-    private fun parseDateFromText(dateTextString: String): String =
-        dateTextString.replace("[^0-9]".toRegex(), "")
-
-    private fun toggleDistanceInfoVisibility() {
-        isDistanceInfoVisible = !isDistanceInfoVisible
-        textDistanceInfo.visibility = if (isDistanceInfoVisible) View.VISIBLE else View.GONE
-        toggleDistanceButton.setImageResource(if (isDistanceInfoVisible) R.drawable.ic_drop_up else R.drawable.ic_drop_down)
     }
 
     private fun showTransportSelectionDialog() {
@@ -405,73 +457,95 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             .setNegativeButton("취소", null).show()
     }
 
-    @SuppressLint("DefaultLocale")
-    private fun displayPredictionOnMap(predictionData: List<Map<String, String>>) {
-        if (!isAdded || googleMap == null) return
-
-        val distanceInfo = StringBuilder("이동 거리 합계:\n")
-        var firstPoint: LatLng? = null
-        var totalOverallDistance = 0.0
-        var totalTransportEmissions = 0.0
-
-        val modeNames = mapOf("WALK" to "걷기", "BIKE" to "자전거", "CAR" to "자동차", "BUS" to "버스", "SUBWAY" to "지하철", "ETC" to "기타")
-        val definedModes = TRANSPORT_MODES.toSet()
-
-        val filteredData = predictionData.map { data ->
-            val mode = data["transport_mode"]?.uppercase(Locale.ROOT)
-            if (mode != null && definedModes.contains(mode)) data else data + ("transport_mode" to "ETC")
-        }.filter { selectedModes.contains(it["transport_mode"]) }
-
-        if (filteredData.isEmpty()) {
-            textDistanceInfo.text = "선택된 이동수단에 대한 데이터 없음"
-            return
+    private fun clearCurrentPolylines() {
+        // 이 함수는 보통 코루틴 내에서 호출되므로 별도의 launch가 필요 없을 수 있음
+        // UI 스레드에서 실행되는 것을 보장하기 위해 Dispatchers.Main.immediate 사용 가능
+        lifecycleScope.launch(Dispatchers.Main.immediate) {
+            currentPolylines.forEach { it.remove() }
+            currentPolylines.clear()
         }
+    }
 
-        filteredData.groupBy { it["transport_mode"]!! }.forEach { (mode, dataList) ->
-            var distanceForMode = 0.0
-            dataList.forEach { data ->
-                val dist = data["distance_meters"]?.toDoubleOrNull() ?: 0.0
-                val startLat = data["start_latitude"]?.toDoubleOrNull()
-                val startLon = data["start_longitude"]?.toDoubleOrNull()
-                val endLat = data["end_latitude"]?.toDoubleOrNull()
-                val endLon = data["end_longitude"]?.toDoubleOrNull()
+    private fun initializeViews(view: View) {
+        mapView = view.findViewById(R.id.map_view)
+        textDistanceInfo = view.findViewById(R.id.text_distance_info)
+        loadButton = view.findViewById(R.id.load_button)
+        selectTransportButton = view.findViewById(R.id.select_transport_button)
+        toggleDistanceButton = view.findViewById(R.id.toggle_distance_button)
+        calendarButton = view.findViewById(R.id.calendar_button)
+        dateText = view.findViewById(R.id.date_text)
+        testMapButton = view.findViewById(R.id.test_map)
+        findnowlocateButton = view.findViewById(R.id.find_now_locate_button)
+        isDistanceInfoVisible = this.textDistanceInfo.isVisible
+    }
 
-                if (startLat != null && startLon != null && endLat != null && endLon != null) {
-                    val start = LatLng(startLat, startLon)
-                    val end = LatLng(endLat, endLon)
-                    distanceForMode += dist
-                    if (firstPoint == null) firstPoint = start
-                    googleMap?.addPolyline(PolylineOptions().add(start, end).color(getTransportColor(mode)).width(8f))
-                }
+    // ## [수정됨] performClick() 호출 위치 변경 ##
+    @SuppressLint("ClickableViewAccessibility")
+    private fun setupMapView(savedInstanceState: Bundle?) {
+        mapView?.onCreate(savedInstanceState)
+        mapView?.getMapAsync(this)
+        mapView?.setOnTouchListener { v, event ->
+            v.parent?.requestDisallowInterceptTouchEvent(event.action != MotionEvent.ACTION_UP && event.action != MotionEvent.ACTION_CANCEL)
+            if (event.action == MotionEvent.ACTION_UP) {
+                // 터치가 끝났을 때 performClick을 호출하여 접근성 및 클릭 이벤트 처리
+                v.performClick()
             }
-            if (distanceForMode > 0) {
-                totalOverallDistance += distanceForMode
-                val emissions = (distanceForMode / 100.0) * getEmissionFactor(mode)
-                totalTransportEmissions += emissions
-                distanceInfo.append(String.format(Locale.KOREAN, "%s: %.2f m (%.2f g CO₂)\n", modeNames[mode] ?: mode, distanceForMode, emissions))
-            }
+            false
         }
+    }
 
-        if (totalOverallDistance > 0) {
-            distanceInfo.append("--------------------\n")
-            distanceInfo.append(String.format(Locale.KOREAN, "총 이동거리: %.2f m\n", totalOverallDistance))
-            distanceInfo.append(String.format(Locale.KOREAN, "총 탄소 배출량: %.2f g CO₂", totalTransportEmissions))
-            textDistanceInfo.text = distanceInfo.toString()
-            firstPoint?.let { googleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(it, 17f)) }
+    private fun hasLocationPermission(): Boolean =
+        ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+
+    private val locationPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+        if (isGranted) {
+            enableMyLocationAndStartUpdates()
         } else {
-            textDistanceInfo.text = "표시할 데이터 없음 (필터링 후)"
+            if(isAdded) Toast.makeText(requireContext(), "위치 권한이 거부되어 현재 위치를 표시할 수 없습니다.", Toast.LENGTH_LONG).show()
         }
+    }
+
+    private fun updateDateText(date: String) {
+        if (date.length == 8) {
+            "${date.substring(0, 4)}년 ${date.substring(4, 6)}월 ${date.substring(6, 8)}일".also { dateText.text = it }
+        } else {
+            dateText.text = "날짜 형식 오류"
+        }
+    }
+
+    private fun updateTestMapButtonState(date: String) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            val fileExists = withContext(Dispatchers.IO) {
+                File(requireContext().getExternalFilesDir(null), "Map/${date}_predictions.csv").exists()
+            }
+            if(isAdded) testMapButton.isEnabled = !fileExists
+        }
+    }
+
+    private fun parseDateFromText(dateTextString: String): String =
+        dateTextString.replace("[^0-9]".toRegex(), "")
+
+    private fun toggleDistanceInfoVisibility() {
+        isDistanceInfoVisible = !isDistanceInfoVisible
+        textDistanceInfo.visibility = if (isDistanceInfoVisible) View.VISIBLE else View.GONE
+        toggleDistanceButton.setImageResource(if (isDistanceInfoVisible) R.drawable.ic_drop_up else R.drawable.ic_drop_down)
     }
 
     private fun getEmissionFactor(mode: String): Double = when (mode.uppercase(Locale.ROOT)) {
         "WALK", "BIKE" -> 0.0
-        "CAR" -> 12.0; "BUS" -> 6.0; "SUBWAY" -> 4.0; else -> 8.0
+        "CAR" -> 12.0
+        "BUS" -> 6.0
+        "SUBWAY" -> 4.0
+        else -> 8.0 // ETC
     }
 
     private fun getTransportColor(mode: String): Int = when (mode.uppercase(Locale.ROOT)) {
-        "WALK" -> "#DB4437".toColorInt(); "BIKE" -> "#F4B400".toColorInt()
-        "CAR" -> "#0F9D58".toColorInt(); "BUS" -> "#4285F4".toColorInt()
-        "SUBWAY" -> "#7C4700".toColorInt(); else -> "#2E2E2E".toColorInt()
+        "WALK" -> "#DB4437".toColorInt()
+        "BIKE" -> "#F4B400".toColorInt()
+        "CAR" -> "#0F9D58".toColorInt()
+        "BUS" -> "#4285F4".toColorInt()
+        "SUBWAY" -> "#7C4700".toColorInt()
+        else -> "#2E2E2E".toColorInt() // ETC, UNKNOWN
     }
 
     // --- Fragment 생명주기 ---
@@ -479,33 +553,39 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     override fun onResume() {
         super.onResume()
         mapView?.onResume()
-        if (isMyLocationShown && hasLocationPermission() && googleMap != null) {
+        if (isMyLocationShown && !userInteractedWithMap && hasLocationPermission() && googleMap != null) {
             try {
-                googleMap?.isMyLocationEnabled = true
                 fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, Looper.getMainLooper())
-            } catch (se: SecurityException) {
+            } catch (_: SecurityException) {
                 disableMyLocationAndStopUpdates()
             }
         }
+        startFileObserver()
     }
 
     override fun onPause() {
         super.onPause()
         mapView?.onPause()
         if (isAdded) fusedLocationClient.removeLocationUpdates(locationCallback)
+        stopFileObserver()
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
-        // lifecycleScope는 자동으로 취소되므로 수동 취소 불필요.
-        if (::fusedLocationClient.isInitialized) {
-            fusedLocationClient.removeLocationUpdates(locationCallback)
-        }
+        // fusedLocationClient는 onCreate에서 초기화되므로 onDestroyView에서 null 체크할 필요 없음
+        fusedLocationClient.removeLocationUpdates(locationCallback)
         mapView?.onDestroy()
         mapView = null
         googleMap = null
     }
 
-    override fun onLowMemory() { super.onLowMemory(); mapView?.onLowMemory() }
-    override fun onSaveInstanceState(outState: Bundle) { super.onSaveInstanceState(outState); mapView?.onSaveInstanceState(outState) }
+    override fun onLowMemory() {
+        super.onLowMemory()
+        mapView?.onLowMemory()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        mapView?.onSaveInstanceState(outState)
+    }
 }
