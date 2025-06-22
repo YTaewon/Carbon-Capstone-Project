@@ -35,26 +35,26 @@ class AlarmBootReceiver : BroadcastReceiver() {
             }
         }
 
-        val intent = Intent(context, AlarmBootReceiver::class.java).apply {
-            action = "SHOW_NOTIFICATION"
-        }
-        val pendingIntent = PendingIntent.getBroadcast(
-            context,
-            0,
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        // 매일 낮 12시에 알람 설정하기
-        val calendar = Calendar.getInstance().apply {
-            timeInMillis = System.currentTimeMillis()
-            set(Calendar.HOUR_OF_DAY, 12)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            if (before(Calendar.getInstance())) {
-                add(Calendar.DAY_OF_MONTH, 1)
-            }
-        }
+//        val intent = Intent(context, AlarmBootReceiver::class.java).apply {
+//            action = "SHOW_NOTIFICATION"
+//        }
+//        val pendingIntent = PendingIntent.getBroadcast(
+//            context,
+//            0,
+//            intent,
+//            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+//        )
+//
+//        // 매일 낮 12시에 알람 설정하기
+//        val calendar = Calendar.getInstance().apply {
+//            timeInMillis = System.currentTimeMillis()
+//            set(Calendar.HOUR_OF_DAY, 12)
+//            set(Calendar.MINUTE, 0)
+//            set(Calendar.SECOND, 0)
+//            if (before(Calendar.getInstance())) {
+//                add(Calendar.DAY_OF_MONTH, 1)
+//            }
+//        }
 
 
     }

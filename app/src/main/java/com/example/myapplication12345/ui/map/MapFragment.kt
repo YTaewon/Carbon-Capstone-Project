@@ -49,6 +49,7 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import androidx.lifecycle.lifecycleScope
+import com.example.myapplication12345.databinding.FragmentMapBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -90,6 +91,9 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             }
         }
     }
+
+    private var _binding: FragmentMapBinding? = null
+    private val binding get() = _binding!!
 
     // UI 요소 변수
     private var mapView: MapView? = null
@@ -142,8 +146,14 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         val view = inflater.inflate(R.layout.fragment_map, container, false)
+
+        // 1. 뷰를 먼저 초기화하여 lateinit 변수들이 값을 갖도록 함
         initializeViews(view)
+
+        // 2. MapView 설정
         setupMapView(savedInstanceState)
+
+        // 3. 이제 초기화된 뷰들에 리스너를 설정
         setupListeners()
 
         val todayDate = dateFormat.format(System.currentTimeMillis())
@@ -590,11 +600,25 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     override fun onDestroyView() {
         super.onDestroyView()
-        // fusedLocationClient는 onCreate에서 초기화되므로 onDestroyView에서 null 체크할 필요 없음
-        fusedLocationClient.removeLocationUpdates(locationCallback)
+        Timber.d("MapFragment: onDestroyView called")
+
+        // 1. GoogleMap 객체에 대한 모든 콜백 및 리스너 제거
+        googleMap?.setOnCameraMoveStartedListener(null)
+        googleMap?.setOnCameraIdleListener(null)
+        googleMap?.clear()
+
+        // 2. GoogleMap 참조 해제
+        googleMap = null
+
+        // 3. MapView 생명주기 메서드 호출 및 참조 해제
         mapView?.onDestroy()
         mapView = null
-        googleMap = null
+
+        if (::fusedLocationClient.isInitialized) {
+            fusedLocationClient.removeLocationUpdates(locationCallback)
+        }
+
+        _binding = null
     }
 
     override fun onLowMemory() {

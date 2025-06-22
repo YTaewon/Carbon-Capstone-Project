@@ -577,56 +577,56 @@ public class SensorDataService extends Service {
         stopForeground(true);
     }
 
-    /**
-     * IMU 데이터 리스트를 외부 저장소의 Download 폴더에 CSV 파일로 저장합니다.
-     * @param imuDataList 저장할 IMU 데이터.
-     */
-    private void saveImuDataToCsv(List<Map<String, Object>> imuDataList) {
-        // 저장할 데이터가 없으면 아무것도 하지 않음
-        if (imuDataList == null || imuDataList.isEmpty()) {
-            Timber.tag(TAG).w("저장할 IMU 데이터가 없습니다.");
-            return;
-        }
-
-        // 파일 이름에 타임스탬프를 넣어 고유하게 만듭니다.
-        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
-        String fileName = "imu_data_" + timeStamp + ".csv";
-
-        // 파일을 저장할 경로를 지정합니다. (공용 Download 폴더)
-        File path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-        File file = new File(path, fileName);
-
-        // try-with-resources 구문을 사용하여 파일 쓰기 후 리소스가 자동으로 닫히도록 합니다.
-        try (FileWriter fw = new FileWriter(file);
-             BufferedWriter bw = new BufferedWriter(fw)) {
-
-            // 1. CSV 헤더(머리글) 작성
-            // 첫 번째 데이터의 키들을 가져와 헤더로 사용합니다.
-            Map<String, Object> firstPoint = imuDataList.get(0);
-            StringBuilder header = new StringBuilder();
-            for (String key : firstPoint.keySet()) {
-                header.append(key).append(",");
-            }
-            // 마지막 쉼표 제거 및 줄바꿈
-            bw.write(header.substring(0, header.length() - 1));
-            bw.newLine();
-
-            // 2. 데이터 행 작성
-            for (Map<String, Object> dataPoint : imuDataList) {
-                StringBuilder row = new StringBuilder();
-                for (Object value : dataPoint.values()) {
-                    row.append(value.toString()).append(",");
-                }
-                // 마지막 쉼표 제거 및 줄바꿈
-                bw.write(row.substring(0, row.length() - 1));
-                bw.newLine();
-            }
-
-            bw.flush(); // 버퍼에 남은 내용을 파일에 모두 씁니다.
-            Timber.tag(TAG).d("IMU 데이터가 CSV 파일로 성공적으로 저장되었습니다: %s", file.getAbsolutePath());
-
-        } catch (IOException e) {
-            Timber.tag(TAG).e(e, "IMU 데이터를 CSV 파일로 저장하는 중 오류 발생");
-        }
-    }
+//    /**
+//     * IMU 데이터 리스트를 외부 저장소의 Download 폴더에 CSV 파일로 저장합니다.
+//     * @param imuDataList 저장할 IMU 데이터.
+//     */
+//    private void saveImuDataToCsv(List<Map<String, Object>> imuDataList) {
+//        // 저장할 데이터가 없으면 아무것도 하지 않음
+//        if (imuDataList == null || imuDataList.isEmpty()) {
+//            Timber.tag(TAG).w("저장할 IMU 데이터가 없습니다.");
+//            return;
+//        }
+//
+//        // 파일 이름에 타임스탬프를 넣어 고유하게 만듭니다.
+//        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
+//        String fileName = "imu_data_" + timeStamp + ".csv";
+//
+//        // 파일을 저장할 경로를 지정합니다. (공용 Download 폴더)
+//        File path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+//        File file = new File(path, fileName);
+//
+//        // try-with-resources 구문을 사용하여 파일 쓰기 후 리소스가 자동으로 닫히도록 합니다.
+//        try (FileWriter fw = new FileWriter(file);
+//             BufferedWriter bw = new BufferedWriter(fw)) {
+//
+//            // 1. CSV 헤더(머리글) 작성
+//            // 첫 번째 데이터의 키들을 가져와 헤더로 사용합니다.
+//            Map<String, Object> firstPoint = imuDataList.get(0);
+//            StringBuilder header = new StringBuilder();
+//            for (String key : firstPoint.keySet()) {
+//                header.append(key).append(",");
+//            }
+//            // 마지막 쉼표 제거 및 줄바꿈
+//            bw.write(header.substring(0, header.length() - 1));
+//            bw.newLine();
+//
+//            // 2. 데이터 행 작성
+//            for (Map<String, Object> dataPoint : imuDataList) {
+//                StringBuilder row = new StringBuilder();
+//                for (Object value : dataPoint.values()) {
+//                    row.append(value.toString()).append(",");
+//                }
+//                // 마지막 쉼표 제거 및 줄바꿈
+//                bw.write(row.substring(0, row.length() - 1));
+//                bw.newLine();
+//            }
+//
+//            bw.flush(); // 버퍼에 남은 내용을 파일에 모두 씁니다.
+//            Timber.tag(TAG).d("IMU 데이터가 CSV 파일로 성공적으로 저장되었습니다: %s", file.getAbsolutePath());
+//
+//        } catch (IOException e) {
+//            Timber.tag(TAG).e(e, "IMU 데이터를 CSV 파일로 저장하는 중 오류 발생");
+//        }
+//    }
 }

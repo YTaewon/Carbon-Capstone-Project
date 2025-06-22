@@ -130,8 +130,8 @@ dependencies {
     implementation(libs.timber)
     implementation(libs.apache.commons.math3)
 
-    // Leak Canary for debugging memory leaks
-    debugImplementation(libs.leakcanary)
+//    // Leak Canary for debugging memory leaks
+//    debugImplementation(libs.leakcanary)
 
     // Compose
     implementation(platform(libs.androidx.compose.bom))

@@ -1,7 +1,6 @@
 package com.example.myapplication12345
 
 import android.Manifest
-import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -54,10 +53,8 @@ class SplashActivity : AppCompatActivity() {
     }
 
     private fun checkAndRequestPermissions() {
-        // 4. 필요한 권한 목록을 한 곳에서 관리
-        val requiredPermissions = getRequiredPermissions()
+        val requiredPermissions = SensorDataService.getRequiredPermissions(this)
 
-        // 이미 모든 권한이 있는지 확인
         val allPermissionsGranted = requiredPermissions.all {
             ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
         }

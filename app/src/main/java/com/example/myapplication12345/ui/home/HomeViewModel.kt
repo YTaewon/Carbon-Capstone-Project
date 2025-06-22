@@ -9,6 +9,7 @@ import com.example.myapplication12345.ui.news.NewsItem
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.MutableData
 import com.google.firebase.database.ValueEventListener
@@ -21,6 +22,7 @@ import java.util.Calendar
 import java.util.Locale
 
 class HomeViewModel : ViewModel() {
+
     // 인사말 텍스트용 LiveData
     private val _text = MutableLiveData<String>().apply {
         value = "메인화면"
@@ -66,6 +68,9 @@ class HomeViewModel : ViewModel() {
     private val _progress = MutableLiveData<Int>(100) // 기본값 100으로 변경 [수정]
     val progress: LiveData<Int> get() = _progress
 
+    private var monthlyPointRef: DatabaseReference? = null
+    private var monthlyPointListener: ValueEventListener? = null
+
     // Firebase 관련 변수
     private val auth = FirebaseAuth.getInstance()
     private val database = FirebaseDatabase.getInstance()
@@ -106,12 +111,13 @@ class HomeViewModel : ViewModel() {
     private fun loadMonthlyPoints() {
         val userId = auth.currentUser?.uid ?: return
         val currentMonth = getCurrentMonth()
-        val monthlyPointRef = database.getReference("users").child(userId).child("monthly_points").child(currentMonth)
+        monthlyPointRef = database.getReference("users").child(userId).child("monthly_points").child(currentMonth)
 
-        monthlyPointRef.addValueEventListener(object : ValueEventListener {
+        monthlyPointListener?.let { monthlyPointRef?.removeEventListener(it) }
+
+        monthlyPointListener = object : ValueEventListener {
             override fun onDataChange(dataSnapshot: DataSnapshot) {
                 val point = dataSnapshot.child("point").getValue(Int::class.java) ?: 0
-                // 진행률 계산: 포인트 0 = 100%, 920 이상 = 0% [수정]
                 val progress = maxOf(100 - ((point.toFloat() / 920) * 100).toInt(), 0)
                 _progress.value = progress
                 Timber.tag("HomeViewModel").d("Monthly points: $point, Progress: $progress%")
@@ -119,9 +125,10 @@ class HomeViewModel : ViewModel() {
 
             override fun onCancelled(databaseError: DatabaseError) {
                 Timber.tag("Firebase").w(databaseError.toException(), "loadMonthlyPoints:onCancelled")
-                _progress.value = 100 // Firebase 오류 시 진행률 100% [수정]
+                _progress.value = 100
             }
-        })
+        }
+        monthlyPointRef?.addValueEventListener(monthlyPointListener!!)
     }
 
     // 포인트 추가 (예: 챌린지 완료 시 호출)
@@ -194,5 +201,14 @@ class HomeViewModel : ViewModel() {
         if (value in 0..100) {
             _progress.value = value
         }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        // ViewModel이 파괴될 때, 등록했던 Firebase 리스너를 반드시 해제합니다.
+        monthlyPointListener?.let { listener ->
+            monthlyPointRef?.removeEventListener(listener)
+        }
+        Timber.d("HomeViewModel onCleared: Firebase listener has been removed.")
     }
 }
