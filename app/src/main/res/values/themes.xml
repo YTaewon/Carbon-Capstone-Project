@@ -12,6 +12,22 @@
         <item name="android:layout_margin">10dp</item>
     </style>
 
+    <!-- 1. 스플래시 스크린 전용 테마 -->
+    <style name="Theme.App.Starting" parent="Theme.SplashScreen">
+        <!-- 스플래시 스크린의 배경색. 앱의 주된 배경색이나 브랜드 색상으로 지정 -->
+        <item name="windowSplashScreenBackground">@color/white</item>
+
+        <!-- 스플래시 스크린 중앙에 표시될 아이콘. 앱 런처 아이콘을 사용합니다. -->
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+
+        <!-- (선택사항) 스플래시 스크린 하단에 브랜딩 이미지를 추가할 경우 -->
+        <!-- <item name="windowSplashScreenBrandingImage">@drawable/your_brand_logo</item> -->
+
+        <!-- 스플래시 스크린이 끝난 후 적용될 실제 앱의 테마 -->
+        <!-- NoActionBar를 사용하는 기본 테마를 연결해주는 것이 좋습니다. -->
+        <item name="postSplashScreenTheme">@style/Theme.MyApplication12345</item>
+    </style>
+
     <!-- 로그인/회원가입 화면 전용 테마 -->
     <style name="Theme.MyApplication12345.Auth" parent="Theme.Material3.DayNight.NoActionBar">
         <!-- 상태 표시줄 색상을 검은색으로 설정 -->

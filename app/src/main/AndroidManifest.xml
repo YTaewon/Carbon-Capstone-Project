@@ -2,65 +2,51 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- 권한 선언 (정리된 버전) -->
+    <!-- 네트워크 -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
-    <!-- 사용자의 신체 활동(걷기, 달리기 등) 인식을 위한 퍼미션 (Android 10 이상에서 필요, 런타임 요청 필요) -->
-    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
-
-    <!-- WiFi 및 위치 관련 권한 -->
-    <!-- 정확한 위치 정보(GPS, Wi-Fi 기반 위치) 접근을 위한 퍼미션 (런타임 요청 필요) -->
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
-    <!-- 대략적인 위치 정보(셀 타워 기반) 접근을 위한 퍼미션 (런타임 요청 필요) -->
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
-    <!--  포어그라운드에서 위치 데이터 수집을 위한 퍼미션 (Android 10 이상, 런타임 요청 필요) -->
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION"/>
-    <!-- 백그라운드에서 위치 데이터 수집을 위한 퍼미션 (Android 10 이상, 런타임 요청 필요) -->
-    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
-    <!-- 높은 샘플링 속도 센서 사용 권한 추가 -->
-    <uses-permission android:name="android.permission.HIGH_SAMPLING_RATE_SENSORS"
-        tools:ignore="HighSamplingRate" />
     <!-- Wi-Fi 상태 확인을 위한 퍼미션 -->
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
-    <!-- Wi-Fi 상태 변경(예: 스캔 트리거)을 위한 퍼미션 -->
-    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE"/>
-    <!-- 셀룰러 네트워크 정보(기지국 ID 등) 읽기를 위한 퍼미션 (런타임 요청 필요) -->
-    <uses-permission android:name="android.permission.READ_PHONE_STATE"/>
 
-    <!-- 카메라 하드웨어 접근을 위한 퍼미션 (런타임 요청 필요) -->
-    <uses-permission android:name="android.permission.CAMERA"/>
-    <!-- 앱이 카메라 하드웨어를 요구함을 명시 (선택적 기능으로 설정하려면 android:required="false" 추가 가능) -->
-    <uses-feature android:name="android.hardware.camera" />
+    <!-- Wi-Fi 스캔을 위한 퍼미션 (Android 13 이상에서 필요) -->
+    <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES" />
 
-    <!-- 인터넷 연결을 위한 퍼미션 (네트워크 위치 보정, 서버 통신 등에 사용) -->
-    <uses-permission android:name="android.permission.INTERNET"/>
-    <!-- 네트워크 연결 상태 확인을 위한 퍼미션 -->
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <!-- 위치 -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
 
-    <!-- 포그라운드 서비스 실행을 위한 퍼미션 (Android 9 이상에서 필요) -->
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
-    <!-- 디바이스가 슬립 상태일 때 CPU를 깨우기 위한 퍼미션 (선택적, 백그라운드 센서 데이터 수집에 유용) -->
-    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- 센서 및 활동 -->
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
+    <uses-permission android:name="android.permission.HIGH_SAMPLING_RATE_SENSORS" tools:ignore="HighSamplingRate" />
 
-    <!-- 외부 저장소 쓰기 퍼미션 (Android 12 이하에서 필요, Scoped Storage로 대체 가능) -->
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-        android:maxSdkVersion="32"
-        tools:ignore="ScopedStorage" />
-    <!-- 외부 저장소 읽기 퍼미션 (Android 12 이하에서 필요, Scoped Storage로 대체 가능) -->
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
-        android:maxSdkVersion="32" />
-
-    <!-- 미디어 이미지 접근을 위한 퍼미션 (Android 13 이상에서 특정 미디어 파일 접근 시 사용) -->
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"
-        tools:ignore="SelectedPhotoAccess" />
-    <!-- 백그라운드 작동을 위한 알람 퍼미션-->
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-
+    <!-- 포그라운드 서비스 -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
+    <!-- 알림 및 부팅 -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
 
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
-    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
+    <!-- 미디어 및 저장소 (버전별 관리) -->
+    <!-- Android 13 (API 33) 이상 -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <!-- Android 14 (API 34) 이상 -->
+    <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
+    <!-- Android 12L (API 32) 이하 -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
 
-    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- 기타 -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+
+    <!-- 하드웨어 기능 명시 -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
 
 
     <application
@@ -72,67 +58,57 @@
         android:roundIcon="@drawable/img_logo"
         android:supportsRtl="true"
         android:forceDarkAllowed="false"
+        android:enableOnBackInvokedCallback="true"
         android:theme="@style/Theme.MyApplication12345"
-        tools:targetApi="31">
+        tools:targetApi="34"> <!-- targetSdk 버전에 맞게 업데이트 -->
 
-        <activity
-            android:name=".chatbot.ChatbotUi"
-            android:exported="true" />
-
+        <!-- 1. 앱의 유일한 시작점: SplashActivity -->
         <activity
             android:name=".SplashActivity"
-            android:exported="true">
-
+            android:exported="true"
+            android:theme="@style/Theme.App.Starting"> <!-- SplashScreen 테마 적용 -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
-        <activity
-            android:name=".ui.camera.ResultActivity"
-            android:exported="false" />
-
-        <activity
-            android:name=".MainActivity"
-            android:exported="false" />
-
-        <activity
-            android:name=".ui.login.JoinActivity"
-            android:theme="@style/Theme.MyApplication12345.Auth"
-            android:exported="false" />
-
+        <!-- 2. IntroActivity는 더 이상 LAUNCHER가 아니며, 다른 앱에서 호출할 필요 없으므로 exported="false" -->
         <activity
             android:name=".ui.login.IntroActivity"
-            android:theme="@style/Theme.MyApplication12345.Auth"
-            android:exported="false" />
+            android:exported="false"
+            android:theme="@style/Theme.MyApplication12345.Auth" />
 
-        <activity
-            android:name=".ui.sidebar.foodcalculator.FoodCalculatorActivity"
-            android:exported="false" />
+        <!-- 나머지 액티비티들은 exported="false" (다른 앱에서 호출할 필요 없음) -->
+        <activity android:name=".MainActivity" android:exported="false" />
+        <activity android:name=".ui.login.JoinActivity" android:theme="@style/Theme.MyApplication12345.Auth" android:exported="false" />
+        <activity android:name=".chatbot.ChatbotUi" android:exported="false" />
+        <activity android:name=".ui.camera.ResultActivity" android:exported="false" />
+        <activity android:name=".ui.sidebar.foodcalculator.FoodCalculatorActivity" android:exported="false" />
+        <activity android:name=".ui.sidebar.carbonquiz.QuizActivity" android:exported="false" />
+        <activity android:name=".ui.sidebar.setting.SettingActivity" android:exported="false" />
 
-        <activity android:name=".ui.sidebar.carbonquiz.QuizActivity"
-            android:exported="false" />
 
-        <activity android:name=".ui.sidebar.setting.SettingActivity"
-            android:exported="false" />
-
-        <receiver android:name=".AlarmBootReceiver" android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED"/>
-            </intent-filter>
-        </receiver>
-
-        <!-- 위치 기반 포그라운드 서비스로 실행되는 SensorDataService -->
-        <service android:name=".AI.SensorDataService"
+        <!-- 서비스 및 리시버 -->
+        <service
+            android:name=".AI.SensorDataService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="location|dataSync"
             tools:ignore="ForegroundServicePermission" />
 
+        <receiver
+            android:name=".AlarmBootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- 메타 데이터 -->
         <meta-data
             android:name="com.google.android.gms.version"
-            android:value="@integer/google_play_services_version"/>
+            android:value="@integer/google_play_services_version" />
 
         <meta-data
             android:name="com.google.android.geo.API_KEY"
@@ -140,7 +116,7 @@
 
         <meta-data
             android:name="com.example.myapplication12345.OPENAI_API_KEY"
-            android:value="${OPENAI_API_KEY}"/>
+            android:value="${OPENAI_API_KEY}" />
 
     </application>
 

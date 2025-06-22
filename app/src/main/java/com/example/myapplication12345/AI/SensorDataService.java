@@ -183,9 +183,43 @@ public class SensorDataService extends Service {
     }
 
     private boolean checkPermissions() {
-        return ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_WIFI_STATE) == PackageManager.PERMISSION_GRANTED &&
-                ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED &&
-                ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED;
+        // SplashActivity의 getRequiredPermissions()와 동일한 권한 목록을 확인
+        List<String> requiredPermissions = getRequiredPermissions(this);
+        for (String permission : requiredPermissions) {
+            if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
+                // 어떤 권한이 없는지 정확히 로그로 남깁니다.
+                Timber.tag(TAG).e("필수 권한 누락: %s", permission);
+                return false; // 하나라도 없으면 즉시 false 반환
+            }
+        }
+        return true; // 모든 권한이 있으면 true 반환
+    }
+
+    public static List<String> getRequiredPermissions(Context context) {
+        List<String> permissions = new ArrayList<>();
+        permissions.add(android.Manifest.permission.ACCESS_FINE_LOCATION);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            permissions.add(android.Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED);
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            permissions.add(android.Manifest.permission.POST_NOTIFICATIONS);
+            permissions.add(android.Manifest.permission.READ_MEDIA_IMAGES);
+            permissions.add(android.Manifest.permission.NEARBY_WIFI_DEVICES);
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            permissions.add(android.Manifest.permission.ACTIVITY_RECOGNITION);
+        }
+
+        // 서비스에서 사용하는 권한들을 추가
+        permissions.add(android.Manifest.permission.ACCESS_WIFI_STATE);
+        permissions.add(android.Manifest.permission.READ_PHONE_STATE);
+
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            permissions.add(android.Manifest.permission.READ_EXTERNAL_STORAGE);
+        }
+
+        return permissions;
     }
 
     @Override

@@ -104,6 +104,8 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 
+    implementation("androidx.core:core-splashscreen:1.0.1")
+
     implementation ("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
     // ML Kit 바코드 스캐닝
     implementation("com.google.mlkit:barcode-scanning:17.0.3")
@@ -118,7 +120,6 @@ dependencies {
     // Retrofit2 + OkHttp
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-simplexml:2.9.0")
-    //implementation("com.squareup.retrofit2:converter-gson:2.9.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.9.3")
     implementation ("com.squareup.retrofit2:converter-scalars:2.9.0")
     implementation("com.fasterxml.jackson.core:jackson-core:2.15.2")
@@ -174,7 +175,6 @@ dependencies {
     //math
     implementation("org.apache.commons:commons-math3:3.6.1")
     //AI 작동
-// https://mvnrepository.com/artifact/org.pytorch/executorch-android
     implementation("org.pytorch:executorch-android:0.6.0")
 
     //지도
