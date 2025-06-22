@@ -12,8 +12,6 @@ import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import com.example.myapplication12345.R
 import com.example.myapplication12345.ServerManager
@@ -38,11 +36,14 @@ class CalendarFragment : Fragment() {
     // 캘린더 인스턴스
     private val mCal: Calendar = Calendar.getInstance()
     // 뷰모델 인스턴스
-    private lateinit var calendarViewModel: CalendarViewModel
-    // 선택된 날짜의 위치
     private var selectedPosition: Int = -1
     // 서버 매니저 인스턴스
-    private lateinit var serverManager: ServerManager
+    private val serverManager by lazy { ServerManager(requireContext()) }
+
+    private val calendarViewModel: CalendarViewModel by activityViewModels {
+        CalendarViewModelFactory(serverManager)
+    }
+
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -50,16 +51,6 @@ class CalendarFragment : Fragment() {
     ): View {
         _binding = FragmentCalendarBinding.inflate(inflater, container, false)
         val root: View = binding.root
-
-        serverManager = ServerManager(requireContext())
-        calendarViewModel = activityViewModels<CalendarViewModel> {
-            object : ViewModelProvider.Factory {
-                override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                    @Suppress("UNCHECKED_CAST")
-                    return CalendarViewModel(serverManager) as T
-                }
-            }
-        }.value
 
         gridAdapter = GridAdapter(dayList)
         binding.gridview.adapter = gridAdapter
@@ -71,6 +62,11 @@ class CalendarFragment : Fragment() {
 
         binding.btnNextMonth.setOnClickListener {
             mCal.add(Calendar.MONTH, 1)
+            updateCalendar()
+        }
+
+        binding.swipeRefreshLayout.setOnRefreshListener {
+            Timber.d("새로고침 요청됨.")
             updateCalendar()
         }
 
@@ -99,6 +95,7 @@ class CalendarFragment : Fragment() {
                 gridAdapter.notifyDataSetChanged()
                 binding.calendarProgressBar.visibility = View.GONE // 로딩 완료
                 binding.gridview.visibility = View.VISIBLE
+                binding.swipeRefreshLayout.isRefreshing = false
             }
         }
     }

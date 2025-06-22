@@ -11,7 +11,6 @@ import android.graphics.BitmapFactory
 import android.net.Uri // Uri 임포트 추가
 import android.os.Bundle
 import android.provider.Settings // Settings 임포트 추가 (앱 설정으로 이동 위함)
-import android.util.Base64
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -27,6 +26,7 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import com.example.myapplication12345.BuildConfig
+import com.example.myapplication12345.ServerManager
 import com.example.myapplication12345.chatbot.ApiClient
 import com.example.myapplication12345.chatbot.ChatGPTApi
 import com.example.myapplication12345.chatbot.ChatGPTRequest
@@ -34,20 +34,17 @@ import com.example.myapplication12345.chatbot.ChatGPTResponse
 import com.example.myapplication12345.chatbot.ChatMsg
 import com.example.myapplication12345.databinding.FragmentCameraBinding
 import com.example.myapplication12345.ui.calendar.CalendarViewModel
+import com.example.myapplication12345.ui.calendar.CalendarViewModelFactory
 import com.example.myapplication12345.ui.home.HomeViewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.korean.KoreanTextRecognizerOptions
-import okhttp3.OkHttpClient
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
 import timber.log.Timber
-import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.nio.ByteBuffer
 import java.util.Calendar
@@ -65,9 +62,14 @@ class CameraFragment : Fragment() {
     private val auth = FirebaseAuth.getInstance()
     private val database = FirebaseDatabase.getInstance()
     private val homeViewModel: HomeViewModel by activityViewModels()
-    private val calendarViewModel: CalendarViewModel by activityViewModels()
     private lateinit var cameraExecutor: ExecutorService
 
+    private val serverManager by lazy { ServerManager(requireContext()) }
+
+    // 동일한 팩토리 사용
+    private val calendarViewModel: CalendarViewModel by activityViewModels {
+        CalendarViewModelFactory(serverManager)
+    }
 
     // 카메라 시작 상태를 저장할 플래그
     private var isCameraStarted = false
@@ -433,7 +435,7 @@ class CameraFragment : Fragment() {
             }
 
             val userRef = database.getReference("users").child(userId)
-            val pointsToAdd = (carbonEmission * 1000).toInt() // kgCO2 to gCO2e
+            val pointsToAdd = (carbonEmission * 1000).toInt()
             homeViewModel.addPoints(pointsToAdd)
             Timber.d("탄소 배출량으로 ${pointsToAdd}점 추가됨")
 
@@ -524,11 +526,12 @@ class CameraFragment : Fragment() {
             val textPart = combinedResult.substringAfter("텍스트:", "").trim()
             val labelPart = combinedResult.substringAfter("라벨:", "").substringBefore("/").trim()
 
-            if (textPart.isNotEmpty() || labelPart.isNotEmpty()) {
-                sendToGPT(textPart.takeIf { it.isNotEmpty() } ?: labelPart)
-            } else {
-                // MLKit 실패 시 Vision API로 대체
-                sendToGPTWithImage(bitmap)
+            when {
+                textPart.isNotEmpty() -> sendToGPT(textPart)
+                labelPart.isNotEmpty() -> sendToGPT(labelPart)
+                else -> requireActivity().runOnUiThread {
+                    binding.resultText.text = "제품/텍스트 인식 실패!"
+                }
             }
         }
     }
@@ -538,13 +541,7 @@ class CameraFragment : Fragment() {
         val msgList = ArrayList<ChatMsg>()
         msgList.add(ChatMsg("user", "가장 가능성 높은 제품의 명사를 한 단어로 추정하고, 평균 탄소배출량을 gCO2e 단위로 간단히 한 줄로 알려줘. 결과: $query"))
 
-        val retrofit = Retrofit.Builder()
-            .baseUrl("https://api.openai.com/v1/")
-            .addConverterFactory(GsonConverterFactory.create())
-            .client(OkHttpClient.Builder().build())
-            .build()
-        val api = retrofit.create(ChatGPTApi::class.java)
-
+        val api: ChatGPTApi = ApiClient.getChatGPTApi(apiKey)
         val request = ChatGPTRequest("gpt-3.5-turbo", msgList)
 
         api.getChatResponse(request).enqueue(object : Callback<ChatGPTResponse> {
@@ -582,81 +579,6 @@ class CameraFragment : Fragment() {
                 }
             }
         })
-    }
-
-    private fun sendToGPTWithImage(bitmap: Bitmap) {
-        val base64Image = bitmapToBase64(bitmap) ?: run {
-            Toast.makeText(requireContext(), "이미지 인코딩 실패", Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        val apiKey = BuildConfig.OPENAI_API_KEY
-        val msgList = ArrayList<ChatMsg>()
-        msgList.add(ChatMsg("user", """
-            이 이미지에 있는 물체를 식별하고, 해당 물체의 탄소 배출량을 gCO2e 단위로 추정해 주세요.
-            결과는 '제품: {name}, 탄소배출량: {amount}gCO2e' 형식으로 반환해 주세요.
-            이미지: data:image/jpeg;base64,$base64Image
-        """.trimIndent()))
-
-        val retrofit = Retrofit.Builder()
-            .baseUrl("https://api.openai.com/v1/")
-            .addConverterFactory(GsonConverterFactory.create())
-            .client(OkHttpClient.Builder().build())
-            .build()
-        val api = retrofit.create(ChatGPTApi::class.java)
-        val request = ChatGPTRequest("gpt-4-vision-preview", msgList)
-
-        api.getChatResponse(request).enqueue(object : Callback<ChatGPTResponse> {
-            override fun onResponse(call: Call<ChatGPTResponse>, response: Response<ChatGPTResponse>) {
-                if (response.isSuccessful && response.body() != null) {
-                    val reply = response.body()!!.choices[0].message.content
-                    requireActivity().runOnUiThread {
-                        binding.resultText.text = reply
-                        addAnalysisScore()
-
-                        val emissions = extractEmissionsFromReply(reply)
-                        if (emissions != null) {
-                            val today = Calendar.getInstance()
-                            calendarViewModel.updateObjectEmissions(today, emissions) { success ->
-                                if (success) {
-                                    Timber.d("사물 탄소 배출량 저장 성공: $emissions gCO2e")
-                                    Toast.makeText(requireContext(), "사물 탄소 배출량 $emissions gCO2e 저장", Toast.LENGTH_SHORT).show()
-                                } else {
-                                    Toast.makeText(requireContext(), "사물 탄소 배출량 저장 실패", Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                        } else {
-                            Toast.makeText(requireContext(), "탄소 배출량 파싱 실패", Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                } else {
-                    val errorBody = response.errorBody()?.string()
-                    Timber.e("ChatGPT 요청 실패: $errorBody")
-                    requireActivity().runOnUiThread {
-                        binding.resultText.text = "GPT 응답 오류: ${response.code()}"
-                    }
-                }
-            }
-
-            override fun onFailure(call: Call<ChatGPTResponse>, t: Throwable) {
-                Timber.e(t, "ChatGPT 요청 오류")
-                requireActivity().runOnUiThread {
-                    binding.resultText.text = "GPT 호출 실패: ${t.message}"
-                }
-            }
-        })
-    }
-
-    private fun bitmapToBase64(bitmap: Bitmap): String? {
-        return try {
-            val byteArrayOutputStream = ByteArrayOutputStream()
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 70, byteArrayOutputStream)
-            val byteArray = byteArrayOutputStream.toByteArray()
-            Base64.encodeToString(byteArray, Base64.NO_WRAP)
-        } catch (e: Exception) {
-            Timber.e(e, "Bitmap to Base64 conversion failed")
-            null
-        }
     }
 
     private fun extractEmissionsFromReply(reply: String): Int? {
