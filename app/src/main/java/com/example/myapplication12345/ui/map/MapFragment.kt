@@ -377,27 +377,45 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         }
     }
 
-    // ## [수정됨] FileObserver API 호환성 문제 해결 ##
     private fun startFileObserver() {
         if (fileObserver != null) return
         val mapDataDir = File(requireContext().getExternalFilesDir(null), "Map")
         if (!mapDataDir.exists()) { mapDataDir.mkdirs() }
 
-        // File 객체 대신 String 경로를 전달하여 구버전(API 24)과 호환되도록 수정
-        fileObserver = object : FileObserver(mapDataDir.absolutePath, CLOSE_WRITE) {
-            override fun onEvent(event: Int, path: String?) {
-                if (path == null) return
+        // onEvent의 실제 로직을 별도 함수로 분리하여 재사용
+        fun handleFileEvent(event: Int, path: String?) {
+            // CLOSE_WRITE 이벤트만 처리하고, path가 null이 아니어야 함
+            if (event != FileObserver.CLOSE_WRITE || path == null) return
 
-                val currentDateStr = parseDateFromText(dateText.text.toString())
-                if (path == "${currentDateStr}_predictions.csv") {
-                    Timber.tag(TAG).d("FileObserver: 감지된 파일 업데이트 - $path")
-                    // FileObserver 콜백은 백그라운드 스레드에서 올 수 있으므로 UI 작업은 메인 스레드에서 실행
-                    activity?.runOnUiThread {
-                        loadAndDisplayPredictionData(currentDateStr, moveCameraOnLoad = false)
-                    }
+            val currentDateStr = parseDateFromText(dateText.text.toString())
+            if (path == "${currentDateStr}_predictions.csv") {
+                Timber.tag(TAG).d("FileObserver: 감지된 파일 업데이트 - $path")
+                activity?.runOnUiThread {
+                    loadAndDisplayPredictionData(currentDateStr, moveCameraOnLoad = false)
                 }
             }
         }
+
+        fileObserver = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            // API 29 (Android 10) 이상: 권장되는 File 생성자 사용
+            // 이 생성자는 모든 이벤트를 감시하므로 내부에서 필터링 필요
+            object : FileObserver(mapDataDir) {
+                override fun onEvent(event: Int, path: String?) {
+                    handleFileEvent(event, path)
+                }
+            }
+        } else {
+            // API 29 미만: 호환성을 위해 Deprecated 된 String 생성자 사용
+            @Suppress("DEPRECATION")
+            object : FileObserver(mapDataDir.absolutePath, CLOSE_WRITE) {
+                override fun onEvent(event: Int, path: String?) {
+                    // 이 생성자는 생성 시 이미 CLOSE_WRITE로 필터링 되었지만,
+                    // event 값을 그대로 전달해도 무방함.
+                    handleFileEvent(event, path)
+                }
+            }
+        }
+
         fileObserver?.startWatching()
         Timber.tag(TAG).d("FileObserver 시작: ${mapDataDir.path}")
     }
