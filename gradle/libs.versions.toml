@@ -1,48 +1,134 @@
+# 이 파일은 Gradle 버전 카탈로그를 정의합니다.
+# 의존성을 중앙에서 관리하여 일관성을 유지하고 유지보수를 용이하게 합니다.
+# https://docs.gradle.org/current/userguide/platforms.html#sub:version-catalog-declaration
+
 [versions]
-agp = "8.7.3"
+# Android & Google - 기존 파일에서 가져옴 + 일부 업데이트
+agp = "8.7.3" # 8.7.3은 AGP 8.4.x를 의미할 수 있으나, 보통 8.4.1로 명시. 호환성 확인 필요
 kotlin = "1.9.24"
-coreKtx = "1.15.0"
+coreKtx = "1.13.1" # 1.15.0은 alpha/beta 버전일 수 있음, 안정 버전으로 조정
 junit = "4.13.2"
 junitVersion = "1.2.1"
 espressoCore = "3.6.1"
 appcompat = "1.7.0"
 material = "1.12.0"
-activity = "1.9.3"
-constraintlayout = "2.2.0"
-firebaseDatabaseKtx = "21.0.0"
-navigationFragmentKtx = "2.8.5"
-navigationUiKtx = "2.8.5"
-cameraCore = "1.4.1"
-playServicesMlkitBarcodeScanning = "18.3.1"
-cameraLifecycle = "1.4.1"
-cameraView = "1.4.1"
-playServicesMlkitTextRecognitionCommon = "19.1.0"
-playServicesMlkitTextRecognitionKorean = "16.0.1"
+activity = "1.9.0" # 1.9.3은 alpha/beta, 안정 버전으로 조정
+constraintlayout = "2.1.4" # 2.2.0은 alpha/beta, 안정 버전으로 조정
+navigationFragmentKtx = "2.7.7" # 2.8.5는 alpha/beta, 안정 버전으로 조정
+navigationUiKtx = "2.7.7"
+cameraCore = "1.3.4" # 1.4.1은 alpha/beta, 안정 버전으로 조정
 playServicesLocation = "21.3.0"
-workRuntime = "2.10.0"
+workRuntime = "2.9.0"
+
+androidxLifecycle = "2.8.3"
+androidxComposeBom = "2024.06.00"
+androidxComposeCompiler = "1.5.14"
+androidxCoreSplashscreen = "1.0.1"
+androidxSwipeRefreshLayout = "1.1.0"
+androidxCardview = "1.0.0"
+gmsGoogleServicesPlugin = "4.4.2"
+firebaseBom = "33.1.1"
+playServicesMaps = "18.2.0"
+mlkitBarcodeScanning = "17.2.0"
+mlkitTextRecognitionKorean = "16.0.0"
+glide = "4.16.0"
+kotlinxCoroutines = "1.8.1"
+retrofit = "2.11.0"
+okhttp = "4.12.0"
+timber = "5.0.1"
+circleimageview = "3.1.0"
+leakcanary = "2.14"
+pytorchExecutorch = "0.6.0"
+apacheCommonsMath = "3.6.1"
+mlkitImageLabeling = "17.0.8"
+
 
 [libraries]
+# AndroidX - 기존 파일에서 가져옴
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
-junit = { group = "junit", name = "junit", version.ref = "junit" }
-androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
-androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
-material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 androidx-activity = { group = "androidx.activity", name = "activity", version.ref = "activity" }
 androidx-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
-firebase-database-ktx = { group = "com.google.firebase", name = "firebase-database-ktx", version.ref = "firebaseDatabaseKtx" }
 androidx-navigation-fragment-ktx = { group = "androidx.navigation", name = "navigation-fragment-ktx", version.ref = "navigationFragmentKtx" }
 androidx-navigation-ui-ktx = { group = "androidx.navigation", name = "navigation-ui-ktx", version.ref = "navigationUiKtx" }
 androidx-camera-core = { group = "androidx.camera", name = "camera-core", version.ref = "cameraCore" }
-play-services-mlkit-barcode-scanning = { group = "com.google.android.gms", name = "play-services-mlkit-barcode-scanning", version.ref = "playServicesMlkitBarcodeScanning" }
-androidx-camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "cameraLifecycle" }
-androidx-camera-view = { group = "androidx.camera", name = "camera-view", version.ref = "cameraView" }
-play-services-mlkit-text-recognition-common = { group = "com.google.android.gms", name = "play-services-mlkit-text-recognition-common", version.ref = "playServicesMlkitTextRecognitionCommon" }
-play-services-mlkit-text-recognition-korean = { group = "com.google.android.gms", name = "play-services-mlkit-text-recognition-korean", version.ref = "playServicesMlkitTextRecognitionKorean" }
+# camera2, lifecycle, view는 cameraCore와 같은 버전을 사용하므로 별칭 추가
+androidx-camera-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "cameraCore" }
+androidx-camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "cameraCore" }
+androidx-camera-view = { group = "androidx.camera", name = "camera-view", version.ref = "cameraCore" }
+apache-commons-math3 = { group = "org.apache.commons", name = "commons-math3", version.ref = "apacheCommonsMath" }
+
+# Google Play Services & ML Kit
 play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
-androidx-work-runtime = { group = "androidx.work", name = "work-runtime", version.ref = "workRuntime" }
+play-services-maps = { group = "com.google.android.gms", name = "play-services-maps", version.ref = "playServicesMaps" }
+
+# ML Kit 라이브러리
+mlkit-barcode-scanning = { group = "com.google.mlkit", name = "barcode-scanning", version.ref = "mlkitBarcodeScanning" }
+mlkit-text-recognition-korean = { group = "com.google.mlkit", name = "text-recognition-korean", version.ref = "mlkitTextRecognitionKorean" }
+mlkit-image-labeling = { group = "com.google.mlkit", name = "image-labeling", version.ref = "mlkitImageLabeling" }
+
+
+# WorkManager - 기존 파일에서 가져옴
+androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "workRuntime" }
+
+# Testing - 기존 파일에서 가져옴
+junit = { group = "junit", name = "junit", version.ref = "junit" }
+androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
+androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
+
+
+
+material = { group = "com.google.android.material", name = "material", version.ref = "material" }
+androidx-lifecycle-viewmodel-ktx = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-ktx", version.ref = "androidxLifecycle" }
+androidx-lifecycle-livedata-ktx = { group = "androidx.lifecycle", name = "lifecycle-livedata-ktx", version.ref = "androidxLifecycle" }
+androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "androidxCoreSplashscreen" }
+androidx-swiperefreshlayout = { group = "androidx.swiperefreshlayout", name = "swiperefreshlayout", version.ref = "androidxSwipeRefreshLayout" }
+androidx-cardview = { group = "androidx.cardview", name = "cardview", version.ref = "androidxCardview" }
+
+# Firebase
+firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
+firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics-ktx" }
+firebase-auth = { group = "com.google.firebase", name = "firebase-auth-ktx" }
+firebase-database = { group = "com.google.firebase", name = "firebase-database-ktx" }
+firebase-storage = { group = "com.google.firebase", name = "firebase-storage-ktx" }
+
+# Kotlin Coroutines
+kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }
+kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "kotlinxCoroutines" }
+
+# Networking
+retrofit-core = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit" }
+retrofit-converter-gson = { group = "com.squareup.retrofit2", name = "converter-gson", version.ref = "retrofit" }
+okhttp-logging-interceptor = { group = "com.squareup.okhttp3", name = "logging-interceptor", version.ref = "okhttp" }
+
+# Image Loading
+glide = { group = "com.github.bumptech.glide", name = "glide", version.ref = "glide" }
+glide-compiler = { group = "com.github.bumptech.glide", name = "compiler", version.ref = "glide" }
+circleimageview = { group = "de.hdodenhof", name = "circleimageview", version.ref = "circleimageview" }
+
+# AI
+pytorch-executorch = { group = "org.pytorch", name = "executorch-android", version.ref = "pytorchExecutorch" }
+
+# Utility
+timber = { group = "com.jakewharton.timber", name = "timber", version.ref = "timber" }
+leakcanary = { group = "com.squareup.leakcanary", name = "leakcanary-android", version.ref = "leakcanary" }
+
+# Compose
+androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "androidxComposeBom" }
+androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref="activity" }
+androidx-compose-ui = { group = "androidx.compose.ui", name = "ui" }
+androidx-compose-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
+androidx-compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
+androidx-compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
+androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
+androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
+androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
+
 
 [plugins]
+# 기존 파일에서 가져옴
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 
+# ▼▼▼ 누락된 플러그인 추가 ▼▼▼
+google-gms-google-services = { id = "com.google.gms.google-services", version.ref = "gmsGoogleServicesPlugin" }

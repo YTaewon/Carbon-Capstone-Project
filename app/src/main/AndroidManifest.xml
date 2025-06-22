@@ -61,7 +61,7 @@
         android:enableOnBackInvokedCallback="true"
         android:theme="@style/Theme.MyApplication12345"
         tools:targetApi="34"> <!-- targetSdk 버전에 맞게 업데이트 -->
-
+        <profileable android:shell="true" />
         <!-- 1. 앱의 유일한 시작점: SplashActivity -->
         <activity
             android:name=".SplashActivity"
