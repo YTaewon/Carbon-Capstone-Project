@@ -23,6 +23,9 @@ import androidx.core.app.ActivityCompat
 import androidx.core.graphics.toColorInt
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.viewpager2.widget.ViewPager2
 import com.example.myapplication12345.R
 import com.google.android.gms.location.FusedLocationProviderClient
@@ -49,7 +52,9 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import androidx.lifecycle.lifecycleScope
+import com.example.myapplication12345.ServerManager
 import com.example.myapplication12345.databinding.FragmentMapBinding
+import com.example.myapplication12345.ui.calendar.CalendarViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -121,8 +126,15 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private var isMyLocationShown = false
     private var userInteractedWithMap = false
 
-    // 미사용 ViewModel 제거
-    // private val calendarViewModel: CalendarViewModel by activityViewModels { ... }
+    private val calendarViewModel: CalendarViewModel by activityViewModels {
+        object : ViewModelProvider.Factory {
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                // requireContext()가 null이 아님을 보장하기 위해 isAdded 체크가 필요할 수 있으나,
+                // activityViewModels는 Fragment가 Activity에 attach된 후에 초기화되므로 일반적으로 안전합니다.
+                return CalendarViewModel(ServerManager(requireContext())) as T
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -299,6 +311,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
             distanceInfo.append(String.format(Locale.KOREAN, "총 이동거리: %.2f m\n", totalOverallDistance))
             distanceInfo.append(String.format(Locale.KOREAN, "총 탄소 배출량: %.2f g CO₂", totalTransportEmissions))
             textDistanceInfo.text = distanceInfo.toString()
+            updateCalendarAndServer(totalTransportEmissions)
 
             if (moveCamera) {
                 val todayDate = dateFormat.format(System.currentTimeMillis())
@@ -574,6 +587,39 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         "BUS" -> "#4285F4".toColorInt()
         "SUBWAY" -> "#7C4700".toColorInt()
         else -> "#2E2E2E".toColorInt() // ETC, UNKNOWN
+    }
+
+    private fun updateCalendarAndServer(totalEmissions: Double) {
+        if (!isAdded) return // Fragment가 detach된 경우 실행하지 않음
+
+        val parsedDateStr = parseDateFromText(dateText.text.toString())
+        try {
+            val dateObj = dateFormat.parse(parsedDateStr)
+            if (dateObj != null) {
+                val calendar = Calendar.getInstance().apply { time = dateObj }
+                // CalendarViewModel을 통해 해당 날짜의 이동수단 탄소 배출량 업데이트
+                calendarViewModel.updateTransportEmissions(calendar, totalEmissions.toInt()) { success ->
+                    if (success) {
+                        Timber.tag(TAG).d("캘린더 이동경로 탄소 배출량 업데이트 완료: ${totalEmissions.toInt()} g CO₂ for $parsedDateStr")
+
+                        // 월별 포인트 업데이트를 위해 ServerManager 호출
+                        val serverManager = ServerManager(requireContext())
+                        val yearMonth = SimpleDateFormat("yyyy-MM", Locale.getDefault()).format(dateObj)
+                        serverManager.updateMonthlyPointsForMonth(yearMonth) { updateSuccess ->
+                            if (updateSuccess) {
+                                Timber.tag(TAG).d("월별 포인트 업데이트 성공: $yearMonth")
+                            } else {
+                                Timber.tag(TAG).e("월별 포인트 업데이트 실패: $yearMonth")
+                            }
+                        }
+                    } else {
+                        Timber.tag(TAG).e("캘린더 이동경로 탄소 배출량 업데이트 실패: $parsedDateStr")
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Timber.tag(TAG).e(e, "날짜 파싱 오류로 캘린더 업데이트 실패: $parsedDateStr")
+        }
     }
 
     // --- Fragment 생명주기 ---
